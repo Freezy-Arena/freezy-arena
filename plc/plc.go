@@ -42,6 +42,7 @@ type Plc interface {
 	//Freezy Arena
 	SetAlternateIOStopState(input int, state bool)
 	ResetEstops()
+	GetAllCoils() ([coilCount]bool)
 }
 
 type ModbusPlc struct {
@@ -395,7 +396,7 @@ func (plc *ModbusPlc) update() {
 		}
 		plc.isHealthy = isHealthy
 	}
-
+	
 	plc.cycleCounter++
 	if plc.cycleCounter == cycleCounterMax {
 		plc.cycleCounter = 0
@@ -560,4 +561,9 @@ func (plc *ModbusPlc) ResetEstops(){
 	plc.inputs[blue1AStop] = true
 	plc.inputs[blue2AStop] = true
 	plc.inputs[blue3AStop] = true
+}
+
+// Returns the value of all PLC coils.
+func (plc *ModbusPlc) GetAllCoils() [coilCount]bool {
+    return plc.coils
 }
