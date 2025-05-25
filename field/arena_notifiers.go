@@ -6,11 +6,12 @@
 package field
 
 import (
+	"strconv"
+
 	"github.com/Team254/cheesy-arena/game"
 	"github.com/Team254/cheesy-arena/model"
 	"github.com/Team254/cheesy-arena/playoff"
 	"github.com/Team254/cheesy-arena/websocket"
-	"strconv"
 )
 
 type ArenaNotifiers struct {
@@ -68,6 +69,7 @@ func (arena *Arena) configureNotifiers() {
 	arena.ScorePostedNotifier = websocket.NewNotifier("scorePosted", arena.GenerateScorePostedMessage)
 	arena.ScoringStatusNotifier = websocket.NewNotifier("scoringStatus", arena.generateScoringStatusMessage)
 	arena.PlcCoilsNotifier = websocket.NewNotifier("plcCoils", arena.generatePlcCoilsMessage)
+
 }
 
 func (arena *Arena) generateAllianceSelectionMessage() any {
@@ -101,12 +103,12 @@ func (arena *Arena) generateArenaStatusMessage() any {
 		PlcIsHealthy          bool
 		FieldEStop            bool
 		PlcArmorBlockStatuses map[string]bool
-		ScoreTableIOEnabled		bool
-		RedEstopsEnabled		bool
-		BlueEstopsEnabled		bool
-		ScoreTableIOIsHealthy		 bool
-		RedEstopsIsHealthy		 bool
-		BlueEStopsIsHealthy		 bool
+		ScoreTableIOEnabled   bool
+		RedEstopsEnabled      bool
+		BlueEstopsEnabled     bool
+		ScoreTableIOIsHealthy bool
+		RedEstopsIsHealthy    bool
+		BlueEStopsIsHealthy   bool
 	}{
 		arena.CurrentMatch.Id,
 		arena.AllianceStations,
