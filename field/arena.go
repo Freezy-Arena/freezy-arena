@@ -100,6 +100,7 @@ type Arena struct {
 	NextFoulId                        int
 	redWonAuto                        bool
 	Esp32					 		  plc.Esp32
+	lastPlcNotifyTime 				  time.Time
 }
 
 type AllianceStation struct {
@@ -1103,6 +1104,13 @@ func (arena *Arena) handlePlcInputOutput() {
 	arena.handleTeamStop("B2", blueEStops[1], blueAStops[1])
 	arena.handleTeamStop("B3", blueEStops[2], blueAStops[2])
 	
+	// Only notify every 500ms
+    if arena.lastPlcNotifyTime.IsZero() || time.Since(arena.lastPlcNotifyTime) >= 500*time.Millisecond {
+        //arena.PlcCoilsNotifier.Notify()
+        //arena.Plc.IoChangeNotifier().Notify()
+        arena.lastPlcNotifyTime = time.Now()
+    }
+
 	if (!arena.Plc.IsEnabled() && !arena.EventSettings.AlternateIOEnabled) {  // && not alternateIO Enabled
 		return 
 	}
