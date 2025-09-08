@@ -41,6 +41,7 @@ var (
 type EventSettings struct {
 	Id                               int `db:"id"`
 	Name                             string
+	LogoSuffix                  	 string
 	PlayoffType                      PlayoffType
 	NumPlayoffAlliances              int
 	SelectionRound2Order             string
@@ -133,6 +134,7 @@ func (database *Database) GetEventSettings() (*EventSettings, error) {
 	// Database record doesn't exist yet; create it now.
 	eventSettings := EventSettings{
 		Name:                       "Untitled Event",
+		LogoSuffix:                  "",
 		PlayoffType:                DoubleEliminationPlayoff,
 		NumPlayoffAlliances:        8,
 		SelectionRound2Order:       "L",
