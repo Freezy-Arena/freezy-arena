@@ -96,23 +96,6 @@ var handleArenaStatus = function (data) {
       $("#match").attr("data-status", "");
     }
   }
-
-  if (!blink && blinkInterval) {
-    clearInterval(blinkInterval);
-    blinkInterval = null;
-  }
-
-
-  // Flash driver station display when A-Stopped or solid orange when E-Stopped
-  // Make sure match is not in progress to prevent flashing during match
-  $("#match").removeClass("solid-orange blink-orange");
-  if (stationStatus.EStop && data.MatchState==0) {
-    $("#match").addClass("solid-orange"); // E-stop: solid orange
-    console.log("E-Stopped")
-  } else if (stationStatus.AStop && data.MatchState==0) {
-    $("#match").addClass("blink-orange"); // A-stop: blinking orange
-    console.log("A-Stopped")
-  }
 };
 
 // Handles a websocket message to update the match time countdown.
