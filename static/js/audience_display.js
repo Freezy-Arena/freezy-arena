@@ -508,7 +508,10 @@ const transitionLogoToScore = function (callback) {
   $("#finalScore").css("opacity", 0); // Ensure it's hidden initially
   setTimeout(function () {
     playVictoryVideo(function () {
-    $("#finalScore").transition({queue: false, opacity: 1}, 5000, "ease", callback);
+      setTimeout(function () {
+        $("#finalScore").transition({queue: false, opacity: 1}, 5000, "ease", callback);
+      }, 500); // Small delay to avoid visual glitches
+    
   });
   }, 1000);
   
@@ -715,10 +718,12 @@ const playVictoryVideo = function (callback) {
   video.play();
 
   video.onended = function () {
-    videoOverlay.hide();
-    video.src = ""; // Reset source to avoid memory issues
-    video.onended = null; // Clean up event listener
-    if (callback) callback();
+    setTimeout(function () {
+      videoOverlay.hide();
+      video.src = ""; // Reset source to avoid memory issues
+      video.onended = null; // Clean up event listener
+      if (callback) callback();
+    }, 500); // 2-second delay to show the last frame
   };
 
   // Handle errors (e.g., video not found)
