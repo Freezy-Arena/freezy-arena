@@ -56,6 +56,13 @@ UI for configuring event settings.
                   <input type="text" class="form-control" name="name" value="{{.Name}}" placeholder="{{.Name}}">
                 </div>
               </div>
+              <div>Logo Suffix</div>
+              <div class="row mb-3" >
+                <label class="col-lg-6 control-label">Enter suffix used to load alterntive Logo files</label>
+                <div class="col-lg-6">
+                  <input type="text" class="form-control" name="logosuffix" value="{{.LogoSuffix}}" placeholder="{{.LogoSuffix}}">
+                </div>
+              </div>
               <div class="row mb-3">
                 <label class="col-lg-6 control-label">Playoff Type</label>
                 <div class="col-lg-6">
@@ -468,17 +475,6 @@ UI for configuring event settings.
                     {{if .UseLiteUdpPort}} checked{{end}}>
                 </div>
               </div>
-              <div class="row mb-3">
-                <legend>Driver Station Lite Mode</legend>
-                <p>When enabled, the Driver Station software will prompt teams to allow Cheesy Arena to connect rather
-                  than automatically connecting, and will preserve the ability to use the spacebar for robot
-                  disablement. Consider enabling this setting when physical E-Stop buttons are not present.</p>
-                <label class="col-lg-8 control-label" for="useLiteUdpPort"> Lite Mode </label>
-                <div class="col-lg-1 checkbox">
-                  <input type="checkbox" id="useLiteUdpPort" name="useLiteUdpPort"
-                    {{if .UseLiteUdpPort}} checked{{end}}>
-                </div>
-              </div>
             </fieldset>
           </div>
           <div class="tab-pane" id="publishing" role="tabpanel">
@@ -557,6 +553,18 @@ UI for configuring event settings.
                 <label class="col-lg-6 control-label">Blackmagic Addresses</label>
                 <div class="col-lg-6">
                   <input type="text" class="form-control" name="blackmagicAddresses" value="{{.BlackmagicAddresses}}">
+                </div>
+              </div>
+            </fieldset>
+            <fieldset class="mb-4">
+              <legend>Alliance Station Enhancements</legend>
+              <p>Enable this setting to allow the driver station displays to flash orange to indiciate an e-stop, or solid orange
+                to indiciate an a-stop. When enabled, the driver station will only flash outside of the match. <b>Display reload required for changes to take effect.</b>
+              </p>
+              <div class="row mb-3">
+                <label class="col-lg-6 control-label">Enable DS E/A Stop Alerting</label>
+                <div class="col-lg-1 checkbox">
+                  <input type="checkbox" name="flashDSEnabled" {{if .FlashDSEnabled}}checked{{end}}>
                 </div>
               </div>
             </fieldset>

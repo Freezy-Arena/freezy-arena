@@ -237,8 +237,11 @@ func (web *Web) newHandler() http.Handler {
 	mux.HandleFunc("GET /setup/teams/refresh", web.teamsRefreshHandler)
 	// Freezy Arena
 	mux.HandleFunc("GET /help/freezy/field_monitor_help", web.fieldMonitorDisplayHelpHandler)
-	mux.HandleFunc("GET /api/freezy/allianceStatus", web.allianceStatusApiHandler)
+	mux.HandleFunc("GET /help/freezy/configuring_advanced_networking_help", web.configuringAdvancedNetworkingHandler)
+	mux.HandleFunc("GET /help/freezy/alliance_station_display_help", web.allianceStationDisplayHelpHandler)
+	mux.HandleFunc("GET /help/freezy/running_the_event_help", web.runningTheEventHelpHandler)
 	mux.HandleFunc("POST /api/freezy/eStopState", web.eStopStatePostHandler)
+	mux.HandleFunc("GET /api/freezy/allianceStatus", web.allianceStatusApiHandler)
 	mux.HandleFunc("GET /panel/freezy/eStopControl/{alliance}", web.estopContolDisplayHandler)
 	mux.HandleFunc("GET /panel/freezy/eStopControl/websocket", web.estopContolDisplayWebsocketHandler)
 	mux.HandleFunc("GET /panel/freezy/eStopControl/{alliance}/websocket", web.scoringPanelWebsocketHandler)
@@ -249,6 +252,10 @@ func (web *Web) newHandler() http.Handler {
 	mux.HandleFunc("POST /panel/freezy/edit_practice_match", web.editPracticeMatchHandler)
 	mux.HandleFunc("GET /api/freezy/field_stack_light", web.fieldStackLightGetHandler)
 	mux.HandleFunc("GET /api/freezy/team_stack_light", web.teamStackLightGetHandler)
+	mux.HandleFunc("POST /freezy/upload/image", web.uploadImagePostHandler)
+	mux.HandleFunc("GET /freezy/upload", web.uploadImagePageHandler)
+	mux.HandleFunc("POST /freezy/alternateio/increment", web.incrementElementPostHandler)
+    
 
 	return mux
 }

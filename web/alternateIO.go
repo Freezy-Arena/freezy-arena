@@ -9,8 +9,10 @@ import (
 	//"github.com/Team254/cheesy-arena/game"
 	//"github.com/Team254/cheesy-arena/model"
 	"encoding/json"
+	//"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/Team254/cheesy-arena/field"
 )
@@ -220,4 +222,60 @@ func (web *Web) teamStackLightGetHandler(w http.ResponseWriter, r *http.Request)
 
 	// Send the response.
 	w.Write(response)
+}
+
+type incrementElementPayload struct {
+    Alliance string `json:"alliance"`
+    Element  string `json:"element"`
+}
+
+// POST /freezy/alternateio/increment
+// Increments the specified element counter on the chosen alliance realtime score.
+func (web *Web) incrementElementPostHandler(w http.ResponseWriter, r *http.Request) {
+
+	//log.Printf("incrementElementPostHandler: received request")
+    if r.Method != http.MethodPost {
+        http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+        return
+    }
+	// Parse the request body.
+    var p incrementElementPayload
+    if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
+        http.Error(w, "Invalid request payload", http.StatusBadRequest)
+        return
+    }
+
+    // Select alliance realtime score
+    var scorePtr *field.RealtimeScore
+    switch strings.ToLower(p.Alliance) {
+    case "red", "r":
+        scorePtr = web.arena.RedRealtimeScore
+    case "blue", "b":
+        scorePtr = web.arena.BlueRealtimeScore
+    default:
+        http.Error(w, "Unknown alliance; must be 'red' or 'blue'", http.StatusBadRequest)
+        return
+    }
+
+    if scorePtr == nil {
+        http.Error(w, "Realtime score not initialized for alliance", http.StatusInternalServerError)
+        return
+    }
+
+    // Increment the requested element counter. Add cases as needed.
+    switch p.Element {
+    case "ProcessorAlgae":
+        scorePtr.CurrentScore.ProcessorAlgae++
+		web.arena.RealtimeScoreNotifier.Notify()
+        //writeJsonOK(w, map[string]interface{}{"ok": true, "element": p.Element, "value": scorePtr.CurrentScore.ProcessorAlgae})
+        return
+    case "Barge":
+        scorePtr.CurrentScore.BargeAlgae++
+        web.arena.RealtimeScoreNotifier.Notify()
+        //writeJsonOK(w, map[string]interface{}{"ok": true, "element": p.Element, "value": scorePtr.CurrentScore.BargeAlgae})
+		return
+    default:
+        http.Error(w, "Unknown element", http.StatusBadRequest)
+        return
+    }
 }
