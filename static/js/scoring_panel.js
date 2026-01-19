@@ -184,8 +184,12 @@ const handleRealtimeScore = function (data) {
     }
   }
 
+  const l1Total = score.Reef.TroughNear + score.Reef.TroughFar;
+  $("#l1-total-count").text(l1Total);
+  
   $(`#barge .counter-value`).text(score.BargeAlgae);
   $(`#processor .counter-value`).text(score.ProcessorAlgae);
+
   if (nearSide) {
     $(`#trough .counter-value`).text(score.Reef.TroughNear);
     $(`#trough .counter-auto-value`).text(score.Reef.AutoTroughNear);
@@ -206,7 +210,7 @@ const handleRealtimeScore = function (data) {
 const handleCounterClick = function (command, adjustment) {
   websocket.send(command, {
     Adjustment: adjustment,
-    Current: !editingAuto,
+    Current: true,
     Autonomous: !inTeleop || editingAuto,
     NearSide: nearSide
   });

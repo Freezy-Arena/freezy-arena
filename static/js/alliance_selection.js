@@ -7,6 +7,7 @@ var websocket;
 
 // Sends a websocket message to set the timer to the given time limit.
 const setTimer = function (timeLimitInput) {
+  document.getElementById("timeLimitSecInput").value = timeLimitInput.value;
   websocket.send("setTimer", parseInt(timeLimitInput.value));
 }
 
@@ -25,6 +26,17 @@ const handleAllianceSelection = function (data) {
   $("#timer").text(getCountdownString(data.TimeRemainingSec));
 };
 
+// Handles a websocket message to update the audience display screen selector.
+const handleAudienceDisplayMode = function (data) {
+  $("input[name=audienceDisplay]:checked").prop("checked", false);
+  $("input[name=audienceDisplay][value=" + data + "]").prop("checked", true);
+};
+
+// Sends a websocket message to change what the audience display is showing.
+const setAudienceDisplay = function () {
+  websocket.send("setAudienceDisplay", $("input[name=audienceDisplay]:checked").val());
+};
+
 $(function () {
   // Activate playoff tournament datetime picker.
   const startTime = moment(new Date()).hour(13).minute(0).second(0);
@@ -34,6 +46,9 @@ $(function () {
   websocket = new CheesyWebsocket("/alliance_selection/websocket", {
     allianceSelection: function (event) {
       handleAllianceSelection(event.data);
+    },
+    audienceDisplayMode: function (event) {
+      handleAudienceDisplayMode(event.data);
     },
   });
 });

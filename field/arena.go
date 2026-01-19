@@ -10,6 +10,8 @@ import (
 	"log"
 	"reflect"
 	"strconv"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/Team254/cheesy-arena/game"
@@ -54,6 +56,8 @@ type Arena struct {
 	EventSettings    *model.EventSettings
 	accessPoint      network.AccessPoint
 	networkSwitch    *network.Switch
+	redSCC           *network.SCCSwitch
+	blueSCC          *network.SCCSwitch
 	Plc              plc.Plc
 	TbaClient        *partner.TbaClient
 	NexusClient      *partner.NexusClient
@@ -186,6 +190,22 @@ func (arena *Arena) LoadSettings() error {
 		accessPointWifiStatuses,
 	)
 	arena.networkSwitch = network.NewSwitch(settings.SwitchAddress, settings.SwitchPassword)
+	sccUpCommands := strings.Split(settings.SCCUpCommands, "\n")
+	sccDownCommands := strings.Split(settings.SCCDownCommands, "\n")
+	arena.redSCC = network.NewSCCSwitch(
+		settings.RedSCCAddress,
+		settings.SCCUsername,
+		settings.SCCPassword,
+		sccUpCommands,
+		sccDownCommands,
+	)
+	arena.blueSCC = network.NewSCCSwitch(
+		settings.BlueSCCAddress,
+		settings.SCCUsername,
+		settings.SCCPassword,
+		sccUpCommands,
+		sccDownCommands,
+	)
 	arena.Plc.SetAddress(settings.PlcAddress)
 	arena.Esp32.SetScoreTableAddress(settings.ScoreTableEstopAddress)
 	arena.Esp32.SetRedAllianceStationEstopAddress(settings.RedAllianceStationEstopAddress)
@@ -206,6 +226,7 @@ func (arena *Arena) LoadSettings() error {
 	game.CoralBonusPerLevelThreshold = settings.CoralBonusPerLevelThreshold
 	game.CoralBonusCoopEnabled = settings.CoralBonusCoopEnabled
 	game.BargeBonusPointThreshold = settings.BargeBonusPointThreshold
+	game.IncludeAlgaeInBargeBonus = settings.IncludeAlgaeInBargeBonus
 
 	// Reconstruct the playoff tournament in memory.
 	if err = arena.CreatePlayoffTournament(); err != nil {
@@ -469,7 +490,7 @@ func (arena *Arena) AbortMatch() error {
 	}
 
 	if arena.MatchState != WarmupPeriod {
-		arena.playSound("abort")
+		arena.PlaySound("abort")
 	}
 	arena.MatchState = PostMatch
 	arena.matchAborted = true
@@ -525,7 +546,7 @@ func (arena *Arena) SetAudienceDisplayMode(mode string) {
 		arena.AudienceDisplayMode = mode
 		arena.AudienceDisplayModeNotifier.Notify()
 		if mode == "score" {
-			arena.playSound("match_result")
+			arena.PlaySound("match_result")
 		}
 	}
 }
@@ -829,6 +850,25 @@ func (arena *Arena) preLoadNextMatch() {
 	arena.TeamSigns.SetNextMatchTeams(nextMatch)
 }
 
+// Enable or disable the team ethernet ports on both SCCs
+func (arena *Arena) setSCCEthernetEnabled(enabled bool) {
+	if arena.EventSettings.SCCManagementEnabled {
+		var wg sync.WaitGroup
+		wg.Add(2)
+
+		configureSCC := func(scc *network.SCCSwitch, name string) {
+			defer wg.Done()
+			err := scc.SetTeamEthernetEnabled(enabled)
+			if err != nil {
+				log.Printf("Failed to set %s SCC enabled state to %t: %s", name, enabled, err.Error())
+			}
+		}
+		go configureSCC(arena.redSCC, "red")
+		go configureSCC(arena.blueSCC, "blue")
+		wg.Wait()
+	}
+}
+
 // Asynchronously reconfigures the networking hardware for the new set of teams.
 func (arena *Arena) setupNetwork(teams [6]*model.Team, isPreload bool) {
 	if isPreload {
@@ -847,9 +887,11 @@ func (arena *Arena) setupNetwork(teams [6]*model.Team, isPreload bool) {
 			log.Printf("Failed to configure team WiFi: %s", err.Error())
 		}
 		go func() {
+			arena.setSCCEthernetEnabled(false)
 			if err := arena.networkSwitch.ConfigureTeamEthernet(teams); err != nil {
 				log.Printf("Failed to configure team Ethernet: %s", err.Error())
 			}
+			arena.setSCCEthernetEnabled(true)
 		}()
 	}
 }
@@ -1094,14 +1136,14 @@ func (arena *Arena) handleSounds(matchTimeSec float64) {
 		}
 		if _, ok := arena.soundsPlayed[sound]; !ok {
 			if matchTimeSec >= sound.MatchTimeSec && matchTimeSec-sound.MatchTimeSec < 1 {
-				arena.playSound(sound.Name)
+				arena.PlaySound(sound.Name)
 				arena.soundsPlayed[sound] = struct{}{}
 			}
 		}
 	}
 }
 
-func (arena *Arena) playSound(name string) {
+func (arena *Arena) PlaySound(name string) {
 	if !arena.MuteMatchSounds {
 		arena.PlaySoundNotifier.NotifyWithMessage(name)
 	}
