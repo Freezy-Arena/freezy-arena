@@ -117,9 +117,10 @@ func (web *Web) settingsPostHandler(w http.ResponseWriter, r *http.Request) {
 	eventSettings.BlackmagicAddresses = r.PostFormValue("blackmagicAddresses")
 	eventSettings.WarmupDurationSec, _ = strconv.Atoi(r.PostFormValue("warmupDurationSec"))
 	eventSettings.AutoDurationSec, _ = strconv.Atoi(r.PostFormValue("autoDurationSec"))
-	eventSettings.PauseDurationSec, _ = strconv.Atoi(r.PostFormValue("pauseDurationSec"))
-	eventSettings.TeleopDurationSec, _ = strconv.Atoi(r.PostFormValue("teleopDurationSec"))
-	eventSettings.WarningRemainingDurationSec, _ = strconv.Atoi(r.PostFormValue("warningRemainingDurationSec"))
+
+	eventSettings.TransitionShiftDurationSec, _ = strconv.Atoi(r.PostFormValue("transitionShiftDurationSec"))
+	eventSettings.AllianceShiftDurationSec, _ = strconv.Atoi(r.PostFormValue("allianceShiftDurationSec"))
+	eventSettings.EndGameDurationSec, _ = strconv.Atoi(r.PostFormValue("endGameDurationSec"))
 	eventSettings.AutoBonusCoralThreshold, _ = strconv.Atoi(r.PostFormValue("autoBonusCoralThreshold"))
 	eventSettings.CoralBonusPerLevelThreshold, _ = strconv.Atoi(r.PostFormValue("coralBonusPerLevelThreshold"))
 	eventSettings.CoralBonusCoopEnabled = r.PostFormValue("coralBonusCoopEnabled") == "on"

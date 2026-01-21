@@ -200,7 +200,12 @@ const handleArenaStatus = function (data) {
     case "WARMUP_PERIOD":
     case "AUTO_PERIOD":
     case "PAUSE_PERIOD":
-    case "TELEOP_PERIOD":
+    case "TRANSITION_PERIOD":
+    case "SHIFT1_PERIOD":
+    case "SHIFT2_PERIOD":
+    case "SHIFT3_PERIOD":
+    case "SHIFT4_PERIOD":
+    case "ENDGAME_PERIOD":
       $("#showOverlay").prop("disabled", true);
       $("#introRadio").prop("disabled", true);
       $("#showFinalScore").prop("disabled", true);

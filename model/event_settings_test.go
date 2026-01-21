@@ -4,8 +4,9 @@
 package model
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestEventSettingsReadWrite(t *testing.T) {
@@ -32,9 +33,9 @@ func TestEventSettingsReadWrite(t *testing.T) {
 			SCCDownCommands:             "configure terminal\ninterface range gigabitEthernet 1/2-4\nshutdown\nexit\nexit\nexit",
 			WarmupDurationSec:           0,
 			AutoDurationSec:             15,
-			PauseDurationSec:            3,
-			TeleopDurationSec:           135,
-			WarningRemainingDurationSec: 20,
+			TransitionShiftDurationSec:  10,
+			AllianceShiftDurationSec:    25,
+			EndGameDurationSec:          30,
 			AutoBonusCoralThreshold:     1,
 			CoralBonusPerLevelThreshold: 7,
 			CoralBonusCoopEnabled:       true,

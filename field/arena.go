@@ -34,6 +34,8 @@ const (
 	scheduledBreakDelaySec   = 5
 	earlyLateThresholdMin    = 2.5
 	MaxMatchGapMin           = 20
+	RedAllianceHubBit        = 1
+	BlueAllianceHubBit       = 2
 )
 
 // Progression of match states.
@@ -44,8 +46,14 @@ const (
 	StartMatch
 	WarmupPeriod
 	AutoPeriod
-	PausePeriod
-	TeleopPeriod
+	//  2026 Rebuilt Game
+	TransitionShift
+	Shift1
+	Shift2
+	Shift3
+	Shift4
+	EndGame
+
 	PostMatch
 	TimeoutActive
 	PostTimeout
@@ -98,6 +106,7 @@ type Arena struct {
 	preloadedTeams                    *[6]*model.Team
 	lastPlcNotifyTime 				  time.Time
 	Esp32                             plc.Esp32
+	HubsActive                        int // Bitmask 1=Red, 2=Blue
 }
 
 type AllianceStation struct {
@@ -216,9 +225,9 @@ func (arena *Arena) LoadSettings() error {
 
 	game.MatchTiming.WarmupDurationSec = settings.WarmupDurationSec
 	game.MatchTiming.AutoDurationSec = settings.AutoDurationSec
-	game.MatchTiming.PauseDurationSec = settings.PauseDurationSec
-	game.MatchTiming.TeleopDurationSec = settings.TeleopDurationSec
-	game.MatchTiming.WarningRemainingDurationSec = settings.WarningRemainingDurationSec
+	game.MatchTiming.TransitionShiftDurationSec = settings.TransitionShiftDurationSec
+	game.MatchTiming.AllianceShiftDurationSec = settings.AllianceShiftDurationSec
+	game.MatchTiming.EndGameDurationSec = settings.EndGameDurationSec
 	game.UpdateMatchSounds()
 	arena.MatchTimingNotifier.Notify()
 
@@ -588,6 +597,7 @@ func (arena *Arena) Update() {
 		arena.AudienceDisplayModeNotifier.Notify()
 		arena.AllianceStationDisplayMode = "match"
 		arena.AllianceStationDisplayModeNotifier.Notify()
+		arena.HubsActive = 0
 		go arena.BlackmagicClient.StartRecording()
 		if game.MatchTiming.WarmupDurationSec > 0 {
 			arena.MatchState = WarmupPeriod
@@ -613,34 +623,80 @@ func (arena *Arena) Update() {
 	case AutoPeriod:
 		auto = true
 		enabled = true
+		arena.HubsActive =  BlueAllianceHubBit | RedAllianceHubBit
 		if matchTimeSec >= game.GetDurationToAutoEnd().Seconds() {
 			auto = false
 			sendDsPacket = true
-			if game.MatchTiming.PauseDurationSec > 0 {
-				arena.MatchState = PausePeriod
+			if game.MatchTiming.TransitionShiftDurationSec > 0 {
+				arena.MatchState = TransitionShift
 				enabled = false
 			} else {
-				arena.MatchState = TeleopPeriod
+				arena.MatchState = Shift1
 				enabled = true
 			}
 		}
-	case PausePeriod:
+	case TransitionShift:
 		auto = false
 		enabled = false
-		if matchTimeSec >= game.GetDurationToTeleopStart().Seconds() {
-			arena.MatchState = TeleopPeriod
+		if matchTimeSec >= game.GetDurationToShift1Start().Seconds() {
+			arena.MatchState = Shift1
 			auto = false
 			enabled = true
 			sendDsPacket = true
+			// TODO: Choose which Alliance has the first shift.
+			arena.HubsActive =  BlueAllianceHubBit 
 		}
-	case TeleopPeriod:
+	case Shift1:
 		auto = false
 		enabled = true
+		if matchTimeSec >= game.GetDurationToShiftEnd(1).Seconds() {
+			arena.MatchState = Shift2
+			auto = false
+			enabled = true
+			sendDsPacket = true
+			// Flip the hubs
+			arena.HubsActive = ^arena.HubsActive
+		}
+	case Shift2:
+		auto = false
+		enabled = true
+		if matchTimeSec >= game.GetDurationToShiftEnd(2).Seconds() {
+			arena.MatchState = Shift3
+			auto = false
+			enabled = true
+			sendDsPacket = true
+			// Flip the hubs
+			arena.HubsActive = ^arena.HubsActive
+		}
+	case Shift3:
+		auto = false
+		enabled = true
+		if matchTimeSec >= game.GetDurationToShiftEnd(3).Seconds() {
+			arena.MatchState = Shift4
+			auto = false
+			enabled = true
+			sendDsPacket = true
+			// Flip the hubs
+			arena.HubsActive = ^arena.HubsActive
+		}
+	case Shift4:
+		auto = false
+		enabled = true
+		if matchTimeSec >= game.GetDurationToShiftEnd(4).Seconds() {
+			arena.MatchState = EndGame
+			auto = false
+			enabled = true
+			sendDsPacket = true
+			arena.HubsActive = BlueAllianceHubBit | RedAllianceHubBit
+		}
+	case EndGame:
+		arena.HubsActive =  BlueAllianceHubBit | RedAllianceHubBit
 		if matchTimeSec >= game.GetDurationToTeleopEnd().Seconds() {
 			arena.MatchState = PostMatch
 			auto = false
 			enabled = false
 			sendDsPacket = true
+			arena.HubsActive = 0
 			go arena.BlackmagicClient.StopRecording()
 			go func() {
 				// Leave the scores on the screen briefly at the end of the match.
@@ -1015,10 +1071,6 @@ func (arena *Arena) handlePlcInputOutput() {
 	oldRedScore := *redScore
 	blueScore := &arena.BlueRealtimeScore.CurrentScore
 	oldBlueScore := *blueScore
-	matchStartTime := arena.MatchStartTime
-	currentTime := time.Now()
-	teleopGracePeriod := matchStartTime.Add(game.GetDurationToTeleopEnd() + game.TeleopGracePeriodSec*time.Second)
-	inGracePeriod := arena.MatchState == PostMatch && currentTime.Before(teleopGracePeriod) && !arena.matchAborted
 
 	redAllianceReady := arena.checkAllianceStationsReady("R1", "R2", "R3") == nil
 	blueAllianceReady := arena.checkAllianceStationsReady("B1", "B2", "B3") == nil
@@ -1057,53 +1109,19 @@ func (arena *Arena) handlePlcInputOutput() {
 			arena.positionPostMatchScoreReady("red_near") && arena.positionPostMatchScoreReady("red_far") &&
 			arena.positionPostMatchScoreReady("blue_near") && arena.positionPostMatchScoreReady("blue_far")
 		arena.Plc.SetStackLights(false, false, !scoreReady, false)
-	case AutoPeriod, PausePeriod, TeleopPeriod:
+	case AutoPeriod, TransitionShift, Shift1, Shift2, Shift3, Shift4, EndGame:
 		arena.Plc.SetStackBuzzer(false)
 		arena.Plc.SetStackLights(!redAllianceReady, !blueAllianceReady, false, true)
 	}
 
 	// Get all the game-specific inputs and update the score.
-	if (arena.MatchState == AutoPeriod || arena.MatchState == PausePeriod || arena.MatchState == TeleopPeriod ||
-		inGracePeriod) && !arena.EventSettings.AlternateIOEnabled {
+	if (arena.MatchState == AutoPeriod || arena.MatchState == TransitionShift || 
+			arena.MatchState == Shift1 || arena.MatchState == Shift2 || arena.MatchState == Shift3 || arena.MatchState == Shift4 || 
+			arena.MatchState == EndGame) && !arena.EventSettings.AlternateIOEnabled {
 		redScore.ProcessorAlgae, blueScore.ProcessorAlgae = arena.Plc.GetProcessorCounts()
 	}
 	if !oldRedScore.Equals(redScore) || !oldBlueScore.Equals(blueScore) {
 		arena.RealtimeScoreNotifier.Notify()
-	}
-
-	// Handle the truss lights.
-	if arena.MatchState == AutoPeriod || arena.MatchState == PausePeriod || arena.MatchState == TeleopPeriod {
-		warningSequenceActive, lights := trussLightWarningSequence(arena.MatchTimeSec())
-		if warningSequenceActive {
-			arena.Plc.SetTrussLights(lights, lights)
-		} else {
-			if !game.CoralBonusCoopEnabled || arena.CurrentMatch.Type == model.Playoff {
-				// Just leave the lights on all match if co-op is not enabled for this match (or event).
-				arena.Plc.SetTrussLights([3]bool{true, true, true}, [3]bool{true, true, true})
-			} else {
-				// Set the lights to reflect co-op status.
-				if arena.RedScoreSummary().CoopertitionBonus && arena.BlueScoreSummary().CoopertitionBonus {
-					arena.Plc.SetTrussLights([3]bool{true, true, true}, [3]bool{true, true, true})
-				} else {
-					arena.Plc.SetTrussLights(
-						[3]bool{
-							arena.RedRealtimeScore.CurrentScore.ProcessorAlgae >= 1,
-							arena.RedRealtimeScore.CurrentScore.ProcessorAlgae >= 2,
-							false,
-						},
-						[3]bool{
-							arena.BlueRealtimeScore.CurrentScore.ProcessorAlgae >= 1,
-							arena.BlueRealtimeScore.CurrentScore.ProcessorAlgae >= 2,
-							false,
-						},
-					)
-				}
-			}
-		}
-	} else {
-		arena.Plc.SetTrussLights(
-			[3]bool{inGracePeriod, inGracePeriod, inGracePeriod}, [3]bool{inGracePeriod, inGracePeriod, inGracePeriod},
-		)
 	}
 }
 
@@ -1159,27 +1177,4 @@ func (arena *Arena) positionPostMatchScoreReady(position string) bool {
 func (arena *Arena) runPeriodicTasks() {
 	arena.updateEarlyLateMessage()
 	arena.purgeDisconnectedDisplays()
-}
-
-// trussLightWarningSequence generates the sequence of truss light states during the "sonar ping" warning sound. It
-// returns true if the sequence is active, and an array of booleans indicating the state of each truss light.
-func trussLightWarningSequence(matchTimeSec float64) (bool, [3]bool) {
-	stepTimeSec := 0.2
-	sequence := []int{1, 2, 3, 2, 1, 2, 3, 0, 0, 1, 2, 3, 2, 1, 2, 3, 0, 0}
-	startTime := float64(
-		game.MatchTiming.WarmupDurationSec + game.MatchTiming.AutoDurationSec + game.MatchTiming.PauseDurationSec +
-			game.MatchTiming.TeleopDurationSec - game.MatchTiming.WarningRemainingDurationSec,
-	)
-	lights := [3]bool{false, false, false}
-
-	if matchTimeSec < startTime {
-		// The sequence is not active yet.
-		return false, lights
-	}
-
-	step := int((matchTimeSec - startTime) / stepTimeSec)
-	if step < len(sequence) && sequence[step] > 0 {
-		lights[sequence[step]-1] = true
-	}
-	return step < len(sequence), lights
 }

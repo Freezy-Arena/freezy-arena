@@ -201,7 +201,9 @@ func (web *Web) teamStackLightGetHandler(w http.ResponseWriter, r *http.Request)
 		}
 
 		if ok { 
-			if web.arena.MatchState == field.AutoPeriod || web.arena.MatchState == field.PausePeriod || web.arena.MatchState == field.TeleopPeriod {
+			if web.arena.MatchState == field.AutoPeriod || web.arena.MatchState == field.TransitionShift || 
+				web.arena.MatchState == field.Shift1 || web.arena.MatchState == field.Shift2 || web.arena.MatchState == field.Shift3 || web.arena.MatchState == field.Shift4 || 
+				web.arena.MatchState == field.EndGame {
 				// Robot enabled during match
 				teamStackLight.LightStates[1] = lightState{Color: allianceColor, Blink: false}
 			} else {
@@ -217,6 +219,57 @@ func (web *Web) teamStackLightGetHandler(w http.ResponseWriter, r *http.Request)
 	response, err := json.Marshal(stackLights)
 	if err != nil {
 		http.Error(w, "Failed to marshal team stacklights state", http.StatusInternalServerError)
+		return
+	}
+
+	// Send the response.
+	w.Write(response)
+}
+
+type hubStates struct {
+	Red lightState `json:"red"`
+	Blue lightState `json:"blue"`
+} 
+// Provides a single API for a hub to retrieve it's state which is:
+// Alliance Color Solid:   HUB Active
+// Alliance color Pulsing: HUB Deactivation Warning
+// Purple:                 Field is safe for staff
+// Green:                  Field is safe for all
+// Off
+func (web *Web) teamHubStateGetHandler(w http.ResponseWriter, r *http.Request) {
+		// Ensure the request is a GET request.
+		// See the team_sign.go method: generateTeamNumberTexts for the template
+	if r.Method != http.MethodGet {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var hubStates hubStates
+	
+	// State during match
+	if web.arena.MatchState == field.AutoPeriod || web.arena.MatchState == field.TransitionShift || 
+		web.arena.MatchState == field.Shift1 || web.arena.MatchState == field.Shift2 || web.arena.MatchState == field.Shift3 || web.arena.MatchState == field.Shift4 || 
+		web.arena.MatchState == field.EndGame {
+
+		// Red
+		hubStates.Red.Color = "black"
+		if web.arena.HubsActive&(1<<1) != 0 {
+			hubStates.Red.Color = "red"
+			hubStates.Red.Blink = false
+		}
+
+		// Red
+		hubStates.Blue.Color = "black"
+		if web.arena.HubsActive&(1<<2) != 0 {
+			hubStates.Blue.Color = "blue"
+			hubStates.Blue.Blink = false
+		}
+	}
+
+	// Marshal the response payload.
+	response, err := json.Marshal(hubStates)
+	if err != nil {
+		http.Error(w, "Failed to marshal hub state", http.StatusInternalServerError)
 		return
 	}
 

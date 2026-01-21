@@ -84,9 +84,9 @@ type EventSettings struct {
 	BlackmagicAddresses             string
 	WarmupDurationSec               int
 	AutoDurationSec                 int
-	PauseDurationSec                int
-	TeleopDurationSec               int
-	WarningRemainingDurationSec     int
+	TransitionShiftDurationSec      int 
+	AllianceShiftDurationSec        int
+	EndGameDurationSec              int
 	AutoBonusCoralThreshold         int
 	CoralBonusPerLevelThreshold     int
 	CoralBonusCoopEnabled           bool
@@ -120,9 +120,9 @@ func (database *Database) GetEventSettings() (*EventSettings, error) {
 		SCCDownCommands:             strings.Join(sccDefaultDownCommands, "\n"),
 		WarmupDurationSec:           game.MatchTiming.WarmupDurationSec,
 		AutoDurationSec:             game.MatchTiming.AutoDurationSec,
-		PauseDurationSec:            game.MatchTiming.PauseDurationSec,
-		TeleopDurationSec:           game.MatchTiming.TeleopDurationSec,
-		WarningRemainingDurationSec: game.MatchTiming.WarningRemainingDurationSec,
+		TransitionShiftDurationSec:  game.MatchTiming.TransitionShiftDurationSec,
+		AllianceShiftDurationSec:    game.MatchTiming.AllianceShiftDurationSec,
+		EndGameDurationSec:          game.MatchTiming.EndGameDurationSec,
 		AutoBonusCoralThreshold:     game.AutoBonusCoralThreshold,
 		CoralBonusPerLevelThreshold: game.CoralBonusPerLevelThreshold,
 		CoralBonusCoopEnabled:       game.CoralBonusCoopEnabled,

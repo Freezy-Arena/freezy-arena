@@ -7,7 +7,7 @@ UI for configuring event settings.
 {{define "title"}}Settings{{end}}
 {{define "body"}}
 <div class="row justify-content-center">
-  {{if .ErrorMessage}}
+  {{if .ErrorMessage}}`
   <div class="alert alert-danger alert-dismissible">
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     {{.ErrorMessage}}
@@ -205,22 +205,22 @@ UI for configuring event settings.
                 </div>
               </div>
               <div class="row mb-3">
-                <label class="col-lg-6 control-label">Pause Duration<br/>(seconds)</label>
+                <label class="col-lg-6 control-label">Transition Duration<br/>(seconds)</label>
                 <div class="col-lg-6">
-                  <input type="text" class="form-control" name="pauseDurationSec" value="{{.PauseDurationSec}}">
+                  <input type="text" class="form-control" name="transitionShiftDurationSec" value="{{.TransitionShiftDurationSec}}">
                 </div>
               </div>
               <div class="row mb-3">
-                <label class="col-lg-6 control-label">Teleoperated Period Duration<br/>(seconds)</label>
+                <label class="col-lg-6 control-label">Aliance Shift Period Duration<br/>(seconds)</label>
                 <div class="col-lg-6">
-                  <input type="text" class="form-control" name="teleopDurationSec" value="{{.TeleopDurationSec}}">
+                  <input type="text" class="form-control" name="allianceShiftDurationSec" value="{{.AllianceShiftDurationSec}}">
                 </div>
               </div>
               <div class="row mb-3">
-                <label class="col-lg-6 control-label">Warning Remaining Duration<br/>(seconds)</label>
+                <label class="col-lg-6 control-label">End Game Remaining Duration<br/>(seconds)</label>
                 <div class="col-lg-6">
-                  <input type="text" class="form-control" name="warningRemainingDurationSec"
-                    value="{{.WarningRemainingDurationSec}}">
+                  <input type="text" class="form-control" name="endGameDurationSec"
+                    value="{{.EndGameDurationSec}}">
                 </div>
               </div>
               <div class="row mb-3">
