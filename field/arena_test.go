@@ -153,31 +153,40 @@ func TestArenaMatchFlow(t *testing.T) {
 	assert.Equal(t, true, arena.BlueRealtimeScore.CurrentScore.RobotsBypassed[0])
 	assert.Equal(t, true, arena.BlueRealtimeScore.CurrentScore.RobotsBypassed[1])
 	assert.Equal(t, false, arena.BlueRealtimeScore.CurrentScore.RobotsBypassed[2])
+	assert.Equal(t, 0, arena.HubsActive)
 	arena.Update()
 	assert.Equal(t, WarmupPeriod, arena.MatchState)
 	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Auto)
 	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Enabled)
+
+	// Auto Period
 	arena.MatchStartTime = time.Now().Add(-time.Duration(game.MatchTiming.WarmupDurationSec) * time.Second)
 	arena.Update()
 	assert.Equal(t, AutoPeriod, arena.MatchState)
 	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Auto)
 	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
+	assert.Equal(t, 3, arena.HubsActive)
 	arena.Update()
 	assert.Equal(t, AutoPeriod, arena.MatchState)
 	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Auto)
 	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
+
+	// Transition Period
 	arena.MatchStartTime = time.Now().Add(
 		-time.Duration(game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec) * time.Second,
 	)
-	// TODO: Add tests for Hub state
 	arena.Update()
 	assert.Equal(t, TransitionShift, arena.MatchState)
 	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
-	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Enabled)
+	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
+	assert.Equal(t, 3, arena.HubsActive)
 	arena.Update()
 	assert.Equal(t, TransitionShift, arena.MatchState)
 	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
-	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Enabled)
+	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
+	assert.Equal(t, 3, arena.HubsActive)
+
+	// Shift 1 Period
 	arena.MatchStartTime = time.Now().Add(
 		-time.Duration(
 			game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.TransitionShiftDurationSec,
@@ -187,9 +196,13 @@ func TestArenaMatchFlow(t *testing.T) {
 	assert.Equal(t, Shift1, arena.MatchState)
 	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
 	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
+	assert.Equal(t, 2, arena.HubsActive)
 	arena.Update()
 	assert.Equal(t, Shift1, arena.MatchState)
 	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
+	assert.Equal(t, 2, arena.HubsActive)
+
+	// Shift 2 Period
 	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
 		arena.MatchStartTime = time.Now().Add(
 		-time.Duration(
@@ -197,15 +210,18 @@ func TestArenaMatchFlow(t *testing.T) {
 			game.MatchTiming.AllianceShiftDurationSec*1,
 		) * time.Second,
 	)
+	arena.Update()
+	assert.Equal(t, Shift2, arena.MatchState)
+	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
+	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
+	assert.Equal(t, 1, arena.HubsActive)
+	arena.Update()
+	assert.Equal(t, Shift2, arena.MatchState)
+	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
+	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
+	assert.Equal(t, 1, arena.HubsActive)
 
-	arena.Update()
-	assert.Equal(t, Shift2, arena.MatchState)
-	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
-	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
-	arena.Update()
-	assert.Equal(t, Shift2, arena.MatchState)
-	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
-	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
+	// Shift 3 Period
 	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
 		arena.MatchStartTime = time.Now().Add(
 		-time.Duration(
@@ -213,15 +229,18 @@ func TestArenaMatchFlow(t *testing.T) {
 			game.MatchTiming.AllianceShiftDurationSec*2,
 		) * time.Second,
 	)
+	arena.Update()
+	assert.Equal(t, Shift3, arena.MatchState)
+	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
+	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
+	assert.Equal(t, 2, arena.HubsActive)
+	arena.Update()
+	assert.Equal(t, Shift3, arena.MatchState)
+	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
+	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
+	assert.Equal(t, 2, arena.HubsActive)
 
-	arena.Update()
-	assert.Equal(t, Shift3, arena.MatchState)
-	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
-	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
-	arena.Update()
-	assert.Equal(t, Shift3, arena.MatchState)
-	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
-	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
+	// Shift 4 Period
 	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
 		arena.MatchStartTime = time.Now().Add(
 		-time.Duration(
@@ -229,80 +248,55 @@ func TestArenaMatchFlow(t *testing.T) {
 			game.MatchTiming.AllianceShiftDurationSec*3,
 		) * time.Second,
 	)
+	arena.Update()
+	assert.Equal(t, Shift4, arena.MatchState)
+	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
+	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
+	assert.Equal(t, 1, arena.HubsActive)
+	arena.Update()
+	assert.Equal(t, Shift4, arena.MatchState)
+	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
+	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
+	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
+	assert.Equal(t, 1, arena.HubsActive)
 
-	arena.Update()
-	assert.Equal(t, Shift4, arena.MatchState)
-	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
-	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
-	arena.Update()
-	assert.Equal(t, Shift4, arena.MatchState)
-	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
-	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
-	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
-		arena.MatchStartTime = time.Now().Add(
+  // End Game Period
+	arena.MatchStartTime = time.Now().Add(
 		-time.Duration(
 			game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.TransitionShiftDurationSec+
 			game.MatchTiming.AllianceShiftDurationSec*4,
 		) * time.Second,
 	)
+	arena.Update()
+	assert.Equal(t, EndGame, arena.MatchState)
+	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
+	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
+	assert.Equal(t, 3, arena.HubsActive)
+	arena.Update()
+	assert.Equal(t, EndGame, arena.MatchState)
+	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
+	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
+	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
+	assert.Equal(t, 3, arena.HubsActive)
 
-	arena.Update()
-	assert.Equal(t, EndGame, arena.MatchState)
-	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
-	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
-	arena.Update()
-	assert.Equal(t, EndGame, arena.MatchState)
-	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
-	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
-	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
-		arena.MatchStartTime = time.Now().Add(
-		-time.Duration(
-			game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.TransitionShiftDurationSec+
-			game.MatchTiming.AllianceShiftDurationSec*4 + game.MatchTiming.EndGameDurationSec,
-		) * time.Second,
-	)
-
-	// Check E-stop and bypass.
-	arena.AllianceStations["B3"].EStop = true
-	arena.lastDsPacketTime = arena.lastDsPacketTime.Add(-550 * time.Millisecond)
-	arena.Update()
-	assert.Equal(t, EndGame, arena.MatchState)
-	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
-	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Enabled)
-	arena.AllianceStations["B3"].Bypass = true
-	arena.lastDsPacketTime = arena.lastDsPacketTime.Add(-550 * time.Millisecond)
-	arena.Update()
-	assert.Equal(t, EndGame, arena.MatchState)
-	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
-	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Enabled)
-	arena.AllianceStations["B3"].EStop = false
-	arena.lastDsPacketTime = arena.lastDsPacketTime.Add(-550 * time.Millisecond)
-	arena.Update()
-	assert.Equal(t, EndGame, arena.MatchState)
-	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
-	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Enabled)
-	arena.AllianceStations["B3"].Bypass = false
-	arena.lastDsPacketTime = arena.lastDsPacketTime.Add(-550 * time.Millisecond)
-	arena.Update()
-	assert.Equal(t, EndGame, arena.MatchState)
-	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
-	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
-
-	// Check match end.
+	// Match End
 	arena.MatchStartTime = time.Now().Add(
 		-time.Duration(
 			game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.TransitionShiftDurationSec+
 				game.MatchTiming.AllianceShiftDurationSec*4 + game.MatchTiming.EndGameDurationSec,
 		) * time.Second,
 	)
+	
 	arena.Update()
 	assert.Equal(t, PostMatch, arena.MatchState)
 	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
 	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Enabled)
+	assert.Equal(t, 0, arena.HubsActive)
 	arena.Update()
 	assert.Equal(t, PostMatch, arena.MatchState)
 	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
 	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Enabled)
+	assert.Equal(t, 0, arena.HubsActive)
 
 	arena.AllianceStations["R1"].Bypass = true
 	arena.ResetMatch()

@@ -607,6 +607,7 @@ func (arena *Arena) Update() {
 			arena.MatchState = AutoPeriod
 			enabled = true
 			sendDsPacket = true
+			arena.HubsActive =  BlueAllianceHubBit | RedAllianceHubBit
 		}
 		arena.Plc.ResetMatch()
 		arena.FieldVolunteers = false
@@ -619,6 +620,7 @@ func (arena *Arena) Update() {
 			auto = true
 			enabled = true
 			sendDsPacket = true
+			arena.HubsActive =  BlueAllianceHubBit | RedAllianceHubBit
 		}
 	case AutoPeriod:
 		auto = true
@@ -627,13 +629,8 @@ func (arena *Arena) Update() {
 		if matchTimeSec >= game.GetDurationToAutoEnd().Seconds() {
 			auto = false
 			sendDsPacket = true
-			if game.MatchTiming.TransitionShiftDurationSec > 0 {
-				arena.MatchState = TransitionShift
-				enabled = false
-			} else {
-				arena.MatchState = Shift1
-				enabled = true
-			}
+  		arena.MatchState = TransitionShift
+			arena.HubsActive =  BlueAllianceHubBit | RedAllianceHubBit
 		}
 	case TransitionShift:
 		auto = false
@@ -643,8 +640,7 @@ func (arena *Arena) Update() {
 			auto = false
 			enabled = true
 			sendDsPacket = true
-			// TODO: Choose which Alliance has the first shift.
-			arena.HubsActive =  BlueAllianceHubBit 
+			arena.HubsActive =  arena.getFirstShiftHubState() 
 		}
 	case Shift1:
 		auto = false
@@ -1177,4 +1173,11 @@ func (arena *Arena) positionPostMatchScoreReady(position string) bool {
 func (arena *Arena) runPeriodicTasks() {
 	arena.updateEarlyLateMessage()
 	arena.purgeDisconnectedDisplays()
+}
+
+// Calculate the HubState for Shift1
+func (arena *Arena) getFirstShiftHubState() int {
+	// TODO: Choose which Alliance has the first shift.
+	// Make this configurable as Red, Blue, Score-Based (which uses Random for Ties)
+	return BlueAllianceHubBit
 }
