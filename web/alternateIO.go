@@ -247,10 +247,8 @@ func (web *Web) teamHubStateGetHandler(w http.ResponseWriter, r *http.Request) {
 	var hubStates hubStates
 	
 	// State during match
-	if web.arena.MatchState == field.AutoPeriod || web.arena.MatchState == field.TransitionShift || 
-		web.arena.MatchState == field.Shift1 || web.arena.MatchState == field.Shift2 || web.arena.MatchState == field.Shift3 || web.arena.MatchState == field.Shift4 || 
-		web.arena.MatchState == field.EndGame {
-
+	switch web.arena.MatchState {
+	case field.AutoPeriod, field.TransitionShift, field.Shift1, field.Shift2, field.Shift3, field.Shift4, field.EndGame:
 		// Red
 		hubStates.Red.Color = "black"
 		if web.arena.HubsActive&(1<<1) != 0 {
@@ -258,12 +256,29 @@ func (web *Web) teamHubStateGetHandler(w http.ResponseWriter, r *http.Request) {
 			hubStates.Red.Blink = false
 		}
 
-		// Red
+		// Blue
 		hubStates.Blue.Color = "black"
 		if web.arena.HubsActive&(1<<2) != 0 {
 			hubStates.Blue.Color = "blue"
+			// TODO: If active and about to go inactive in 3 seconds, switch to blinking.
 			hubStates.Blue.Blink = false
 		}
+		case field.PostMatch, field.PreMatch:
+			if web.arena.FieldVolunteers {			
+				hubStates.Red.Color = "green"
+				hubStates.Blue.Color = "green"
+			} else {
+				hubStates.Red.Color = "purple"
+				hubStates.Blue.Color = "purple"
+			}
+			hubStates.Red.Blink = false
+			hubStates.Blue.Blink = false
+		default:
+			hubStates.Red.Color = "black"
+			hubStates.Red.Blink = false
+			hubStates.Blue.Color = "black"
+			hubStates.Blue.Blink = false
+
 	}
 
 	// Marshal the response payload.
