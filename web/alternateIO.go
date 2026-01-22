@@ -6,7 +6,7 @@
 package web
 
 import (
-	//"github.com/Team254/cheesy-arena/game"
+	"github.com/Team254/cheesy-arena/game"
 	//"github.com/Team254/cheesy-arena/model"
 	"encoding/json"
 	//"log"
@@ -247,21 +247,42 @@ func (web *Web) teamHubStateGetHandler(w http.ResponseWriter, r *http.Request) {
 	var hubStates hubStates
 	
 	// State during match
+	matchTimeSec := web.arena.MatchTimeSec()
 	switch web.arena.MatchState {
 	case field.AutoPeriod, field.TransitionShift, field.Shift1, field.Shift2, field.Shift3, field.Shift4, field.EndGame:
+		// Determine if we're within 3 seconds of the current state ending (for blink warning)
+		var stateEndSec float64
+		switch web.arena.MatchState {
+		case field.TransitionShift:
+			stateEndSec = game.GetDurationToShift1Start().Seconds()
+		case field.Shift1:
+			stateEndSec = game.GetDurationToShiftEnd(1).Seconds()
+		case field.Shift2:
+			stateEndSec = game.GetDurationToShiftEnd(2).Seconds()
+		case field.Shift3:
+			stateEndSec = game.GetDurationToShiftEnd(3).Seconds()
+		case field.Shift4:
+			stateEndSec = game.GetDurationToShiftEnd(4).Seconds()
+		case field.EndGame:
+			stateEndSec = game.GetDurationToTeleopEnd().Seconds()
+		}
+		timeUntilStateEnd := stateEndSec - matchTimeSec
+		blinkWarning := timeUntilStateEnd > 0 && timeUntilStateEnd <= 3
+
 		// Red
 		hubStates.Red.Color = "black"
 		if web.arena.HubsActive&(1<<1) != 0 {
 			hubStates.Red.Color = "red"
-			hubStates.Red.Blink = false
+			// Blink if hub is active and will become inactive at state end
+			hubStates.Red.Blink = blinkWarning && (web.arena.MatchState == field.TransitionShift || web.arena.MatchState == field.Shift1 || web.arena.MatchState == field.Shift2 || web.arena.MatchState == field.Shift3 || web.arena.MatchState == field.Shift4 || web.arena.MatchState == field.EndGame)
 		}
 
 		// Blue
 		hubStates.Blue.Color = "black"
 		if web.arena.HubsActive&(1<<2) != 0 {
 			hubStates.Blue.Color = "blue"
-			// TODO: If active and about to go inactive in 3 seconds, switch to blinking.
-			hubStates.Blue.Blink = false
+			// Blink if hub is active and will become inactive at state end
+			hubStates.Blue.Blink = blinkWarning && (web.arena.MatchState == field.TransitionShift || web.arena.MatchState == field.Shift1 || web.arena.MatchState == field.Shift2 || web.arena.MatchState == field.Shift3 || web.arena.MatchState == field.Shift4 || web.arena.MatchState == field.EndGame)
 		}
 		case field.PostMatch, field.PreMatch:
 			if web.arena.FieldVolunteers {			
