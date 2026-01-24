@@ -113,6 +113,11 @@ func (arena *Arena) generateArenaStatusMessage() any {
 		BlueEStopsIsHealthy   bool
 		RedHubIsHealthy       bool
 		BlueHubIsHealthy      bool
+		ScoreTableIOIsActive  bool
+		RedEstopsIsActive     bool
+		BlueEstopsIsActive    bool
+		RedHubIsActive        bool
+		BlueHubIsActive       bool
 	}{
 		arena.CurrentMatch.Id,
 		arena.AllianceStations,
@@ -135,6 +140,11 @@ func (arena *Arena) generateArenaStatusMessage() any {
 		arena.Esp32.IsBlueEstopsHealthy(),
 		arena.Esp32.IsRedHubHealthy(),
 		arena.Esp32.IsBlueHubHealthy(),
+		arena.Esp32.IsScoreTableActive(),
+		arena.Esp32.IsRedEstopsActive(),
+		arena.Esp32.IsBlueEstopsActive(),
+		arena.Esp32.IsRedHubActive(),
+		arena.Esp32.IsBlueHubActive(),
 	}
 }
 

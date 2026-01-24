@@ -28,6 +28,16 @@ type Esp32 interface {
 	IsBlueEstopsHealthy() bool
 	IsRedHubHealthy() bool
 	IsBlueHubHealthy() bool
+	IsScoreTableActive() bool
+	IsRedEstopsActive() bool
+	IsBlueEstopsActive() bool
+	IsRedHubActive() bool
+	IsBlueHubActive() bool
+	UpdateScoreTableLastSeen()
+	UpdateRedEstopsLastSeen()
+	UpdateBlueEstopsLastSeen()
+	UpdateRedHubLastSeen()
+	UpdateBlueHubLastSeen()
 	SetScoreTableAddress(string)
 	SetRedAllianceStationEstopAddress(string)
 	SetBlueAllianceStationEstopAddress(string)
@@ -36,16 +46,22 @@ type Esp32 interface {
 }
 
 type Esp32IO struct {
-	ScoreTableIP		string
-	RedAllianceEstopsIP		string
-	BlueAllianceEstopsIP		string
-	RedAllianceHubIP		string
-	BlueAllianceHubIP		string
-	scoreTableHealthy 	bool
-	RedEstopsHealthy 	bool
-	BlueEstopsHealthy 	bool
-	RedHubHealthy 	bool
-	BlueHubHealthy bool
+	ScoreTableIP         string
+	RedAllianceEstopsIP  string
+	BlueAllianceEstopsIP string
+	RedAllianceHubIP     string
+	BlueAllianceHubIP    string
+	scoreTableHealthy    bool
+	RedEstopsHealthy     bool
+	BlueEstopsHealthy    bool
+	RedHubHealthy        bool
+	BlueHubHealthy       bool
+	// Timestamps for tracking when each module last called its API
+	ScoreTableLastSeen   time.Time
+	RedEstopsLastSeen    time.Time
+	BlueEstopsLastSeen   time.Time
+	RedHubLastSeen       time.Time
+	BlueHubLastSeen      time.Time
 }
 const LoopPeriodMs = 1000 // Define the loop period in milliseconds
 
@@ -283,4 +299,57 @@ func (esp32 *Esp32IO) IsRedHubHealthy() bool {
 // Returns the health status of the alternate IO.
 func (esp32 *Esp32IO) IsBlueHubHealthy() bool {
 	return esp32.BlueHubHealthy
+}
+
+// Activity timeout for determining if a module is still actively calling the API.
+const ModuleActivityTimeoutSec = 2
+
+// Updates the last seen timestamp for the Score Table module.
+func (esp32 *Esp32IO) UpdateScoreTableLastSeen() {
+	esp32.ScoreTableLastSeen = time.Now()
+}
+
+// Updates the last seen timestamp for the Red Estops module.
+func (esp32 *Esp32IO) UpdateRedEstopsLastSeen() {
+	esp32.RedEstopsLastSeen = time.Now()
+}
+
+// Updates the last seen timestamp for the Blue Estops module.
+func (esp32 *Esp32IO) UpdateBlueEstopsLastSeen() {
+	esp32.BlueEstopsLastSeen = time.Now()
+}
+
+// Updates the last seen timestamp for the Red Hub module.
+func (esp32 *Esp32IO) UpdateRedHubLastSeen() {
+	esp32.RedHubLastSeen = time.Now()
+}
+
+// Updates the last seen timestamp for the Blue Hub module.
+func (esp32 *Esp32IO) UpdateBlueHubLastSeen() {
+	esp32.BlueHubLastSeen = time.Now()
+}
+
+// Returns whether the Score Table module is actively calling the API.
+func (esp32 *Esp32IO) IsScoreTableActive() bool {
+	return time.Since(esp32.ScoreTableLastSeen).Seconds() < ModuleActivityTimeoutSec
+}
+
+// Returns whether the Red Estops module is actively calling the API.
+func (esp32 *Esp32IO) IsRedEstopsActive() bool {
+	return time.Since(esp32.RedEstopsLastSeen).Seconds() < ModuleActivityTimeoutSec
+}
+
+// Returns whether the Blue Estops module is actively calling the API.
+func (esp32 *Esp32IO) IsBlueEstopsActive() bool {
+	return time.Since(esp32.BlueEstopsLastSeen).Seconds() < ModuleActivityTimeoutSec
+}
+
+// Returns whether the Red Hub module is actively calling the API.
+func (esp32 *Esp32IO) IsRedHubActive() bool {
+	return time.Since(esp32.RedHubLastSeen).Seconds() < ModuleActivityTimeoutSec
+}
+
+// Returns whether the Blue Hub module is actively calling the API.
+func (esp32 *Esp32IO) IsBlueHubActive() bool {
+	return time.Since(esp32.BlueHubLastSeen).Seconds() < ModuleActivityTimeoutSec
 }

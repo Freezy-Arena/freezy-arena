@@ -108,6 +108,9 @@ func (web *Web) fieldStackLightGetHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	// Track that the score table module is calling
+	web.arena.Esp32.UpdateScoreTableLastSeen()
+
 	// Get the current state of the field stack light.
 	var stackLight fieldStackLight
 	stackLight.Red, stackLight.Blue, stackLight.Orange, stackLight.Green = web.arena.Plc.GetFieldStackLight()
@@ -143,6 +146,15 @@ func (web *Web) teamStackLightGetHandler(w http.ResponseWriter, r *http.Request)
 	if r.Method != http.MethodGet {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 		return
+	}
+
+	// Track which estops module is calling via the alliance query parameter
+	alliance := strings.ToLower(r.URL.Query().Get("alliance"))
+	switch alliance {
+	case "red", "r":
+		web.arena.Esp32.UpdateRedEstopsLastSeen()
+	case "blue", "b":
+		web.arena.Esp32.UpdateBlueEstopsLastSeen()
 	}
 
 	var stackLights allStackLights
@@ -244,8 +256,16 @@ func (web *Web) teamHubStateGetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Track which hub module is calling via the alliance query parameter
+	alliance := strings.ToLower(r.URL.Query().Get("alliance"))
+	if alliance == "red" || alliance == "r" {
+		web.arena.Esp32.UpdateRedHubLastSeen()
+	} else if alliance == "blue" || alliance == "b" {
+		web.arena.Esp32.UpdateBlueHubLastSeen()
+	}
+
 	var hubStates hubStates
-	
+
 	// State during match
 	matchTimeSec := web.arena.MatchTimeSec()
 	switch web.arena.MatchState {
