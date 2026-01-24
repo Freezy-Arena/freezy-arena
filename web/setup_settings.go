@@ -131,6 +131,8 @@ func (web *Web) settingsPostHandler(w http.ResponseWriter, r *http.Request) {
 	eventSettings.ScoreTableEstopAddress = r.PostFormValue("ScoreTableEstopAddress")
 	eventSettings.RedAllianceStationEstopAddress = r.PostFormValue("RedAllianceStationEstopAddress")
 	eventSettings.BlueAllianceStationEstopAddress = r.PostFormValue("BlueAllianceStationEstopAddress")
+	eventSettings.RedHubAddress = r.PostFormValue("RedHubAddress")
+	eventSettings.BlueHubAddress = r.PostFormValue("BlueHubAddress")
 	eventSettings.LogoSuffix = r.PostFormValue("logosuffix")
 	eventSettings.FlashDSEnabled = r.PostFormValue("flashDSEnabled") == "on"
 

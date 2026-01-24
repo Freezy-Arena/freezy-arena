@@ -321,6 +321,30 @@ const handleArenaStatus = function (data) {
     $("#blueEstopsIO").text("Blue Estops Disabled");
     $("#blueEstopsIO").attr("data-ready", 0);
   }
+  if (data.RedHubEnabled) {  
+    if (data.RedHubIsHealthy) {
+      $("#redHubIO").text("Red Hub Connected");
+      $("#redHubIO").attr("data-ready", 2);
+    } else {
+      $("#redHubIO").text("Red Hub Not Connected");
+      $("#redHubIO").attr("data-ready", 1);
+    }
+  } else {
+    $("#redHubIO").text("Red Hub Disabled");
+    $("#redHubIO").attr("data-ready", 0);
+  }
+  if (data.BlueHubEnabled) {  
+    if (data.BlueHubIsHealthy) {
+      $("#blueHubIO").text("Blue Hub Connected");
+      $("#blueHubIO").attr("data-ready", 2);
+    } else {
+      $("#blueHubIO").text("Blue Hub Not Connected");
+      $("#blueHubIO").attr("data-ready", 1);
+    }
+  } else {
+    $("#blueHubIO").text("Blue Hub Disabled");
+    $("#blueHubIO").attr("data-ready", 0);
+  }
 };
 
 // Handles a websocket message to update the teams for the current match.

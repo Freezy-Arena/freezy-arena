@@ -10,10 +10,10 @@ import (
 	//"github.com/Team254/cheesy-arena/model"
 	//"encoding/json"
 	//"net/http"
-	"time"
 	"log"
 	"net"
 	"strings"
+	"time"
 )
 
 type Esp32 interface {
@@ -21,21 +21,31 @@ type Esp32 interface {
 	IsScoreTableIOEnabled() bool
 	IsRedEstopsEnabled() bool
 	IsBlueEstopsEnabled() bool
+	IsRedHubEnabled() bool
+	IsBlueHubEnabled() bool
 	IsScoreTableHealthy() bool
 	IsRedEstopsHealthy() bool
 	IsBlueEstopsHealthy() bool
-	SetScoreTableAddress(string) 
-	SetRedAllianceStationEstopAddress(string) 
-	SetBlueAllianceStationEstopAddress(string) 
+	IsRedHubHealthy() bool
+	IsBlueHubHealthy() bool
+	SetScoreTableAddress(string)
+	SetRedAllianceStationEstopAddress(string)
+	SetBlueAllianceStationEstopAddress(string)
+	SetRedAllianceHubAddress(string)
+	SetBlueAllianceHubAddress(string)
 }
 
 type Esp32IO struct {
 	ScoreTableIP		string
 	RedAllianceEstopsIP		string
 	BlueAllianceEstopsIP		string
+	RedAllianceHubIP		string
+	BlueAllianceHubIP		string
 	scoreTableHealthy 	bool
 	RedEstopsHealthy 	bool
 	BlueEstopsHealthy 	bool
+	RedHubHealthy 	bool
+	BlueHubHealthy bool
 }
 const LoopPeriodMs = 1000 // Define the loop period in milliseconds
 
@@ -85,7 +95,32 @@ func (esp32 *Esp32IO) SetBlueAllianceStationEstopAddress(address string) {
     esp32.BlueAllianceEstopsIP = address
 	log.Printf("Blue Alliance Estops IP to: %s", esp32.BlueAllianceEstopsIP)
 }
-
+func (esp32 *Esp32IO) SetBlueAllianceHubAddress(address string) {
+	address = strings.TrimSpace(address)
+	if address == "" {
+		esp32.BlueAllianceHubIP = address
+        return
+    }
+    if net.ParseIP(address) == nil {
+        log.Printf("Invalid Blue Alliance Hub IP address: %s", address)
+        return
+    }
+    esp32.BlueAllianceHubIP = address
+	log.Printf("Blue Alliance Hub IP to: %s", esp32.BlueAllianceHubIP)
+}
+func (esp32 *Esp32IO) SetRedAllianceHubAddress(address string) {
+	address = strings.TrimSpace(address)
+	if address == "" {
+		esp32.RedAllianceHubIP = address
+        return
+    }
+    if net.ParseIP(address) == nil {
+        log.Printf("Invalid Red Alliance Hub IP address: %s", address)
+        return
+    }
+    esp32.RedAllianceHubIP = address
+	log.Printf("Red Alliance Hub IP to: %s", esp32.RedAllianceHubIP)
+}
 // Checks if an IP address is reachable by attempting a TCP connection.
 func isDevicePresent(ip string, port string) error {
     address := net.JoinHostPort(ip, port)
@@ -158,7 +193,45 @@ func (esp32 *Esp32IO) Run() {
 				esp32.BlueEstopsHealthy = true
 			}
 		}
-		
+			// Check if the Red Alliance Hub is healthy.
+			if !esp32.IsRedHubEnabled() {
+				// If the Red Alliance Hub are not enabled, don't check them.
+				esp32.RedHubHealthy= false
+				} else {
+			//log.Println("Red Hub IO Check")
+			err := isDevicePresent(esp32.RedAllianceHubIP, "80")
+			if err != nil {
+				log.Printf("Red Alliance Hub not reachable at %s: %v", esp32.RedAllianceHubIP, err)
+				time.Sleep(time.Second * plcRetryIntevalSec)
+				esp32.RedHubHealthy = false
+				continue
+				}else{
+					if (!esp32.RedHubHealthy){
+						log.Printf("Red Hub Connected at: %s ", esp32.RedAllianceHubIP)
+					}
+					esp32.RedHubHealthy = true
+				}
+			}		
+			// Check if the Blue Alliance Hub is healthy.
+			if !esp32.IsBlueHubEnabled() {
+				// If the Blue Alliance Hub are not enabled, don't check them.
+				esp32.BlueHubHealthy= false
+				} else {
+			//log.Println("Blue Hub IO Check")
+			err := isDevicePresent(esp32.BlueAllianceHubIP, "80")
+			if err != nil {
+				log.Printf("Blue Alliance Hub not reachable at %s: %v", esp32.BlueAllianceHubIP, err)
+				time.Sleep(time.Second * plcRetryIntevalSec)
+				esp32.BlueHubHealthy = false
+				continue
+				}else{
+					if (!esp32.BlueHubHealthy){
+						log.Printf("Blue Hub Connected at: %s ", esp32.BlueAllianceHubIP)
+					}
+					esp32.BlueHubHealthy = true
+				}
+			}		
+
 		startTime := time.Now()
 		time.Sleep(time.Until(startTime.Add(time.Millisecond * LoopPeriodMs)))
 	}
@@ -178,6 +251,14 @@ func (esp32 *Esp32IO) IsRedEstopsEnabled() bool {
 func (esp32 *Esp32IO) IsBlueEstopsEnabled() bool {
 	return esp32.BlueAllianceEstopsIP != ""
 }
+// Returns whether the alternate IO is enabled.
+func (esp32 *Esp32IO) IsBlueHubEnabled() bool {
+	return esp32.BlueAllianceHubIP != ""
+}
+// Returns whether the alternate IO is enabled.
+func (esp32 *Esp32IO) IsRedHubEnabled() bool {
+	return esp32.RedAllianceHubIP != ""
+}
 
 // Returns the health status of the alternate IO.
 func (esp32 *Esp32IO) IsScoreTableHealthy() bool {
@@ -192,4 +273,14 @@ func (esp32 *Esp32IO) IsRedEstopsHealthy() bool {
 // Returns the health status of the alternate IO.
 func (esp32 *Esp32IO) IsBlueEstopsHealthy() bool {
 	return esp32.BlueEstopsHealthy
+}
+
+// Returns the health status of the alternate IO.
+func (esp32 *Esp32IO) IsRedHubHealthy() bool {
+	return esp32.RedHubHealthy
+}
+
+// Returns the health status of the alternate IO.
+func (esp32 *Esp32IO) IsBlueHubHealthy() bool {
+	return esp32.BlueHubHealthy
 }
