@@ -224,6 +224,17 @@ UI for configuring event settings.
                 </div>
               </div>
               <div class="row mb-3">
+                <label class="col-lg-6 control-label">First Shift Alliance</label>
+                <div class="col-lg-6">
+                  <select class="form-control" name="firstShiftAlliance">
+                    <option value="blue"{{if eq .FirstShiftAlliance "blue"}} selected{{end}}>Blue</option>
+                    <option value="red"{{if eq .FirstShiftAlliance "red"}} selected{{end}}>Red</option>
+                    <option value="random"{{if eq .FirstShiftAlliance "random"}} selected{{end}}>Random</option>
+                    <option value="lowestScore"{{if eq .FirstShiftAlliance "lowestScore"}} selected{{end}}>Lowest Score</option>
+                  </select>
+                </div>
+              </div>
+              <div class="row mb-3">
                 <label class="col-lg-6 control-label">Auto Bonus RP Coral Threshold</label>
                 <div class="col-lg-6">
                   <input type="text" class="form-control" id="autoBonusCoralThreshold" name="autoBonusCoralThreshold"

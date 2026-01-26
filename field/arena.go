@@ -8,6 +8,7 @@ package field
 import (
 	"fmt"
 	"log"
+	"math/rand"
 	"reflect"
 	"strconv"
 	"strings"
@@ -107,6 +108,7 @@ type Arena struct {
 	lastPlcNotifyTime 				  time.Time
 	Esp32                             plc.Esp32
 	HubsActive                        int // Bitmask 1=Red, 2=Blue
+	FirstShiftHubState                int // Calculated at end of Auto, used for Shift1
 }
 
 type AllianceStation struct {
@@ -633,6 +635,8 @@ func (arena *Arena) Update() {
 			sendDsPacket = true
   		arena.MatchState = TransitionShift
 			arena.HubsActive =  BlueAllianceHubBit | RedAllianceHubBit
+			// Calculate first shift alliance now (at end of Auto) so lowestScore uses Auto-end scores
+			arena.FirstShiftHubState = arena.getFirstShiftHubState()
 		}
 	case TransitionShift:
 		auto = false
@@ -642,7 +646,7 @@ func (arena *Arena) Update() {
 			auto = false
 			enabled = true
 			sendDsPacket = true
-			arena.HubsActive =  arena.getFirstShiftHubState() 
+			arena.HubsActive = arena.FirstShiftHubState
 		}
 	case Shift1:
 		auto = false
@@ -1177,9 +1181,31 @@ func (arena *Arena) runPeriodicTasks() {
 	arena.purgeDisconnectedDisplays()
 }
 
-// Calculate the HubState for Shift1
+// Calculate the HubState for Shift1 based on the configured FirstShiftAlliance setting.
 func (arena *Arena) getFirstShiftHubState() int {
-	// TODO: Choose which Alliance has the first shift.
-	// Make this configurable as Red, Blue, Score-Based (which uses Random for Ties)
-	return BlueAllianceHubBit
+	switch arena.EventSettings.FirstShiftAlliance {
+	case "red":
+		return RedAllianceHubBit
+	case "random":
+		if rand.Intn(2) == 0 {
+			return RedAllianceHubBit
+		}
+		return BlueAllianceHubBit
+	case "lowestScore":
+		redScore := arena.RedScoreSummary().Score
+		blueScore := arena.BlueScoreSummary().Score
+		if redScore < blueScore {
+			return RedAllianceHubBit
+		} else if blueScore < redScore {
+			return BlueAllianceHubBit
+		}
+		// Scores are tied, use random
+		if rand.Intn(2) == 0 {
+			return RedAllianceHubBit
+		}
+		return BlueAllianceHubBit
+	default:
+		// Default to blue if not set or set to "blue"
+		return BlueAllianceHubBit
+	}
 }

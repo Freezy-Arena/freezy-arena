@@ -102,9 +102,8 @@ func TestTeamHubStateGetHandler_DuringMatch_BothHubsActive(t *testing.T) {
 	web := setupTestWeb(t)
 
 	// During match with both hubs active
-	// Note: The handler checks (1<<1) for red and (1<<2) for blue, so we use those values
 	web.arena.MatchState = field.AutoPeriod
-	web.arena.HubsActive = (1 << 1) | (1 << 2) // Red (bit 1) and Blue (bit 2)
+	web.arena.HubsActive = field.RedAllianceHubBit | field.BlueAllianceHubBit
 	web.arena.MatchStartTime = time.Now()
 
 	recorder := web.getHttpResponse("/api/freezy/hub_status")
@@ -123,9 +122,8 @@ func TestTeamHubStateGetHandler_DuringMatch_OnlyRedActive(t *testing.T) {
 	web := setupTestWeb(t)
 
 	// During match with only red hub active
-	// Note: The handler checks (1<<1) for red, so we use that value
 	web.arena.MatchState = field.Shift1
-	web.arena.HubsActive = (1 << 1) // Red (bit 1)
+	web.arena.HubsActive = field.RedAllianceHubBit
 	web.arena.MatchStartTime = time.Now()
 
 	recorder := web.getHttpResponse("/api/freezy/hub_status")
@@ -142,9 +140,8 @@ func TestTeamHubStateGetHandler_DuringMatch_OnlyBlueActive(t *testing.T) {
 	web := setupTestWeb(t)
 
 	// During match with only blue hub active
-	// Note: The handler checks (1<<2) for blue, so we use that value
 	web.arena.MatchState = field.Shift2
-	web.arena.HubsActive = (1 << 2) // Blue (bit 2)
+	web.arena.HubsActive = field.BlueAllianceHubBit
 	web.arena.MatchStartTime = time.Now()
 
 	recorder := web.getHttpResponse("/api/freezy/hub_status")
@@ -164,7 +161,7 @@ func TestTeamHubStateGetHandler_BlinkWarning_Shift1(t *testing.T) {
 	// Shift1 ends at: WarmupDurationSec + AutoDurationSec + TransitionShiftDurationSec + AllianceShiftDurationSec
 	shift1EndSec := game.GetDurationToShiftEnd(1).Seconds()
 	web.arena.MatchState = field.Shift1
-	web.arena.HubsActive = (1 << 1) // Red (bit 1)
+	web.arena.HubsActive = field.RedAllianceHubBit
 	// Set match start time so that current time is 2 seconds before shift1 ends
 	web.arena.MatchStartTime = time.Now().Add(-time.Duration(shift1EndSec-2) * time.Second)
 
@@ -178,13 +175,15 @@ func TestTeamHubStateGetHandler_BlinkWarning_Shift1(t *testing.T) {
 	assert.True(t, states.Red.Blink, "Red hub should blink when within 3 seconds of state end")
 }
 
-func TestTeamHubStateGetHandler_BlinkWarning_TransitionShift(t *testing.T) {
+func TestTeamHubStateGetHandler_BlinkWarning_TransitionShift_BlueFirst(t *testing.T) {
 	web := setupTestWeb(t)
 
 	// Set up timing so we're within 3 seconds of TransitionShift ending
+	// FirstShiftHubState = Blue, so Red will become inactive and should blink
 	transitionEndSec := game.GetDurationToShift1Start().Seconds()
 	web.arena.MatchState = field.TransitionShift
-	web.arena.HubsActive = (1 << 1) | (1 << 2) // Red (bit 1) and Blue (bit 2)
+	web.arena.HubsActive = field.RedAllianceHubBit | field.BlueAllianceHubBit // both active
+	web.arena.FirstShiftHubState = field.BlueAllianceHubBit                   // Blue will be active in Shift1
 	// Set match start time so that current time is 2 seconds before transition ends
 	web.arena.MatchStartTime = time.Now().Add(-time.Duration(transitionEndSec-2) * time.Second)
 
@@ -194,8 +193,30 @@ func TestTeamHubStateGetHandler_BlinkWarning_TransitionShift(t *testing.T) {
 	var states hubStates
 	err := json.Unmarshal([]byte(recorder.Body.String()), &states)
 	assert.Nil(t, err)
-	assert.True(t, states.Red.Blink, "Red hub should blink when within 3 seconds of TransitionShift end")
-	assert.True(t, states.Blue.Blink, "Blue hub should blink when within 3 seconds of TransitionShift end")
+	assert.True(t, states.Red.Blink, "Red hub should blink (will become inactive in Shift1)")
+	assert.False(t, states.Blue.Blink, "Blue hub should NOT blink (will stay active in Shift1)")
+}
+
+func TestTeamHubStateGetHandler_BlinkWarning_TransitionShift_RedFirst(t *testing.T) {
+	web := setupTestWeb(t)
+
+	// Set up timing so we're within 3 seconds of TransitionShift ending
+	// FirstShiftHubState = Red, so Blue will become inactive and should blink
+	transitionEndSec := game.GetDurationToShift1Start().Seconds()
+	web.arena.MatchState = field.TransitionShift
+	web.arena.HubsActive = field.RedAllianceHubBit | field.BlueAllianceHubBit // both active
+	web.arena.FirstShiftHubState = field.RedAllianceHubBit                    // Red will be active in Shift1
+	// Set match start time so that current time is 2 seconds before transition ends
+	web.arena.MatchStartTime = time.Now().Add(-time.Duration(transitionEndSec-2) * time.Second)
+
+	recorder := web.getHttpResponse("/api/freezy/hub_status")
+	assert.Equal(t, 200, recorder.Code)
+
+	var states hubStates
+	err := json.Unmarshal([]byte(recorder.Body.String()), &states)
+	assert.Nil(t, err)
+	assert.False(t, states.Red.Blink, "Red hub should NOT blink (will stay active in Shift1)")
+	assert.True(t, states.Blue.Blink, "Blue hub should blink (will become inactive in Shift1)")
 }
 
 func TestTeamHubStateGetHandler_BlinkWarning_EndGame(t *testing.T) {
@@ -204,7 +225,7 @@ func TestTeamHubStateGetHandler_BlinkWarning_EndGame(t *testing.T) {
 	// Set up timing so we're within 3 seconds of EndGame ending
 	endGameEndSec := game.GetDurationToTeleopEnd().Seconds()
 	web.arena.MatchState = field.EndGame
-	web.arena.HubsActive = (1 << 1) | (1 << 2) // Red (bit 1) and Blue (bit 2)
+	web.arena.HubsActive = field.RedAllianceHubBit | field.BlueAllianceHubBit
 	// Set match start time so that current time is 2 seconds before endgame ends
 	web.arena.MatchStartTime = time.Now().Add(-time.Duration(endGameEndSec-2) * time.Second)
 
@@ -218,12 +239,33 @@ func TestTeamHubStateGetHandler_BlinkWarning_EndGame(t *testing.T) {
 	assert.True(t, states.Blue.Blink, "Blue hub should blink when within 3 seconds of EndGame end")
 }
 
+func TestTeamHubStateGetHandler_NoBlink_Shift4ToEndGame(t *testing.T) {
+	web := setupTestWeb(t)
+
+	// Set up timing so we're within 3 seconds of Shift4 ending
+	// Since EndGame has both hubs active, neither should blink
+	shift4EndSec := game.GetDurationToShiftEnd(4).Seconds()
+	web.arena.MatchState = field.Shift4
+	web.arena.HubsActive = field.RedAllianceHubBit // only one hub active in Shift4
+	// Set match start time so that current time is 2 seconds before shift4 ends
+	web.arena.MatchStartTime = time.Now().Add(-time.Duration(shift4EndSec-2) * time.Second)
+
+	recorder := web.getHttpResponse("/api/freezy/hub_status")
+	assert.Equal(t, 200, recorder.Code)
+
+	var states hubStates
+	err := json.Unmarshal([]byte(recorder.Body.String()), &states)
+	assert.Nil(t, err)
+	assert.Equal(t, "red", states.Red.Color)
+	assert.False(t, states.Red.Blink, "Red hub should NOT blink (EndGame will have both active)")
+}
+
 func TestTeamHubStateGetHandler_NoBlink_WhenNotNearStateEnd(t *testing.T) {
 	web := setupTestWeb(t)
 
 	// Set up timing so we're well before the state ends (more than 3 seconds)
 	web.arena.MatchState = field.Shift1
-	web.arena.HubsActive = (1 << 1) // Red (bit 1)
+	web.arena.HubsActive = field.RedAllianceHubBit
 	// Set match start time to just after Shift1 starts (10 seconds into shift, well before end)
 	shift1StartSec := game.GetDurationToShift1Start().Seconds()
 	web.arena.MatchStartTime = time.Now().Add(-time.Duration(shift1StartSec+10) * time.Second)
@@ -355,5 +397,90 @@ func TestStartMatchPostHandler(t *testing.T) {
 
 	recorder := web.postJsonHttpResponse("/api/freezy/startMatch", "")
 	assert.Equal(t, 200, recorder.Code)
+}
+
+func TestTeamHubStateGetHandler_AllianceQueryParam_Red(t *testing.T) {
+	web := setupTestWeb(t)
+
+	// Call with red alliance parameter
+	recorder := web.getHttpResponse("/api/freezy/hub_status?alliance=red")
+	assert.Equal(t, 200, recorder.Code)
+
+	// Verify red hub last seen was updated
+	assert.True(t, web.arena.Esp32.IsRedHubActive(), "Red hub should be marked as active after API call with alliance=red")
+}
+
+func TestTeamHubStateGetHandler_AllianceQueryParam_Blue(t *testing.T) {
+	web := setupTestWeb(t)
+
+	// Call with blue alliance parameter
+	recorder := web.getHttpResponse("/api/freezy/hub_status?alliance=blue")
+	assert.Equal(t, 200, recorder.Code)
+
+	// Verify blue hub last seen was updated
+	assert.True(t, web.arena.Esp32.IsBlueHubActive(), "Blue hub should be marked as active after API call with alliance=blue")
+}
+
+func TestTeamHubStateGetHandler_AllianceQueryParam_ShortForm(t *testing.T) {
+	web := setupTestWeb(t)
+
+	// Call with short form 'r' for red
+	recorder := web.getHttpResponse("/api/freezy/hub_status?alliance=r")
+	assert.Equal(t, 200, recorder.Code)
+	assert.True(t, web.arena.Esp32.IsRedHubActive(), "Red hub should be marked as active after API call with alliance=r")
+
+	// Reset and test with 'b' for blue
+	web = setupTestWeb(t)
+	recorder = web.getHttpResponse("/api/freezy/hub_status?alliance=b")
+	assert.Equal(t, 200, recorder.Code)
+	assert.True(t, web.arena.Esp32.IsBlueHubActive(), "Blue hub should be marked as active after API call with alliance=b")
+}
+
+func TestTeamStackLightGetHandler_AllianceQueryParam_Red(t *testing.T) {
+	web := setupTestWeb(t)
+
+	// Call with red alliance parameter
+	recorder := web.getHttpResponse("/api/freezy/team_stack_light?alliance=red")
+	assert.Equal(t, 200, recorder.Code)
+
+	// Verify red estops last seen was updated
+	assert.True(t, web.arena.Esp32.IsRedEstopsActive(), "Red estops should be marked as active after API call with alliance=red")
+}
+
+func TestTeamStackLightGetHandler_AllianceQueryParam_Blue(t *testing.T) {
+	web := setupTestWeb(t)
+
+	// Call with blue alliance parameter
+	recorder := web.getHttpResponse("/api/freezy/team_stack_light?alliance=blue")
+	assert.Equal(t, 200, recorder.Code)
+
+	// Verify blue estops last seen was updated
+	assert.True(t, web.arena.Esp32.IsBlueEstopsActive(), "Blue estops should be marked as active after API call with alliance=blue")
+}
+
+func TestTeamStackLightGetHandler_AllianceQueryParam_ShortForm(t *testing.T) {
+	web := setupTestWeb(t)
+
+	// Call with short form 'r' for red
+	recorder := web.getHttpResponse("/api/freezy/team_stack_light?alliance=r")
+	assert.Equal(t, 200, recorder.Code)
+	assert.True(t, web.arena.Esp32.IsRedEstopsActive(), "Red estops should be marked as active after API call with alliance=r")
+
+	// Reset and test with 'b' for blue
+	web = setupTestWeb(t)
+	recorder = web.getHttpResponse("/api/freezy/team_stack_light?alliance=b")
+	assert.Equal(t, 200, recorder.Code)
+	assert.True(t, web.arena.Esp32.IsBlueEstopsActive(), "Blue estops should be marked as active after API call with alliance=b")
+}
+
+func TestFieldStackLightGetHandler_UpdatesScoreTableLastSeen(t *testing.T) {
+	web := setupTestWeb(t)
+
+	// Call field stack light endpoint
+	recorder := web.getHttpResponse("/api/freezy/field_stack_light")
+	assert.Equal(t, 200, recorder.Code)
+
+	// Verify score table last seen was updated
+	assert.True(t, web.arena.Esp32.IsScoreTableActive(), "Score table should be marked as active after field_stack_light API call")
 }
 

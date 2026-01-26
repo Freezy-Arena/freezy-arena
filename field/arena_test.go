@@ -1308,6 +1308,106 @@ func TestPlcMatchCycleGameSpecificWithCoopEnabled(t *testing.T) {
 	assert.Equal(t, [3]bool{false, false, false}, plc.blueTrussLights)
 }
 
+func TestGetFirstShiftHubState_DefaultBlue(t *testing.T) {
+	arena := setupTestArena(t)
+
+	// Default (empty string) should return blue
+	arena.EventSettings.FirstShiftAlliance = ""
+	result := arena.getFirstShiftHubState()
+	assert.Equal(t, BlueAllianceHubBit, result)
+
+	// Explicit "blue" should also return blue
+	arena.EventSettings.FirstShiftAlliance = "blue"
+	result = arena.getFirstShiftHubState()
+	assert.Equal(t, BlueAllianceHubBit, result)
+}
+
+func TestGetFirstShiftHubState_Red(t *testing.T) {
+	arena := setupTestArena(t)
+
+	arena.EventSettings.FirstShiftAlliance = "red"
+	result := arena.getFirstShiftHubState()
+	assert.Equal(t, RedAllianceHubBit, result)
+}
+
+func TestGetFirstShiftHubState_Random(t *testing.T) {
+	arena := setupTestArena(t)
+
+	arena.EventSettings.FirstShiftAlliance = "random"
+
+	// Run multiple times to verify it returns valid values
+	redCount := 0
+	blueCount := 0
+	for i := 0; i < 100; i++ {
+		result := arena.getFirstShiftHubState()
+		if result == RedAllianceHubBit {
+			redCount++
+		} else if result == BlueAllianceHubBit {
+			blueCount++
+		} else {
+			t.Errorf("Unexpected result: %d", result)
+		}
+	}
+
+	// Verify both outcomes are possible (statistically unlikely to fail if random works)
+	assert.True(t, redCount > 0, "Random should sometimes return red")
+	assert.True(t, blueCount > 0, "Random should sometimes return blue")
+}
+
+func TestGetFirstShiftHubState_LowestScore_RedLower(t *testing.T) {
+	arena := setupTestArena(t)
+
+	arena.EventSettings.FirstShiftAlliance = "lowestScore"
+
+	// Set red score lower than blue
+	arena.RedRealtimeScore.CurrentScore.ProcessorAlgae = 0
+	arena.BlueRealtimeScore.CurrentScore.ProcessorAlgae = 5
+
+	result := arena.getFirstShiftHubState()
+	assert.Equal(t, RedAllianceHubBit, result, "Should return red when red has lower score")
+}
+
+func TestGetFirstShiftHubState_LowestScore_BlueLower(t *testing.T) {
+	arena := setupTestArena(t)
+
+	arena.EventSettings.FirstShiftAlliance = "lowestScore"
+
+	// Set blue score lower than red
+	arena.RedRealtimeScore.CurrentScore.ProcessorAlgae = 5
+	arena.BlueRealtimeScore.CurrentScore.ProcessorAlgae = 0
+
+	result := arena.getFirstShiftHubState()
+	assert.Equal(t, BlueAllianceHubBit, result, "Should return blue when blue has lower score")
+}
+
+func TestGetFirstShiftHubState_LowestScore_Tied(t *testing.T) {
+	arena := setupTestArena(t)
+
+	arena.EventSettings.FirstShiftAlliance = "lowestScore"
+
+	// Set equal scores
+	arena.RedRealtimeScore.CurrentScore.ProcessorAlgae = 3
+	arena.BlueRealtimeScore.CurrentScore.ProcessorAlgae = 3
+
+	// Run multiple times to verify it returns valid values (random on tie)
+	redCount := 0
+	blueCount := 0
+	for i := 0; i < 100; i++ {
+		result := arena.getFirstShiftHubState()
+		if result == RedAllianceHubBit {
+			redCount++
+		} else if result == BlueAllianceHubBit {
+			blueCount++
+		} else {
+			t.Errorf("Unexpected result: %d", result)
+		}
+	}
+
+	// Verify both outcomes are possible (statistically unlikely to fail if random works)
+	assert.True(t, redCount > 0, "On tie, random should sometimes return red")
+	assert.True(t, blueCount > 0, "On tie, random should sometimes return blue")
+}
+
 func TestPlcMatchCycleGameSpecificWithCoopDisabled(t *testing.T) {
 	defer func() {
 		game.CoralBonusCoopEnabled = true

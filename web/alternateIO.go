@@ -258,9 +258,10 @@ func (web *Web) teamHubStateGetHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Track which hub module is calling via the alliance query parameter
 	alliance := strings.ToLower(r.URL.Query().Get("alliance"))
-	if alliance == "red" || alliance == "r" {
+	switch alliance {
+	case "red", "r":
 		web.arena.Esp32.UpdateRedHubLastSeen()
-	} else if alliance == "blue" || alliance == "b" {
+	case "blue", "b":
 		web.arena.Esp32.UpdateBlueHubLastSeen()
 	}
 
@@ -289,20 +290,41 @@ func (web *Web) teamHubStateGetHandler(w http.ResponseWriter, r *http.Request) {
 		timeUntilStateEnd := stateEndSec - matchTimeSec
 		blinkWarning := timeUntilStateEnd > 0 && timeUntilStateEnd <= 3
 
+		// Determine which hubs will be active in the next state
+		var nextStateRedActive, nextStateBlueActive bool
+		switch web.arena.MatchState {
+		case field.TransitionShift:
+			// Next state is Shift1 - use pre-calculated FirstShiftHubState (calculated at end of Auto)
+			nextStateRedActive = web.arena.FirstShiftHubState&field.RedAllianceHubBit != 0
+			nextStateBlueActive = web.arena.FirstShiftHubState&field.BlueAllianceHubBit != 0
+		case field.Shift1, field.Shift2, field.Shift3:
+			// Next state has opposite hub active
+			nextStateRedActive = web.arena.HubsActive&field.RedAllianceHubBit == 0
+			nextStateBlueActive = web.arena.HubsActive&field.BlueAllianceHubBit == 0
+		case field.Shift4:
+			// Next state is EndGame - both hubs active (no blink needed)
+			nextStateRedActive = true
+			nextStateBlueActive = true
+		case field.EndGame:
+			// Next state is PostMatch - no hubs active
+			nextStateRedActive = false
+			nextStateBlueActive = false
+		}
+
 		// Red
 		hubStates.Red.Color = "black"
-		if web.arena.HubsActive&(1<<1) != 0 {
+		if web.arena.HubsActive&field.RedAllianceHubBit != 0 {
 			hubStates.Red.Color = "red"
-			// Blink if hub is active and will become inactive at state end
-			hubStates.Red.Blink = blinkWarning && (web.arena.MatchState == field.TransitionShift || web.arena.MatchState == field.Shift1 || web.arena.MatchState == field.Shift2 || web.arena.MatchState == field.Shift3 || web.arena.MatchState == field.Shift4 || web.arena.MatchState == field.EndGame)
+			// Blink if hub is active now but will become inactive in next state
+			hubStates.Red.Blink = blinkWarning && !nextStateRedActive
 		}
 
 		// Blue
 		hubStates.Blue.Color = "black"
-		if web.arena.HubsActive&(1<<2) != 0 {
+		if web.arena.HubsActive&field.BlueAllianceHubBit != 0 {
 			hubStates.Blue.Color = "blue"
-			// Blink if hub is active and will become inactive at state end
-			hubStates.Blue.Blink = blinkWarning && (web.arena.MatchState == field.TransitionShift || web.arena.MatchState == field.Shift1 || web.arena.MatchState == field.Shift2 || web.arena.MatchState == field.Shift3 || web.arena.MatchState == field.Shift4 || web.arena.MatchState == field.EndGame)
+			// Blink if hub is active now but will become inactive in next state
+			hubStates.Blue.Blink = blinkWarning && !nextStateBlueActive
 		}
 		case field.PostMatch, field.PreMatch:
 			if web.arena.FieldVolunteers {			

@@ -86,9 +86,10 @@ type EventSettings struct {
 	BlackmagicAddresses             string
 	WarmupDurationSec               int
 	AutoDurationSec                 int
-	TransitionShiftDurationSec      int 
+	TransitionShiftDurationSec      int
 	AllianceShiftDurationSec        int
 	EndGameDurationSec              int
+	FirstShiftAlliance              string
 	AutoBonusCoralThreshold         int
 	CoralBonusPerLevelThreshold     int
 	CoralBonusCoopEnabled           bool
@@ -125,6 +126,7 @@ func (database *Database) GetEventSettings() (*EventSettings, error) {
 		TransitionShiftDurationSec:  game.MatchTiming.TransitionShiftDurationSec,
 		AllianceShiftDurationSec:    game.MatchTiming.AllianceShiftDurationSec,
 		EndGameDurationSec:          game.MatchTiming.EndGameDurationSec,
+		FirstShiftAlliance:          "blue",
 		AutoBonusCoralThreshold:     game.AutoBonusCoralThreshold,
 		CoralBonusPerLevelThreshold: game.CoralBonusPerLevelThreshold,
 		CoralBonusCoopEnabled:       game.CoralBonusCoopEnabled,
