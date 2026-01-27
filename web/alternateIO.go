@@ -6,7 +6,7 @@
 package web
 
 import (
-	//"github.com/Team254/cheesy-arena/game"
+	"github.com/Team254/cheesy-arena/game"
 	//"github.com/Team254/cheesy-arena/model"
 	"encoding/json"
 	//"log"
@@ -108,6 +108,9 @@ func (web *Web) fieldStackLightGetHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	// Track that the score table module is calling
+	web.arena.Esp32.UpdateScoreTableLastSeen()
+
 	// Get the current state of the field stack light.
 	var stackLight fieldStackLight
 	stackLight.Red, stackLight.Blue, stackLight.Orange, stackLight.Green = web.arena.Plc.GetFieldStackLight()
@@ -143,6 +146,15 @@ func (web *Web) teamStackLightGetHandler(w http.ResponseWriter, r *http.Request)
 	if r.Method != http.MethodGet {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 		return
+	}
+
+	// Track which estops module is calling via the alliance query parameter
+	alliance := strings.ToLower(r.URL.Query().Get("alliance"))
+	switch alliance {
+	case "red", "r":
+		web.arena.Esp32.UpdateRedEstopsLastSeen()
+	case "blue", "b":
+		web.arena.Esp32.UpdateBlueEstopsLastSeen()
 	}
 
 	var stackLights allStackLights
@@ -201,7 +213,9 @@ func (web *Web) teamStackLightGetHandler(w http.ResponseWriter, r *http.Request)
 		}
 
 		if ok { 
-			if web.arena.MatchState == field.AutoPeriod || web.arena.MatchState == field.PausePeriod || web.arena.MatchState == field.TeleopPeriod {
+			if web.arena.MatchState == field.AutoPeriod || web.arena.MatchState == field.TransitionShift || 
+				web.arena.MatchState == field.Shift1 || web.arena.MatchState == field.Shift2 || web.arena.MatchState == field.Shift3 || web.arena.MatchState == field.Shift4 || 
+				web.arena.MatchState == field.EndGame {
 				// Robot enabled during match
 				teamStackLight.LightStates[1] = lightState{Color: allianceColor, Blink: false}
 			} else {
@@ -217,6 +231,123 @@ func (web *Web) teamStackLightGetHandler(w http.ResponseWriter, r *http.Request)
 	response, err := json.Marshal(stackLights)
 	if err != nil {
 		http.Error(w, "Failed to marshal team stacklights state", http.StatusInternalServerError)
+		return
+	}
+
+	// Send the response.
+	w.Write(response)
+}
+
+type hubStates struct {
+	Red lightState `json:"red"`
+	Blue lightState `json:"blue"`
+} 
+// Provides a single API for a hub to retrieve it's state which is:
+// Alliance Color Solid:   HUB Active
+// Alliance color Pulsing: HUB Deactivation Warning
+// Purple:                 Field is safe for staff
+// Green:                  Field is safe for all
+// Off
+func (web *Web) teamHubStateGetHandler(w http.ResponseWriter, r *http.Request) {
+		// Ensure the request is a GET request.
+		// See the team_sign.go method: generateTeamNumberTexts for the template
+	if r.Method != http.MethodGet {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Track which hub module is calling via the alliance query parameter
+	alliance := strings.ToLower(r.URL.Query().Get("alliance"))
+	switch alliance {
+	case "red", "r":
+		web.arena.Esp32.UpdateRedHubLastSeen()
+	case "blue", "b":
+		web.arena.Esp32.UpdateBlueHubLastSeen()
+	}
+
+	var hubStates hubStates
+
+	// State during match
+	matchTimeSec := web.arena.MatchTimeSec()
+	switch web.arena.MatchState {
+	case field.AutoPeriod, field.TransitionShift, field.Shift1, field.Shift2, field.Shift3, field.Shift4, field.EndGame:
+		// Determine if we're within 3 seconds of the current state ending (for blink warning)
+		var stateEndSec float64
+		switch web.arena.MatchState {
+		case field.TransitionShift:
+			stateEndSec = game.GetDurationToShift1Start().Seconds()
+		case field.Shift1:
+			stateEndSec = game.GetDurationToShiftEnd(1).Seconds()
+		case field.Shift2:
+			stateEndSec = game.GetDurationToShiftEnd(2).Seconds()
+		case field.Shift3:
+			stateEndSec = game.GetDurationToShiftEnd(3).Seconds()
+		case field.Shift4:
+			stateEndSec = game.GetDurationToShiftEnd(4).Seconds()
+		case field.EndGame:
+			stateEndSec = game.GetDurationToTeleopEnd().Seconds()
+		}
+		timeUntilStateEnd := stateEndSec - matchTimeSec
+		blinkWarning := timeUntilStateEnd > 0 && timeUntilStateEnd <= 3
+
+		// Determine which hubs will be active in the next state
+		var nextStateRedActive, nextStateBlueActive bool
+		switch web.arena.MatchState {
+		case field.TransitionShift:
+			// Next state is Shift1 - use pre-calculated FirstShiftHubState (calculated at end of Auto)
+			nextStateRedActive = web.arena.FirstShiftHubState&field.RedAllianceHubBit != 0
+			nextStateBlueActive = web.arena.FirstShiftHubState&field.BlueAllianceHubBit != 0
+		case field.Shift1, field.Shift2, field.Shift3:
+			// Next state has opposite hub active
+			nextStateRedActive = web.arena.HubsActive&field.RedAllianceHubBit == 0
+			nextStateBlueActive = web.arena.HubsActive&field.BlueAllianceHubBit == 0
+		case field.Shift4:
+			// Next state is EndGame - both hubs active (no blink needed)
+			nextStateRedActive = true
+			nextStateBlueActive = true
+		case field.EndGame:
+			// Next state is PostMatch - no hubs active
+			nextStateRedActive = false
+			nextStateBlueActive = false
+		}
+
+		// Red
+		hubStates.Red.Color = "black"
+		if web.arena.HubsActive&field.RedAllianceHubBit != 0 {
+			hubStates.Red.Color = "red"
+			// Blink if hub is active now but will become inactive in next state
+			hubStates.Red.Blink = blinkWarning && !nextStateRedActive
+		}
+
+		// Blue
+		hubStates.Blue.Color = "black"
+		if web.arena.HubsActive&field.BlueAllianceHubBit != 0 {
+			hubStates.Blue.Color = "blue"
+			// Blink if hub is active now but will become inactive in next state
+			hubStates.Blue.Blink = blinkWarning && !nextStateBlueActive
+		}
+		case field.PostMatch, field.PreMatch:
+			if web.arena.FieldVolunteers {			
+				hubStates.Red.Color = "green"
+				hubStates.Blue.Color = "green"
+			} else {
+				hubStates.Red.Color = "purple"
+				hubStates.Blue.Color = "purple"
+			}
+			hubStates.Red.Blink = false
+			hubStates.Blue.Blink = false
+		default:
+			hubStates.Red.Color = "black"
+			hubStates.Red.Blink = false
+			hubStates.Blue.Color = "black"
+			hubStates.Blue.Blink = false
+
+	}
+
+	// Marshal the response payload.
+	response, err := json.Marshal(hubStates)
+	if err != nil {
+		http.Error(w, "Failed to marshal hub state", http.StatusInternalServerError)
 		return
 	}
 

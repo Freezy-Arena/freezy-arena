@@ -88,8 +88,11 @@ body[data-mode=timeout] .mode#match {
   width: 100%;
   height: 100%;
 }
-#match[data-state=WARMUP_PERIOD], #match[data-state=AUTO_PERIOD], #match[data-state=PAUSE_PERIOD],
-#match[data-state=TELEOP_PERIOD], #match[data-state=TIMEOUT_ACTIVE], #match[data-state=POST_TIMEOUT] {
+#match[data-state=WARMUP_PERIOD], #match[data-state=AUTO_PERIOD], 
+#match[data-state=TRANSITION_PERIOD],
+#match[data-state=SHIFT1_PERIOD], #match[data-state=SHIFT2_PERIOD], #match[data-state=SHIFT3_PERIOD], #match[data-state=SHIFT4_PERIOD], 
+#match[data-state=ENDGAME_PERIOD], 
+#match[data-state=TIMEOUT_ACTIVE], #match[data-state=POST_TIMEOUT] {
   background-color: #fff;
   color: #000;
 }
@@ -100,7 +103,9 @@ body[data-mode=timeout] .mode#match {
   display: block;
 }
 #match[data-state=WARMUP_PERIOD] #inMatch, #match[data-state=AUTO_PERIOD] #inMatch,
-#match[data-state=PAUSE_PERIOD] #inMatch, #match[data-state=TELEOP_PERIOD] #inMatch,
+#match[data-state=TRANSITION_PERIOD],
+#match[data-state=SHIFT1_PERIOD], #match[data-state=SHIFT2_PERIOD], #match[data-state=SHIFT3_PERIOD], #match[data-state=SHIFT4_PERIOD], 
+#match[data-state=ENDGAME_PERIOD], 
 #match[data-state=TIMEOUT_ACTIVE] #inMatch, #match[data-state=POST_TIMEOUT] #inMatch {
   display: block;
 }

@@ -4,11 +4,12 @@
 package field
 
 import (
+	"testing"
+	"time"
+
 	"github.com/Team254/cheesy-arena/game"
 	"github.com/Team254/cheesy-arena/model"
 	"github.com/stretchr/testify/assert"
-	"testing"
-	"time"
 )
 
 func TestCycleTime(t *testing.T) {
@@ -136,7 +137,7 @@ func TestEarlyLateMessage(t *testing.T) {
 	assert.Equal(t, "Event is running 3 minutes late", arena.getEarlyLateMessage())
 
 	setMatch(arena.Database, &matches[1], time.Now().Add(-180*time.Second), time.Now().Add(-541*time.Second), false)
-	arena.MatchState = TeleopPeriod
+	arena.MatchState = TransitionShift
 	assert.Equal(t, "Event is running 6 minutes early", arena.getEarlyLateMessage())
 
 	setMatch(arena.Database, &matches[1], time.Now(), time.Now().Add(481*time.Second), false)

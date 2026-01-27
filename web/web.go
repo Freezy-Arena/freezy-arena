@@ -255,6 +255,7 @@ func (web *Web) newHandler() http.Handler {
 	mux.HandleFunc("POST /freezy/upload/image", web.uploadImagePostHandler)
 	mux.HandleFunc("GET /freezy/upload", web.uploadImagePageHandler)
 	mux.HandleFunc("POST /freezy/alternateio/increment", web.incrementElementPostHandler)
+	mux.HandleFunc("GET /api/freezy/hub_status", web.teamHubStateGetHandler)
     
 
 	return mux

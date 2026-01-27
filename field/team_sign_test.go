@@ -4,11 +4,12 @@
 package field
 
 import (
+	"image/color"
+	"testing"
+
 	"github.com/Team254/cheesy-arena/game"
 	"github.com/Team254/cheesy-arena/model"
 	"github.com/stretchr/testify/assert"
-	"image/color"
-	"testing"
 )
 
 func TestTeamSign_GenerateInMatchRearText(t *testing.T) {
@@ -157,7 +158,7 @@ func TestTeamSign_TeamNumber(t *testing.T) {
 	allianceStation.EStop = true
 	assertSign(false, "  254", orangeColor, "254           E-STOP")
 	allianceStation.EStop = false
-	arena.MatchState = TeleopPeriod
+	arena.MatchState = TransitionShift
 	assertSign(false, "  254", blueColor, "Rear Text")
 	allianceStation.EStop = true
 	assertSign(false, "  254", orangeColor, "254           E-STOP")

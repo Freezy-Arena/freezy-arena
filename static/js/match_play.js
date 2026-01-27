@@ -200,7 +200,12 @@ const handleArenaStatus = function (data) {
     case "WARMUP_PERIOD":
     case "AUTO_PERIOD":
     case "PAUSE_PERIOD":
-    case "TELEOP_PERIOD":
+    case "TRANSITION_PERIOD":
+    case "SHIFT1_PERIOD":
+    case "SHIFT2_PERIOD":
+    case "SHIFT3_PERIOD":
+    case "SHIFT4_PERIOD":
+    case "ENDGAME_PERIOD":
       $("#showOverlay").prop("disabled", true);
       $("#introRadio").prop("disabled", true);
       $("#showFinalScore").prop("disabled", true);
@@ -282,8 +287,13 @@ const handleArenaStatus = function (data) {
 
   if (data.ScoreTableIOEnabled) {
     if (data.ScoreTableIOIsHealthy) {
-      $("#scoreTableIO").text("Score Connected");
-      $("#scoreTableIO").attr("data-ready", 2);
+      if (data.ScoreTableIOIsActive) {
+        $("#scoreTableIO").text("Score Connected");
+        $("#scoreTableIO").attr("data-ready", 2);
+      } else {
+        $("#scoreTableIO").text("Score Not Responding");
+        $("#scoreTableIO").attr("data-ready", 3);
+      }
     } else {
       $("#scoreTableIO").text("Score Not Connected");
       $("#scoreTableIO").attr("data-ready", 1);
@@ -292,10 +302,15 @@ const handleArenaStatus = function (data) {
     $("#scoreTableIO").text("Score Disabled");
     $("#scoreTableIO").attr("data-ready", 0);
   }
-  if (data.RedEstopsEnabled) {  
+  if (data.RedEstopsEnabled) {
     if (data.RedEstopsIsHealthy) {
-      $("#redEstopsIO").text("Red Estops Connected");
-      $("#redEstopsIO").attr("data-ready", 2);
+      if (data.RedEstopsIsActive) {
+        $("#redEstopsIO").text("Red Estops Connected");
+        $("#redEstopsIO").attr("data-ready", 2);
+      } else {
+        $("#redEstopsIO").text("Red Estops Not Responding");
+        $("#redEstopsIO").attr("data-ready", 3);
+      }
     } else {
       $("#redEstopsIO").text("Red Estops Not Connected");
       $("#redEstopsIO").attr("data-ready", 1);
@@ -306,8 +321,13 @@ const handleArenaStatus = function (data) {
   }
   if (data.BlueEstopsEnabled) {
     if (data.BlueEStopsIsHealthy) {
-      $("#blueEstopsIO").text("Blue Estops Connected");
-      $("#blueEstopsIO").attr("data-ready", 2);
+      if (data.BlueEstopsIsActive) {
+        $("#blueEstopsIO").text("Blue Estops Connected");
+        $("#blueEstopsIO").attr("data-ready", 2);
+      } else {
+        $("#blueEstopsIO").text("Blue Estops Not Responding");
+        $("#blueEstopsIO").attr("data-ready", 3);
+      }
     } else {
       $("#blueEstopsIO").text("Blue Estops Not Connected");
       $("#blueEstopsIO").attr("data-ready", 1);
@@ -315,6 +335,40 @@ const handleArenaStatus = function (data) {
   } else {
     $("#blueEstopsIO").text("Blue Estops Disabled");
     $("#blueEstopsIO").attr("data-ready", 0);
+  }
+  if (data.RedHubEnabled) {
+    if (data.RedHubIsHealthy) {
+      if (data.RedHubIsActive) {
+        $("#redHubIO").text("Red Hub Connected");
+        $("#redHubIO").attr("data-ready", 2);
+      } else {
+        $("#redHubIO").text("Red Hub Not Responding");
+        $("#redHubIO").attr("data-ready", 3);
+      }
+    } else {
+      $("#redHubIO").text("Red Hub Not Connected");
+      $("#redHubIO").attr("data-ready", 1);
+    }
+  } else {
+    $("#redHubIO").text("Red Hub Disabled");
+    $("#redHubIO").attr("data-ready", 0);
+  }
+  if (data.BlueHubEnabled) {
+    if (data.BlueHubIsHealthy) {
+      if (data.BlueHubIsActive) {
+        $("#blueHubIO").text("Blue Hub Connected");
+        $("#blueHubIO").attr("data-ready", 2);
+      } else {
+        $("#blueHubIO").text("Blue Hub Not Responding");
+        $("#blueHubIO").attr("data-ready", 3);
+      }
+    } else {
+      $("#blueHubIO").text("Blue Hub Not Connected");
+      $("#blueHubIO").attr("data-ready", 1);
+    }
+  } else {
+    $("#blueHubIO").text("Blue Hub Disabled");
+    $("#blueHubIO").attr("data-ready", 0);
   }
 };
 
