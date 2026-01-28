@@ -355,6 +355,52 @@ func (web *Web) teamHubStateGetHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(response)
 }
 
+// HubBatteryPayload represents the structure of the incoming POST data for hub battery status.
+type HubBatteryPayload struct {
+	Voltage float64 `json:"voltage"`
+	Percent float64 `json:"percent"`
+}
+
+// POST /api/freezy/hub_status
+// Updates the battery status for a hub (red or blue alliance).
+func (web *Web) teamHubStatusPostHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Determine which hub is reporting via the alliance query parameter
+	alliance := strings.ToLower(r.URL.Query().Get("alliance"))
+	if alliance != "red" && alliance != "r" && alliance != "blue" && alliance != "b" {
+		http.Error(w, "Missing or invalid alliance query parameter; must be 'red' or 'blue'", http.StatusBadRequest)
+		return
+	}
+
+	// Parse the request body
+	var payload HubBatteryPayload
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		return
+	}
+
+	// Update the battery status and last seen timestamp for the appropriate hub
+	switch alliance {
+	case "red", "r":
+		web.arena.Esp32.SetRedHubBattery(payload.Voltage, payload.Percent)
+		web.arena.Esp32.UpdateRedHubLastSeen()
+	case "blue", "b":
+		web.arena.Esp32.SetBlueHubBattery(payload.Voltage, payload.Percent)
+		web.arena.Esp32.UpdateBlueHubLastSeen()
+	}
+
+	// Notify arena status subscribers of the update
+	web.arena.ArenaStatusNotifier.Notify()
+
+	// Respond with success
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Hub battery status updated successfully."))
+}
+
 type incrementElementPayload struct {
     Alliance string `json:"alliance"`
     Element  string `json:"element"`

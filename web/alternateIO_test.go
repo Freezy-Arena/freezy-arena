@@ -283,8 +283,72 @@ func TestTeamHubStateGetHandler_NoBlink_WhenNotNearStateEnd(t *testing.T) {
 func TestTeamHubStateGetHandler_InvalidMethod(t *testing.T) {
 	web := setupTestWeb(t)
 
-	recorder := web.postHttpResponse("/api/freezy/hub_status", "")
-	assert.Equal(t, 405, recorder.Code)
+	recorder := web.getHttpResponse("/api/freezy/hub_status")
+	// GET is valid, POST without alliance param should fail
+	assert.Equal(t, 200, recorder.Code)
+}
+
+func TestTeamHubStatusPostHandler_RedHub(t *testing.T) {
+	web := setupTestWeb(t)
+
+	body := `{"voltage": 12.5, "percent": 85.0}`
+	recorder := web.postJsonHttpResponse("/api/freezy/hub_status?alliance=red", body)
+	assert.Equal(t, 200, recorder.Code)
+
+	// Verify the battery values were set
+	assert.Equal(t, 12.5, web.arena.Esp32.GetRedHubBatteryVoltage())
+	assert.Equal(t, 85.0, web.arena.Esp32.GetRedHubBatteryPercent())
+}
+
+func TestTeamHubStatusPostHandler_BlueHub(t *testing.T) {
+	web := setupTestWeb(t)
+
+	body := `{"voltage": 11.8, "percent": 72.5}`
+	recorder := web.postJsonHttpResponse("/api/freezy/hub_status?alliance=blue", body)
+	assert.Equal(t, 200, recorder.Code)
+
+	// Verify the battery values were set
+	assert.Equal(t, 11.8, web.arena.Esp32.GetBlueHubBatteryVoltage())
+	assert.Equal(t, 72.5, web.arena.Esp32.GetBlueHubBatteryPercent())
+}
+
+func TestTeamHubStatusPostHandler_ShortForm(t *testing.T) {
+	web := setupTestWeb(t)
+
+	// Test short form "r" for red
+	body := `{"voltage": 13.0, "percent": 90.0}`
+	recorder := web.postJsonHttpResponse("/api/freezy/hub_status?alliance=r", body)
+	assert.Equal(t, 200, recorder.Code)
+	assert.Equal(t, 13.0, web.arena.Esp32.GetRedHubBatteryVoltage())
+
+	// Test short form "b" for blue
+	body = `{"voltage": 12.0, "percent": 80.0}`
+	recorder = web.postJsonHttpResponse("/api/freezy/hub_status?alliance=b", body)
+	assert.Equal(t, 200, recorder.Code)
+	assert.Equal(t, 12.0, web.arena.Esp32.GetBlueHubBatteryVoltage())
+}
+
+func TestTeamHubStatusPostHandler_MissingAlliance(t *testing.T) {
+	web := setupTestWeb(t)
+
+	body := `{"voltage": 12.5, "percent": 85.0}`
+	recorder := web.postJsonHttpResponse("/api/freezy/hub_status", body)
+	assert.Equal(t, 400, recorder.Code)
+}
+
+func TestTeamHubStatusPostHandler_InvalidAlliance(t *testing.T) {
+	web := setupTestWeb(t)
+
+	body := `{"voltage": 12.5, "percent": 85.0}`
+	recorder := web.postJsonHttpResponse("/api/freezy/hub_status?alliance=green", body)
+	assert.Equal(t, 400, recorder.Code)
+}
+
+func TestTeamHubStatusPostHandler_InvalidPayload(t *testing.T) {
+	web := setupTestWeb(t)
+
+	recorder := web.postJsonHttpResponse("/api/freezy/hub_status?alliance=red", "invalid json")
+	assert.Equal(t, 400, recorder.Code)
 }
 
 func TestGetAllPlcCoilsGetHandler(t *testing.T) {

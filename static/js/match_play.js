@@ -339,7 +339,10 @@ const handleArenaStatus = function (data) {
   if (data.RedHubEnabled) {
     if (data.RedHubIsHealthy) {
       if (data.RedHubIsActive) {
-        $("#redHubIO").text("Red Hub Connected");
+        const batteryText = data.RedHubBatteryVoltage > 0
+          ? ` ${data.RedHubBatteryVoltage.toFixed(1)}V ${data.RedHubBatteryPercent.toFixed(0)}%`
+          : "";
+        $("#redHubIO").text("Red Hub" + batteryText);
         $("#redHubIO").attr("data-ready", 2);
       } else {
         $("#redHubIO").text("Red Hub Not Responding");
@@ -356,7 +359,10 @@ const handleArenaStatus = function (data) {
   if (data.BlueHubEnabled) {
     if (data.BlueHubIsHealthy) {
       if (data.BlueHubIsActive) {
-        $("#blueHubIO").text("Blue Hub Connected");
+        const batteryText = data.BlueHubBatteryVoltage > 0
+          ? ` ${data.BlueHubBatteryVoltage.toFixed(1)}V ${data.BlueHubBatteryPercent.toFixed(0)}%`
+          : "";
+        $("#blueHubIO").text("Blue Hub" + batteryText);
         $("#blueHubIO").attr("data-ready", 2);
       } else {
         $("#blueHubIO").text("Blue Hub Not Responding");
