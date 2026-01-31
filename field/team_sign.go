@@ -307,8 +307,8 @@ func (sign *TeamSign) generateTeamNumberTexts(
 		} else if arena.FieldVolunteers {
 			frontColor = purpleColor
 		} else if allianceStation.DsConn != nil && !allianceStation.DsConn.RobotLinked &&
-			(arena.MatchState == AutoPeriod || arena.MatchState == TransitionShift || 
-				arena.MatchState == Shift1 || arena.MatchState == Shift2 || arena.MatchState == Shift3 || arena.MatchState == Shift4 || 
+			(arena.MatchState == AutoPeriod || arena.MatchState == PausePeriod || arena.MatchState == TransitionShift ||
+				arena.MatchState == Shift1 || arena.MatchState == Shift2 || arena.MatchState == Shift3 || arena.MatchState == Shift4 ||
 				arena.MatchState == EndGame) {
 			// Blink the display to indicate that the robot is not linked while the match is in progress.
 			frontColor = blinkColor(allianceColor)

@@ -12,40 +12,41 @@ const (
 )
 
 var MatchTiming = struct {
-	WarmupDurationSec           int
-	AutoDurationSec             int
-	TransitionShiftDurationSec  int 
-	AllianceShiftDurationSec    int
-	EndGameDurationSec 					int
-	TimeoutDurationSec          int
-}{0, 20, 10, 25, 30, 0}
+	WarmupDurationSec          int
+	AutoDurationSec            int
+	PauseDurationSec           int
+	TransitionShiftDurationSec int
+	AllianceShiftDurationSec   int
+	EndGameDurationSec         int
+	TimeoutDurationSec         int
+}{0, 20, 3, 10, 25, 30, 0}
 
 func GetDurationToAutoEnd() time.Duration {
 	return time.Duration(MatchTiming.WarmupDurationSec+MatchTiming.AutoDurationSec) * time.Second
 }
 
+func GetDurationToPauseEnd() time.Duration {
+	return time.Duration(
+		MatchTiming.WarmupDurationSec+MatchTiming.AutoDurationSec+MatchTiming.PauseDurationSec,
+	) * time.Second
+}
+
 func GetDurationToShift1Start() time.Duration {
 	return time.Duration(
-		MatchTiming.WarmupDurationSec+MatchTiming.AutoDurationSec+MatchTiming.TransitionShiftDurationSec,
+		MatchTiming.WarmupDurationSec+MatchTiming.AutoDurationSec+MatchTiming.PauseDurationSec+MatchTiming.TransitionShiftDurationSec,
 	) * time.Second
 }
 
 // There are 1-4 shifts
 func GetDurationToShiftEnd(shift int) time.Duration {
 	return time.Duration(
-		MatchTiming.WarmupDurationSec+MatchTiming.AutoDurationSec+MatchTiming.TransitionShiftDurationSec+(MatchTiming.AllianceShiftDurationSec * shift),
+		MatchTiming.WarmupDurationSec+MatchTiming.AutoDurationSec+MatchTiming.PauseDurationSec+MatchTiming.TransitionShiftDurationSec+(MatchTiming.AllianceShiftDurationSec*shift),
 	) * time.Second
 }
 
-// func GetDurationToTeleopStart() time.Duration {
-// 	return time.Duration(
-// 		MatchTiming.WarmupDurationSec+MatchTiming.AutoDurationSec+MatchTiming.PauseDurationSec,
-// 	) * time.Second
-// }
-
 func GetDurationToTeleopEnd() time.Duration {
 	return time.Duration(
-		MatchTiming.WarmupDurationSec+MatchTiming.AutoDurationSec+MatchTiming.TransitionShiftDurationSec+
-			MatchTiming.AllianceShiftDurationSec*4 + MatchTiming.EndGameDurationSec,
+		MatchTiming.WarmupDurationSec+MatchTiming.AutoDurationSec+MatchTiming.PauseDurationSec+MatchTiming.TransitionShiftDurationSec+
+			MatchTiming.AllianceShiftDurationSec*4+MatchTiming.EndGameDurationSec,
 	) * time.Second
 }

@@ -212,9 +212,9 @@ func (web *Web) teamStackLightGetHandler(w http.ResponseWriter, r *http.Request)
 			ok = false
 		}
 
-		if ok { 
-			if web.arena.MatchState == field.AutoPeriod || web.arena.MatchState == field.TransitionShift || 
-				web.arena.MatchState == field.Shift1 || web.arena.MatchState == field.Shift2 || web.arena.MatchState == field.Shift3 || web.arena.MatchState == field.Shift4 || 
+		if ok {
+			if web.arena.MatchState == field.AutoPeriod || web.arena.MatchState == field.PausePeriod || web.arena.MatchState == field.TransitionShift ||
+				web.arena.MatchState == field.Shift1 || web.arena.MatchState == field.Shift2 || web.arena.MatchState == field.Shift3 || web.arena.MatchState == field.Shift4 ||
 				web.arena.MatchState == field.EndGame {
 				// Robot enabled during match
 				teamStackLight.LightStates[1] = lightState{Color: allianceColor, Blink: false}
@@ -270,10 +270,12 @@ func (web *Web) teamHubStateGetHandler(w http.ResponseWriter, r *http.Request) {
 	// State during match
 	matchTimeSec := web.arena.MatchTimeSec()
 	switch web.arena.MatchState {
-	case field.AutoPeriod, field.TransitionShift, field.Shift1, field.Shift2, field.Shift3, field.Shift4, field.EndGame:
+	case field.AutoPeriod, field.PausePeriod, field.TransitionShift, field.Shift1, field.Shift2, field.Shift3, field.Shift4, field.EndGame:
 		// Determine if we're within 3 seconds of the current state ending (for blink warning)
 		var stateEndSec float64
 		switch web.arena.MatchState {
+		case field.PausePeriod:
+			stateEndSec = game.GetDurationToPauseEnd().Seconds()
 		case field.TransitionShift:
 			stateEndSec = game.GetDurationToShift1Start().Seconds()
 		case field.Shift1:
@@ -293,6 +295,10 @@ func (web *Web) teamHubStateGetHandler(w http.ResponseWriter, r *http.Request) {
 		// Determine which hubs will be active in the next state
 		var nextStateRedActive, nextStateBlueActive bool
 		switch web.arena.MatchState {
+		case field.PausePeriod:
+			// Next state is TransitionShift - both hubs active (no blink needed)
+			nextStateRedActive = true
+			nextStateBlueActive = true
 		case field.TransitionShift:
 			// Next state is Shift1 - use pre-calculated FirstShiftHubState (calculated at end of Auto)
 			nextStateRedActive = web.arena.FirstShiftHubState&field.RedAllianceHubBit != 0

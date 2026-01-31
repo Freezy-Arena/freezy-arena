@@ -47,6 +47,7 @@ const (
 	StartMatch
 	WarmupPeriod
 	AutoPeriod
+	PausePeriod
 	//  2026 Rebuilt Game
 	TransitionShift
 	Shift1
@@ -629,14 +630,24 @@ func (arena *Arena) Update() {
 	case AutoPeriod:
 		auto = true
 		enabled = true
-		arena.HubsActive =  BlueAllianceHubBit | RedAllianceHubBit
+		arena.HubsActive = BlueAllianceHubBit | RedAllianceHubBit
 		if matchTimeSec >= game.GetDurationToAutoEnd().Seconds() {
 			auto = false
+			enabled = false
 			sendDsPacket = true
-  		arena.MatchState = TransitionShift
-			arena.HubsActive =  BlueAllianceHubBit | RedAllianceHubBit
+			arena.MatchState = PausePeriod
+			arena.HubsActive = BlueAllianceHubBit | RedAllianceHubBit
 			// Calculate first shift alliance now (at end of Auto) so lowestScore uses Auto-end scores
 			arena.FirstShiftHubState = arena.getFirstShiftHubState()
+		}
+	case PausePeriod:
+		auto = false
+		enabled = false
+		arena.HubsActive = BlueAllianceHubBit | RedAllianceHubBit
+		if matchTimeSec >= game.GetDurationToPauseEnd().Seconds() {
+			arena.MatchState = TransitionShift
+			sendDsPacket = true
+			enabled = true
 		}
 	case TransitionShift:
 		auto = false
@@ -657,7 +668,7 @@ func (arena *Arena) Update() {
 			enabled = true
 			sendDsPacket = true
 			// Flip the hubs
-			arena.HubsActive = ^arena.HubsActive
+			arena.HubsActive = arena.HubsActive ^ (RedAllianceHubBit | BlueAllianceHubBit)
 		}
 	case Shift2:
 		auto = false
@@ -668,7 +679,7 @@ func (arena *Arena) Update() {
 			enabled = true
 			sendDsPacket = true
 			// Flip the hubs
-			arena.HubsActive = ^arena.HubsActive
+			arena.HubsActive = arena.HubsActive ^ (RedAllianceHubBit | BlueAllianceHubBit)
 		}
 	case Shift3:
 		auto = false
@@ -679,7 +690,7 @@ func (arena *Arena) Update() {
 			enabled = true
 			sendDsPacket = true
 			// Flip the hubs
-			arena.HubsActive = ^arena.HubsActive
+			arena.HubsActive = arena.HubsActive ^ (RedAllianceHubBit | BlueAllianceHubBit)
 		}
 	case Shift4:
 		auto = false
@@ -1111,15 +1122,15 @@ func (arena *Arena) handlePlcInputOutput() {
 			arena.positionPostMatchScoreReady("red_near") && arena.positionPostMatchScoreReady("red_far") &&
 			arena.positionPostMatchScoreReady("blue_near") && arena.positionPostMatchScoreReady("blue_far")
 		arena.Plc.SetStackLights(false, false, !scoreReady, false)
-	case AutoPeriod, TransitionShift, Shift1, Shift2, Shift3, Shift4, EndGame:
+	case AutoPeriod, PausePeriod, TransitionShift, Shift1, Shift2, Shift3, Shift4, EndGame:
 		arena.Plc.SetStackBuzzer(false)
 		arena.Plc.SetStackLights(!redAllianceReady, !blueAllianceReady, false, true)
 	}
 
 	// Get all the game-specific inputs and update the score.
-	if (arena.MatchState == AutoPeriod || arena.MatchState == TransitionShift || 
-			arena.MatchState == Shift1 || arena.MatchState == Shift2 || arena.MatchState == Shift3 || arena.MatchState == Shift4 || 
-			arena.MatchState == EndGame) && !arena.EventSettings.AlternateIOEnabled {
+	if (arena.MatchState == AutoPeriod || arena.MatchState == PausePeriod || arena.MatchState == TransitionShift ||
+		arena.MatchState == Shift1 || arena.MatchState == Shift2 || arena.MatchState == Shift3 || arena.MatchState == Shift4 ||
+		arena.MatchState == EndGame) && !arena.EventSettings.AlternateIOEnabled {
 		redScore.ProcessorAlgae, blueScore.ProcessorAlgae = arena.Plc.GetProcessorCounts()
 	}
 	if !oldRedScore.Equals(redScore) || !oldBlueScore.Equals(blueScore) {
