@@ -43,6 +43,13 @@ type Esp32 interface {
 	SetBlueAllianceStationEstopAddress(string)
 	SetRedAllianceHubAddress(string)
 	SetBlueAllianceHubAddress(string)
+	// Hub battery status
+	GetRedHubBatteryVoltage() float64
+	GetRedHubBatteryPercent() float64
+	GetBlueHubBatteryVoltage() float64
+	GetBlueHubBatteryPercent() float64
+	SetRedHubBattery(voltage, percent float64)
+	SetBlueHubBattery(voltage, percent float64)
 }
 
 type Esp32IO struct {
@@ -62,6 +69,11 @@ type Esp32IO struct {
 	BlueEstopsLastSeen   time.Time
 	RedHubLastSeen       time.Time
 	BlueHubLastSeen      time.Time
+	// Hub battery status
+	RedHubBatteryVoltage  float64
+	RedHubBatteryPercent  float64
+	BlueHubBatteryVoltage float64
+	BlueHubBatteryPercent float64
 }
 const LoopPeriodMs = 1000 // Define the loop period in milliseconds
 
@@ -352,4 +364,36 @@ func (esp32 *Esp32IO) IsRedHubActive() bool {
 // Returns whether the Blue Hub module is actively calling the API.
 func (esp32 *Esp32IO) IsBlueHubActive() bool {
 	return time.Since(esp32.BlueHubLastSeen).Seconds() < ModuleActivityTimeoutSec
+}
+
+// Returns the Red Hub battery voltage.
+func (esp32 *Esp32IO) GetRedHubBatteryVoltage() float64 {
+	return esp32.RedHubBatteryVoltage
+}
+
+// Returns the Red Hub battery percent.
+func (esp32 *Esp32IO) GetRedHubBatteryPercent() float64 {
+	return esp32.RedHubBatteryPercent
+}
+
+// Returns the Blue Hub battery voltage.
+func (esp32 *Esp32IO) GetBlueHubBatteryVoltage() float64 {
+	return esp32.BlueHubBatteryVoltage
+}
+
+// Returns the Blue Hub battery percent.
+func (esp32 *Esp32IO) GetBlueHubBatteryPercent() float64 {
+	return esp32.BlueHubBatteryPercent
+}
+
+// Sets the Red Hub battery status.
+func (esp32 *Esp32IO) SetRedHubBattery(voltage, percent float64) {
+	esp32.RedHubBatteryVoltage = voltage
+	esp32.RedHubBatteryPercent = percent
+}
+
+// Sets the Blue Hub battery status.
+func (esp32 *Esp32IO) SetBlueHubBattery(voltage, percent float64) {
+	esp32.BlueHubBatteryVoltage = voltage
+	esp32.BlueHubBatteryPercent = percent
 }

@@ -511,14 +511,14 @@ func TestMatchPlayWebsocketNotifications(t *testing.T) {
 	assert.Equal(t, field.AutoPeriod, matchTime.MatchState)
 	assert.Equal(t, 2, matchTime.MatchTimeSec)
 
-	// Check across a match state boundary.
+	// Check across a match state boundary (Auto -> Pause).
 	web.arena.MatchStartTime = time.Now().Add(
 		-time.Duration(game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec) * time.Second,
 	)
 	web.arena.Update()
 	statusReceived, matchTime = readWebsocketStatusMatchTime(t, ws)
 	assert.Equal(t, true, statusReceived)
-	assert.Equal(t, field.TransitionShift, matchTime.MatchState)
+	assert.Equal(t, field.PausePeriod, matchTime.MatchState)
 	assert.Equal(t, game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec, matchTime.MatchTimeSec)
 }
 

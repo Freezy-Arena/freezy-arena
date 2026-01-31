@@ -95,29 +95,33 @@ func (arena *Arena) generateArenaStatusMessage() any {
 		MatchId          int
 		AllianceStations map[string]*AllianceStation
 		MatchState
-		CanStartMatch         bool
-		AccessPointStatus     string
-		SwitchStatus          string
-		RedSCCStatus          string
-		BlueSCCStatus         string
-		PlcIsHealthy          bool
-		FieldEStop            bool
-		PlcArmorBlockStatuses map[string]bool
-		ScoreTableIOEnabled   bool
-		RedEstopsEnabled      bool
-		BlueEstopsEnabled     bool
-		RedHubEnabled         bool
-		BlueHubEnabled        bool
-		ScoreTableIOIsHealthy bool
-		RedEstopsIsHealthy    bool
-		BlueEStopsIsHealthy   bool
-		RedHubIsHealthy       bool
-		BlueHubIsHealthy      bool
-		ScoreTableIOIsActive  bool
-		RedEstopsIsActive     bool
-		BlueEstopsIsActive    bool
-		RedHubIsActive        bool
-		BlueHubIsActive       bool
+		CanStartMatch          bool
+		AccessPointStatus      string
+		SwitchStatus           string
+		RedSCCStatus           string
+		BlueSCCStatus          string
+		PlcIsHealthy           bool
+		FieldEStop             bool
+		PlcArmorBlockStatuses  map[string]bool
+		ScoreTableIOEnabled    bool
+		RedEstopsEnabled       bool
+		BlueEstopsEnabled      bool
+		RedHubEnabled          bool
+		BlueHubEnabled         bool
+		ScoreTableIOIsHealthy  bool
+		RedEstopsIsHealthy     bool
+		BlueEStopsIsHealthy    bool
+		RedHubIsHealthy        bool
+		BlueHubIsHealthy       bool
+		ScoreTableIOIsActive   bool
+		RedEstopsIsActive      bool
+		BlueEstopsIsActive     bool
+		RedHubIsActive         bool
+		BlueHubIsActive        bool
+		RedHubBatteryVoltage   float64
+		RedHubBatteryPercent   float64
+		BlueHubBatteryVoltage  float64
+		BlueHubBatteryPercent  float64
 	}{
 		arena.CurrentMatch.Id,
 		arena.AllianceStations,
@@ -145,6 +149,10 @@ func (arena *Arena) generateArenaStatusMessage() any {
 		arena.Esp32.IsBlueEstopsActive(),
 		arena.Esp32.IsRedHubActive(),
 		arena.Esp32.IsBlueHubActive(),
+		arena.Esp32.GetRedHubBatteryVoltage(),
+		arena.Esp32.GetRedHubBatteryPercent(),
+		arena.Esp32.GetBlueHubBatteryVoltage(),
+		arena.Esp32.GetBlueHubBatteryPercent(),
 	}
 }
 

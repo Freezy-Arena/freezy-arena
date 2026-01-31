@@ -212,9 +212,9 @@ func (web *Web) teamStackLightGetHandler(w http.ResponseWriter, r *http.Request)
 			ok = false
 		}
 
-		if ok { 
-			if web.arena.MatchState == field.AutoPeriod || web.arena.MatchState == field.TransitionShift || 
-				web.arena.MatchState == field.Shift1 || web.arena.MatchState == field.Shift2 || web.arena.MatchState == field.Shift3 || web.arena.MatchState == field.Shift4 || 
+		if ok {
+			if web.arena.MatchState == field.AutoPeriod || web.arena.MatchState == field.PausePeriod || web.arena.MatchState == field.TransitionShift ||
+				web.arena.MatchState == field.Shift1 || web.arena.MatchState == field.Shift2 || web.arena.MatchState == field.Shift3 || web.arena.MatchState == field.Shift4 ||
 				web.arena.MatchState == field.EndGame {
 				// Robot enabled during match
 				teamStackLight.LightStates[1] = lightState{Color: allianceColor, Blink: false}
@@ -270,10 +270,12 @@ func (web *Web) teamHubStateGetHandler(w http.ResponseWriter, r *http.Request) {
 	// State during match
 	matchTimeSec := web.arena.MatchTimeSec()
 	switch web.arena.MatchState {
-	case field.AutoPeriod, field.TransitionShift, field.Shift1, field.Shift2, field.Shift3, field.Shift4, field.EndGame:
+	case field.AutoPeriod, field.PausePeriod, field.TransitionShift, field.Shift1, field.Shift2, field.Shift3, field.Shift4, field.EndGame:
 		// Determine if we're within 3 seconds of the current state ending (for blink warning)
 		var stateEndSec float64
 		switch web.arena.MatchState {
+		case field.PausePeriod:
+			stateEndSec = game.GetDurationToPauseEnd().Seconds()
 		case field.TransitionShift:
 			stateEndSec = game.GetDurationToShift1Start().Seconds()
 		case field.Shift1:
@@ -293,6 +295,10 @@ func (web *Web) teamHubStateGetHandler(w http.ResponseWriter, r *http.Request) {
 		// Determine which hubs will be active in the next state
 		var nextStateRedActive, nextStateBlueActive bool
 		switch web.arena.MatchState {
+		case field.PausePeriod:
+			// Next state is TransitionShift - both hubs active (no blink needed)
+			nextStateRedActive = true
+			nextStateBlueActive = true
 		case field.TransitionShift:
 			// Next state is Shift1 - use pre-calculated FirstShiftHubState (calculated at end of Auto)
 			nextStateRedActive = web.arena.FirstShiftHubState&field.RedAllianceHubBit != 0
@@ -353,6 +359,52 @@ func (web *Web) teamHubStateGetHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Send the response.
 	w.Write(response)
+}
+
+// HubBatteryPayload represents the structure of the incoming POST data for hub battery status.
+type HubBatteryPayload struct {
+	Voltage float64 `json:"voltage"`
+	Percent float64 `json:"percent"`
+}
+
+// POST /api/freezy/hub_status
+// Updates the battery status for a hub (red or blue alliance).
+func (web *Web) teamHubStatusPostHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Determine which hub is reporting via the alliance query parameter
+	alliance := strings.ToLower(r.URL.Query().Get("alliance"))
+	if alliance != "red" && alliance != "r" && alliance != "blue" && alliance != "b" {
+		http.Error(w, "Missing or invalid alliance query parameter; must be 'red' or 'blue'", http.StatusBadRequest)
+		return
+	}
+
+	// Parse the request body
+	var payload HubBatteryPayload
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		return
+	}
+
+	// Update the battery status and last seen timestamp for the appropriate hub
+	switch alliance {
+	case "red", "r":
+		web.arena.Esp32.SetRedHubBattery(payload.Voltage, payload.Percent)
+		web.arena.Esp32.UpdateRedHubLastSeen()
+	case "blue", "b":
+		web.arena.Esp32.SetBlueHubBattery(payload.Voltage, payload.Percent)
+		web.arena.Esp32.UpdateBlueHubLastSeen()
+	}
+
+	// Notify arena status subscribers of the update
+	web.arena.ArenaStatusNotifier.Notify()
+
+	// Respond with success
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Hub battery status updated successfully."))
 }
 
 type incrementElementPayload struct {

@@ -14,15 +14,16 @@ const matchStates = {
   1: "START_MATCH",
   2: "WARMUP_PERIOD",
   3: "AUTO_PERIOD",
-  4: "TRANSITION_PERIOD",
-  5: "SHIFT1_PERIOD",
-  6: "SHIFT2_PERIOD",
-  7: "SHIFT3_PERIOD",
-  8: "SHIFT4_PERIOD",
-  9: "ENDGAME_PERIOD",
-  10: "POST_MATCH",
-  11: "TIMEOUT_ACTIVE",
-  12: "POST_TIMEOUT"
+  4: "PAUSE_PERIOD",
+  5: "TRANSITION_PERIOD",
+  6: "SHIFT1_PERIOD",
+  7: "SHIFT2_PERIOD",
+  8: "SHIFT3_PERIOD",
+  9: "SHIFT4_PERIOD",
+  10: "ENDGAME_PERIOD",
+  11: "POST_MATCH",
+  12: "TIMEOUT_ACTIVE",
+  13: "POST_TIMEOUT"
 };
 let matchTiming;
 
@@ -87,23 +88,25 @@ const getCountdown = function (matchState, matchTimeSec) {
       return matchTiming.AutoDurationSec;
     case "AUTO_PERIOD":
       return matchTiming.WarmupDurationSec + matchTiming.AutoDurationSec - matchTimeSec;
+    case "PAUSE_PERIOD":
+      return matchTiming.WarmupDurationSec + matchTiming.AutoDurationSec + matchTiming.PauseDurationSec - matchTimeSec;
     case "TRANSITION_PERIOD":
-      return matchTiming.WarmupDurationSec + matchTiming.AutoDurationSec + matchTiming.TransitionShiftDurationSec - matchTimeSec;
+      return matchTiming.WarmupDurationSec + matchTiming.AutoDurationSec + matchTiming.PauseDurationSec + matchTiming.TransitionShiftDurationSec - matchTimeSec;
     case "SHIFT1_PERIOD":
-      return matchTiming.WarmupDurationSec + matchTiming.AutoDurationSec + matchTiming.TransitionShiftDurationSec +
+      return matchTiming.WarmupDurationSec + matchTiming.AutoDurationSec + matchTiming.PauseDurationSec + matchTiming.TransitionShiftDurationSec +
         matchTiming.AllianceShiftDurationSec*1 - matchTimeSec;
     case "SHIFT2_PERIOD":
-      return matchTiming.WarmupDurationSec + matchTiming.AutoDurationSec + matchTiming.TransitionShiftDurationSec +
-        matchTiming.AllianceShiftDurationSec*2  - matchTimeSec;
+      return matchTiming.WarmupDurationSec + matchTiming.AutoDurationSec + matchTiming.PauseDurationSec + matchTiming.TransitionShiftDurationSec +
+        matchTiming.AllianceShiftDurationSec*2 - matchTimeSec;
     case "SHIFT3_PERIOD":
-      return matchTiming.WarmupDurationSec + matchTiming.AutoDurationSec + matchTiming.TransitionShiftDurationSec +
-        matchTiming.AllianceShiftDurationSec*3  - matchTimeSec;
+      return matchTiming.WarmupDurationSec + matchTiming.AutoDurationSec + matchTiming.PauseDurationSec + matchTiming.TransitionShiftDurationSec +
+        matchTiming.AllianceShiftDurationSec*3 - matchTimeSec;
     case "SHIFT4_PERIOD":
-      return matchTiming.WarmupDurationSec + matchTiming.AutoDurationSec + matchTiming.TransitionShiftDurationSec +
-        matchTiming.AllianceShiftDurationSec*4  - matchTimeSec;
+      return matchTiming.WarmupDurationSec + matchTiming.AutoDurationSec + matchTiming.PauseDurationSec + matchTiming.TransitionShiftDurationSec +
+        matchTiming.AllianceShiftDurationSec*4 - matchTimeSec;
     case "ENDGAME_PERIOD":
-      return matchTiming.WarmupDurationSec + matchTiming.AutoDurationSec + matchTiming.TransitionShiftDurationSec +
-        matchTiming.AllianceShiftDurationSec*4  + matchTiming.EndGameDurationSec - matchTimeSec;
+      return matchTiming.WarmupDurationSec + matchTiming.AutoDurationSec + matchTiming.PauseDurationSec + matchTiming.TransitionShiftDurationSec +
+        matchTiming.AllianceShiftDurationSec*4 + matchTiming.EndGameDurationSec - matchTimeSec;
     case "TIMEOUT_ACTIVE":
       return matchTiming.TimeoutDurationSec - matchTimeSec;
     default:

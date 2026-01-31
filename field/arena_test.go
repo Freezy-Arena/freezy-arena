@@ -171,9 +171,36 @@ func TestArenaMatchFlow(t *testing.T) {
 	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Auto)
 	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
 
-	// Transition Period
+	// Pause Period
+	arena.MatchStartTime = time.Now().Add(-time.Duration(game.MatchTiming.AutoDurationSec) * time.Second)
+	arena.Update()
+	assert.Equal(t, AutoPeriod, arena.MatchState)
+	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Auto)
+	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
+	assert.Equal(t, 3, arena.HubsActive)
+	arena.Update()
+	assert.Equal(t, AutoPeriod, arena.MatchState)
+	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Auto)
+	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
+
+	// Pause Period
 	arena.MatchStartTime = time.Now().Add(
 		-time.Duration(game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec) * time.Second,
+	)
+	arena.Update()
+	assert.Equal(t, PausePeriod, arena.MatchState)
+	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
+	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Enabled)
+	assert.Equal(t, 3, arena.HubsActive)
+	arena.Update()
+	assert.Equal(t, PausePeriod, arena.MatchState)
+	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
+	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Enabled)
+	assert.Equal(t, 3, arena.HubsActive)
+
+	// Transition Period
+	arena.MatchStartTime = time.Now().Add(
+		-time.Duration(game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.PauseDurationSec) * time.Second,
 	)
 	arena.Update()
 	assert.Equal(t, TransitionShift, arena.MatchState)
@@ -189,7 +216,7 @@ func TestArenaMatchFlow(t *testing.T) {
 	// Shift 1 Period
 	arena.MatchStartTime = time.Now().Add(
 		-time.Duration(
-			game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.TransitionShiftDurationSec,
+			game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.PauseDurationSec+game.MatchTiming.TransitionShiftDurationSec,
 		) * time.Second,
 	)
 	arena.Update()
@@ -204,10 +231,10 @@ func TestArenaMatchFlow(t *testing.T) {
 
 	// Shift 2 Period
 	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
-		arena.MatchStartTime = time.Now().Add(
+	arena.MatchStartTime = time.Now().Add(
 		-time.Duration(
-			game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.TransitionShiftDurationSec+
-			game.MatchTiming.AllianceShiftDurationSec*1,
+			game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.PauseDurationSec+game.MatchTiming.TransitionShiftDurationSec+
+				game.MatchTiming.AllianceShiftDurationSec*1,
 		) * time.Second,
 	)
 	arena.Update()
@@ -223,10 +250,10 @@ func TestArenaMatchFlow(t *testing.T) {
 
 	// Shift 3 Period
 	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
-		arena.MatchStartTime = time.Now().Add(
+	arena.MatchStartTime = time.Now().Add(
 		-time.Duration(
-			game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.TransitionShiftDurationSec+
-			game.MatchTiming.AllianceShiftDurationSec*2,
+			game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.PauseDurationSec+game.MatchTiming.TransitionShiftDurationSec+
+				game.MatchTiming.AllianceShiftDurationSec*2,
 		) * time.Second,
 	)
 	arena.Update()
@@ -242,10 +269,10 @@ func TestArenaMatchFlow(t *testing.T) {
 
 	// Shift 4 Period
 	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
-		arena.MatchStartTime = time.Now().Add(
+	arena.MatchStartTime = time.Now().Add(
 		-time.Duration(
-			game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.TransitionShiftDurationSec+
-			game.MatchTiming.AllianceShiftDurationSec*3,
+			game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.PauseDurationSec+game.MatchTiming.TransitionShiftDurationSec+
+				game.MatchTiming.AllianceShiftDurationSec*3,
 		) * time.Second,
 	)
 	arena.Update()
@@ -260,11 +287,11 @@ func TestArenaMatchFlow(t *testing.T) {
 	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
 	assert.Equal(t, 1, arena.HubsActive)
 
-  // End Game Period
+	// End Game Period
 	arena.MatchStartTime = time.Now().Add(
 		-time.Duration(
-			game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.TransitionShiftDurationSec+
-			game.MatchTiming.AllianceShiftDurationSec*4,
+			game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.PauseDurationSec+game.MatchTiming.TransitionShiftDurationSec+
+				game.MatchTiming.AllianceShiftDurationSec*4,
 		) * time.Second,
 	)
 	arena.Update()
@@ -282,11 +309,11 @@ func TestArenaMatchFlow(t *testing.T) {
 	// Match End
 	arena.MatchStartTime = time.Now().Add(
 		-time.Duration(
-			game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.TransitionShiftDurationSec+
-				game.MatchTiming.AllianceShiftDurationSec*4 + game.MatchTiming.EndGameDurationSec,
+			game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.PauseDurationSec+game.MatchTiming.TransitionShiftDurationSec+
+				game.MatchTiming.AllianceShiftDurationSec*4+game.MatchTiming.EndGameDurationSec,
 		) * time.Second,
 	)
-	
+
 	arena.Update()
 	assert.Equal(t, PostMatch, arena.MatchState)
 	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
@@ -730,7 +757,7 @@ func TestArenaTimeout(t *testing.T) {
 
 	arena.MatchStartTime = time.Now().Add(
 		-time.Duration(
-			game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.TransitionShiftDurationSec+
+			game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.PauseDurationSec+game.MatchTiming.TransitionShiftDurationSec+
 				game.MatchTiming.AllianceShiftDurationSec,
 		) * time.Second,
 	)
@@ -892,7 +919,7 @@ func TestPlcEStopAStop(t *testing.T) {
 	assert.Equal(t, TransitionShift, arena.MatchState)
 	arena.MatchStartTime = time.Now().Add(
 		-time.Duration(
-			game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.TransitionShiftDurationSec,
+			game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.PauseDurationSec+game.MatchTiming.TransitionShiftDurationSec,
 		) * time.Second,
 	)
 	arena.Update()
@@ -964,7 +991,7 @@ func TestPlcEStopAStop(t *testing.T) {
 	// Ensure unpressed E-stops are cleared at the end of the match.
 	arena.MatchStartTime = time.Now().Add(
 		-time.Duration(
-			game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.TransitionShiftDurationSec+
+			game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.PauseDurationSec+game.MatchTiming.TransitionShiftDurationSec+
 				game.MatchTiming.AllianceShiftDurationSec*4 + game.MatchTiming.EndGameDurationSec,
 		) * time.Second,
 	)
@@ -1116,7 +1143,7 @@ func TestPlcMatchCycleEvergreen(t *testing.T) {
 	// End the match.
 	arena.MatchStartTime = time.Now().Add(
 		-time.Duration(
-			game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.TransitionShiftDurationSec+
+			game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.PauseDurationSec+game.MatchTiming.TransitionShiftDurationSec+
 				game.MatchTiming.AllianceShiftDurationSec*4 + game.MatchTiming.EndGameDurationSec,
 		) * time.Second,
 	)
@@ -1211,7 +1238,7 @@ func TestPlcMatchCycleGameSpecificWithCoopEnabled(t *testing.T) {
 
 	// Check the transition period.
 	durationToTeleopStart := time.Duration(
-		game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.TransitionShiftDurationSec,
+		game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.PauseDurationSec+game.MatchTiming.TransitionShiftDurationSec,
 	) * time.Second
 	arena.MatchStartTime = time.Now().Add(-durationToTeleopStart - 5000*time.Millisecond)
 	arena.Update()
@@ -1287,7 +1314,7 @@ func TestPlcMatchCycleGameSpecificWithCoopEnabled(t *testing.T) {
 
 	// Check after the end of the match.
 	durationToTeleopEnd := time.Duration(
-			game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.TransitionShiftDurationSec+
+			game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.PauseDurationSec+game.MatchTiming.TransitionShiftDurationSec+
 				game.MatchTiming.AllianceShiftDurationSec*4 + game.MatchTiming.EndGameDurationSec,
 	) * time.Second
 	arena.MatchStartTime = time.Now().Add(-durationToTeleopEnd + 1*time.Millisecond)
@@ -1489,7 +1516,7 @@ func TestPlcMatchCycleGameSpecificWithCoopDisabled(t *testing.T) {
 
 				// Check the teleop period.
 				durationToTeleopStart := time.Duration(
-					game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.TransitionShiftDurationSec,
+					game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.PauseDurationSec+game.MatchTiming.TransitionShiftDurationSec,
 				) * time.Second
 				arena.MatchStartTime = time.Now().Add(-durationToTeleopStart - 5000*time.Millisecond)
 				arena.Update()
@@ -1555,7 +1582,7 @@ func TestPlcMatchCycleGameSpecificWithCoopDisabled(t *testing.T) {
 
 				// Check after the end of the match.
 				durationToTeleopEnd := time.Duration(
-				game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.TransitionShiftDurationSec+
+				game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.PauseDurationSec+game.MatchTiming.TransitionShiftDurationSec+
 					game.MatchTiming.AllianceShiftDurationSec*4 + game.MatchTiming.EndGameDurationSec,
 					) * time.Second
 				arena.MatchStartTime = time.Now().Add(-durationToTeleopEnd + 1*time.Millisecond)
