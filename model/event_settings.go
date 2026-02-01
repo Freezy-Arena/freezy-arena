@@ -89,11 +89,8 @@ type EventSettings struct {
 	TransitionShiftDurationSec      int
 	AllianceShiftDurationSec        int
 	EndGameDurationSec              int
-	FirstShiftAlliance              string
-	AutoBonusCoralThreshold         int
-	CoralBonusPerLevelThreshold     int
-	CoralBonusCoopEnabled           bool
-	BargeBonusPointThreshold        int
+	FirstShiftAlliance       string
+	BargeBonusPointThreshold int
 	FlashDSEnabled                  bool
 	IncludeAlgaeInBargeBonus        bool
 }
@@ -126,11 +123,8 @@ func (database *Database) GetEventSettings() (*EventSettings, error) {
 		TransitionShiftDurationSec:  game.MatchTiming.TransitionShiftDurationSec,
 		AllianceShiftDurationSec:    game.MatchTiming.AllianceShiftDurationSec,
 		EndGameDurationSec:          game.MatchTiming.EndGameDurationSec,
-		FirstShiftAlliance:          "blue",
-		AutoBonusCoralThreshold:     game.AutoBonusCoralThreshold,
-		CoralBonusPerLevelThreshold: game.CoralBonusPerLevelThreshold,
-		CoralBonusCoopEnabled:       game.CoralBonusCoopEnabled,
-		BargeBonusPointThreshold:    game.BargeBonusPointThreshold,
+		FirstShiftAlliance:       "blue",
+		BargeBonusPointThreshold: game.BargeBonusPointThreshold,
 		IncludeAlgaeInBargeBonus:    game.IncludeAlgaeInBargeBonus,
 	}
 

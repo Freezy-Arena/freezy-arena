@@ -61,15 +61,14 @@ func (web *Web) rankingsPdfReportHandler(w http.ResponseWriter, r *http.Request)
 	// The widths of the table columns in mm, stored here so that they can be referenced for each row.
 	colWidths := map[string]float64{
 		"Rank":   13,
-		"Team":   20,
-		"RP":     20,
-		"Coop":   20,
-		"Match":  20,
-		"Auto":   20,
-		"Barge":  20,
-		"W-L-T":  22,
-		"DQ":     20,
-		"Played": 20,
+		"Team":   22,
+		"RP":     22,
+		"Match":  22,
+		"Auto":   22,
+		"Barge":  22,
+		"W-L-T":  24,
+		"DQ":     22,
+		"Played": 22,
 	}
 	rowHeight := 6.5
 
@@ -83,7 +82,6 @@ func (web *Web) rankingsPdfReportHandler(w http.ResponseWriter, r *http.Request)
 	pdf.CellFormat(colWidths["Rank"], rowHeight, "Rank", "1", 0, "C", true, 0, "")
 	pdf.CellFormat(colWidths["Team"], rowHeight, "Team", "1", 0, "C", true, 0, "")
 	pdf.CellFormat(colWidths["RP"], rowHeight, "RP", "1", 0, "C", true, 0, "")
-	pdf.CellFormat(colWidths["Coop"], rowHeight, "Coop", "1", 0, "C", true, 0, "")
 	pdf.CellFormat(colWidths["Match"], rowHeight, "Match", "1", 0, "C", true, 0, "")
 	pdf.CellFormat(colWidths["Auto"], rowHeight, "Auto", "1", 0, "C", true, 0, "")
 	pdf.CellFormat(colWidths["Barge"], rowHeight, "Barge", "1", 0, "C", true, 0, "")
@@ -97,9 +95,6 @@ func (web *Web) rankingsPdfReportHandler(w http.ResponseWriter, r *http.Request)
 		pdf.SetFont("Arial", "", 10)
 		pdf.CellFormat(colWidths["Team"], rowHeight, strconv.Itoa(ranking.TeamId), "1", 0, "C", false, 0, "")
 		pdf.CellFormat(colWidths["RP"], rowHeight, strconv.Itoa(ranking.RankingPoints), "1", 0, "C", false, 0, "")
-		pdf.CellFormat(
-			colWidths["Coop"], rowHeight, strconv.Itoa(ranking.CoopertitionPoints), "1", 0, "C", false, 0, "",
-		)
 		pdf.CellFormat(colWidths["Match"], rowHeight, strconv.Itoa(ranking.MatchPoints), "1", 0, "C", false, 0, "")
 		pdf.CellFormat(colWidths["Auto"], rowHeight, strconv.Itoa(ranking.AutoPoints), "1", 0, "C", false, 0, "")
 		pdf.CellFormat(colWidths["Barge"], rowHeight, strconv.Itoa(ranking.BargePoints), "1", 0, "C", false, 0, "")

@@ -122,9 +122,6 @@ func (web *Web) settingsPostHandler(w http.ResponseWriter, r *http.Request) {
 	eventSettings.AllianceShiftDurationSec, _ = strconv.Atoi(r.PostFormValue("allianceShiftDurationSec"))
 	eventSettings.EndGameDurationSec, _ = strconv.Atoi(r.PostFormValue("endGameDurationSec"))
 	eventSettings.FirstShiftAlliance = r.PostFormValue("firstShiftAlliance")
-	eventSettings.AutoBonusCoralThreshold, _ = strconv.Atoi(r.PostFormValue("autoBonusCoralThreshold"))
-	eventSettings.CoralBonusPerLevelThreshold, _ = strconv.Atoi(r.PostFormValue("coralBonusPerLevelThreshold"))
-	eventSettings.CoralBonusCoopEnabled = r.PostFormValue("coralBonusCoopEnabled") == "on"
 	eventSettings.BargeBonusPointThreshold, _ = strconv.Atoi(r.PostFormValue("bargeBonusPointThreshold"))
 	eventSettings.IncludeAlgaeInBargeBonus = r.PostFormValue("includeAlgaeInBargeBonus") == "on"
 

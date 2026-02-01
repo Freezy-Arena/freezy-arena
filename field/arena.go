@@ -236,9 +236,6 @@ func (arena *Arena) LoadSettings() error {
 	game.UpdateMatchSounds()
 	arena.MatchTimingNotifier.Notify()
 
-	game.AutoBonusCoralThreshold = settings.AutoBonusCoralThreshold
-	game.CoralBonusPerLevelThreshold = settings.CoralBonusPerLevelThreshold
-	game.CoralBonusCoopEnabled = settings.CoralBonusCoopEnabled
 	game.BargeBonusPointThreshold = settings.BargeBonusPointThreshold
 	game.IncludeAlgaeInBargeBonus = settings.IncludeAlgaeInBargeBonus
 
@@ -1127,12 +1124,6 @@ func (arena *Arena) handlePlcInputOutput() {
 		arena.Plc.SetStackLights(!redAllianceReady, !blueAllianceReady, false, true)
 	}
 
-	// Get all the game-specific inputs and update the score.
-	if (arena.MatchState == AutoPeriod || arena.MatchState == PausePeriod || arena.MatchState == TransitionShift ||
-		arena.MatchState == Shift1 || arena.MatchState == Shift2 || arena.MatchState == Shift3 || arena.MatchState == Shift4 ||
-		arena.MatchState == EndGame) && !arena.EventSettings.AlternateIOEnabled {
-		redScore.ProcessorAlgae, blueScore.ProcessorAlgae = arena.Plc.GetProcessorCounts()
-	}
 	if !oldRedScore.Equals(redScore) || !oldBlueScore.Equals(blueScore) {
 		arena.RealtimeScoreNotifier.Notify()
 	}

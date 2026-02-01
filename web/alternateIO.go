@@ -447,16 +447,10 @@ func (web *Web) incrementElementPostHandler(w http.ResponseWriter, r *http.Reque
 
     // Increment the requested element counter. Add cases as needed.
     switch p.Element {
-    case "ProcessorAlgae":
-        scorePtr.CurrentScore.ProcessorAlgae++
-		web.arena.RealtimeScoreNotifier.Notify()
-        //writeJsonOK(w, map[string]interface{}{"ok": true, "element": p.Element, "value": scorePtr.CurrentScore.ProcessorAlgae})
-        return
-    case "Barge":
-        scorePtr.CurrentScore.BargeAlgae++
+    case "Fuel":
+        scorePtr.CurrentScore.Fuel++
         web.arena.RealtimeScoreNotifier.Notify()
-        //writeJsonOK(w, map[string]interface{}{"ok": true, "element": p.Element, "value": scorePtr.CurrentScore.BargeAlgae})
-		return
+        return
     default:
         http.Error(w, "Unknown element", http.StatusBadRequest)
         return

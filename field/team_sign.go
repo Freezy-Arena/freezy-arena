@@ -209,30 +209,19 @@ func generateInMatchTeamRearText(arena *Arena, isRed bool, countdown string) str
 	opponentScoreTotal := opponentScoreSummary.Score - opponentScoreSummary.BargePoints
 	allianceScores := fmt.Sprintf(formatString, scoreTotal, opponentScoreTotal)
 
-	var coralRankingPointProgress string
-	if arena.CurrentMatch.Type != model.Playoff {
-		coralRankingPointProgress = fmt.Sprintf("%d/%d", scoreSummary.NumCoralLevels, scoreSummary.NumCoralLevelsGoal)
-	}
-
-	return fmt.Sprintf("%s %s %s", countdown, allianceScores, coralRankingPointProgress)
+	return fmt.Sprintf("%s %s", countdown, allianceScores)
 }
 
 // Returns the in-match rear text for the timer display for the given alliance.
 func generateInMatchTimerRearText(arena *Arena, isRed bool) string {
-	var reef *game.Reef
+	var realtimeScore *RealtimeScore
 	if isRed {
-		reef = &arena.RedRealtimeScore.CurrentScore.Reef
+		realtimeScore = arena.RedRealtimeScore
 	} else {
-		reef = &arena.BlueRealtimeScore.CurrentScore.Reef
+		realtimeScore = arena.BlueRealtimeScore
 	}
 
-	return fmt.Sprintf(
-		"1-%02d 2-%02d 3-%02d 4-%02d",
-		reef.CountTotalCoralByLevel(game.Level1),
-		reef.CountTotalCoralByLevel(game.Level2),
-		reef.CountTotalCoralByLevel(game.Level3),
-		reef.CountTotalCoralByLevel(game.Level4),
-	)
+	return fmt.Sprintf("Fuel: %d", realtimeScore.CurrentScore.Fuel)
 }
 
 // Returns the front text, front color, and rear text to display on the timer display.
