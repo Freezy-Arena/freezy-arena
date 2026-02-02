@@ -45,9 +45,9 @@ func (score *Score) Summarize(opponentScore *Score) *ScoreSummary {
 	}
 	summary.AutoPoints = summary.LeavePoints
 
-	// Calculate fuel points (4 points each).
+	// Calculate fuel points (1 points each).
 	summary.FuelCount = score.Fuel
-	summary.FuelPoints = 4 * score.Fuel
+	summary.FuelPoints = 1 * score.Fuel
 
 	// Calculate endgame points.
 	for _, status := range score.EndgameStatuses {

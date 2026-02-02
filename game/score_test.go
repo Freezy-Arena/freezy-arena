@@ -18,11 +18,11 @@ func TestScoreSummary(t *testing.T) {
 	assert.Equal(t, 6, redSummary.LeavePoints)
 	assert.Equal(t, 6, redSummary.AutoPoints)
 	assert.Equal(t, 7, redSummary.FuelCount)
-	assert.Equal(t, 28, redSummary.FuelPoints)
+	assert.Equal(t, 7, redSummary.FuelPoints)
 	assert.Equal(t, 14, redSummary.BargePoints)
-	assert.Equal(t, 48, redSummary.MatchPoints)
+	assert.Equal(t, 27, redSummary.MatchPoints)
 	assert.Equal(t, 0, redSummary.FoulPoints)
-	assert.Equal(t, 48, redSummary.Score)
+	assert.Equal(t, 27, redSummary.Score)
 	assert.Equal(t, true, redSummary.AutoBonusRankingPoint) // Robot 3 bypassed so doesn't need to leave
 	assert.Equal(t, false, redSummary.BargeBonusRankingPoint)
 	assert.Equal(t, 1, redSummary.BonusRankingPoints)
@@ -32,11 +32,11 @@ func TestScoreSummary(t *testing.T) {
 	assert.Equal(t, 3, blueSummary.LeavePoints)
 	assert.Equal(t, 3, blueSummary.AutoPoints)
 	assert.Equal(t, 9, blueSummary.FuelCount)
-	assert.Equal(t, 36, blueSummary.FuelPoints)
+	assert.Equal(t, 9, blueSummary.FuelPoints)
 	assert.Equal(t, 24, blueSummary.BargePoints)
-	assert.Equal(t, 63, blueSummary.MatchPoints)
+	assert.Equal(t, 36, blueSummary.MatchPoints)
 	assert.Equal(t, 34, blueSummary.FoulPoints)
-	assert.Equal(t, 97, blueSummary.Score)
+	assert.Equal(t, 70, blueSummary.Score)
 	assert.Equal(t, false, blueSummary.AutoBonusRankingPoint)
 	assert.Equal(t, true, blueSummary.BargeBonusRankingPoint)
 	assert.Equal(t, 1, blueSummary.BonusRankingPoints)
@@ -198,7 +198,7 @@ func TestScoreBargeBonusRankingPointIncludingFuel(t *testing.T) {
 
 	score := Score{
 		EndgameStatuses: [3]EndgameStatus{EndgameDeepCage, EndgameDeepCage, EndgameParked},
-		Fuel:            3,
+		Fuel:            10, // Need 10 fuel (10 pts) + 26 BargePoints = 36 to meet threshold
 	}
 	summary := score.Summarize(&Score{})
 	assert.Equal(t, false, summary.BargeBonusRankingPoint)
