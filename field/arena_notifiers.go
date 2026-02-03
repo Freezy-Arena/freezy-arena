@@ -6,11 +6,12 @@
 package field
 
 import (
+	"strconv"
+
 	"github.com/Team254/cheesy-arena/game"
 	"github.com/Team254/cheesy-arena/model"
 	"github.com/Team254/cheesy-arena/playoff"
 	"github.com/Team254/cheesy-arena/websocket"
-	"strconv"
 )
 
 type ArenaNotifiers struct {
@@ -29,6 +30,8 @@ type ArenaNotifiers struct {
 	ReloadDisplaysNotifier             *websocket.Notifier
 	ScorePostedNotifier                *websocket.Notifier
 	ScoringStatusNotifier              *websocket.Notifier
+	PlcCoilsNotifier                   *websocket.Notifier
+	MatchListNotifier 				   *websocket.Notifier
 }
 
 type MatchTimeMessage struct {
@@ -64,6 +67,9 @@ func (arena *Arena) configureNotifiers() {
 	arena.ReloadDisplaysNotifier = websocket.NewNotifier("reload", nil)
 	arena.ScorePostedNotifier = websocket.NewNotifier("scorePosted", arena.GenerateScorePostedMessage)
 	arena.ScoringStatusNotifier = websocket.NewNotifier("scoringStatus", arena.generateScoringStatusMessage)
+	arena.PlcCoilsNotifier = websocket.NewNotifier("plcCoils", arena.generatePlcCoilsMessage)
+	arena.MatchListNotifier = websocket.NewNotifier("matchListUpdate", nil)
+
 }
 
 func (arena *Arena) generateAllianceSelectionMessage() any {
@@ -89,14 +95,34 @@ func (arena *Arena) generateArenaStatusMessage() any {
 		MatchId          int
 		AllianceStations map[string]*AllianceStation
 		MatchState
-		CanStartMatch         bool
-		AccessPointStatus     string
-		SwitchStatus          string
-		RedSCCStatus          string
-		BlueSCCStatus         string
-		PlcIsHealthy          bool
-		FieldEStop            bool
-		PlcArmorBlockStatuses map[string]bool
+		CanStartMatch          bool
+		AccessPointStatus      string
+		SwitchStatus           string
+		RedSCCStatus           string
+		BlueSCCStatus          string
+		PlcIsHealthy           bool
+		FieldEStop             bool
+		PlcArmorBlockStatuses  map[string]bool
+		ScoreTableIOEnabled    bool
+		RedEstopsEnabled       bool
+		BlueEstopsEnabled      bool
+		RedHubEnabled          bool
+		BlueHubEnabled         bool
+		ScoreTableIOIsHealthy  bool
+		RedEstopsIsHealthy     bool
+		BlueEStopsIsHealthy    bool
+		RedHubIsHealthy        bool
+		BlueHubIsHealthy       bool
+		ScoreTableIOIsActive   bool
+		RedEstopsIsActive      bool
+		BlueEstopsIsActive     bool
+		RedHubIsActive         bool
+		BlueHubIsActive        bool
+		RedHubBatteryVoltage   float64
+		RedHubBatteryPercent   float64
+		BlueHubBatteryVoltage  float64
+		BlueHubBatteryPercent  float64
+		HubsActive             int
 	}{
 		arena.CurrentMatch.Id,
 		arena.AllianceStations,
@@ -109,6 +135,26 @@ func (arena *Arena) generateArenaStatusMessage() any {
 		arena.Plc.IsHealthy(),
 		arena.Plc.GetFieldEStop(),
 		arena.Plc.GetArmorBlockStatuses(),
+		arena.Esp32.IsScoreTableIOEnabled(),
+		arena.Esp32.IsRedEstopsEnabled(),
+		arena.Esp32.IsBlueEstopsEnabled(),
+		arena.Esp32.IsRedHubEnabled(),
+		arena.Esp32.IsBlueHubEnabled(),
+		arena.Esp32.IsScoreTableHealthy(),
+		arena.Esp32.IsRedEstopsHealthy(),
+		arena.Esp32.IsBlueEstopsHealthy(),
+		arena.Esp32.IsRedHubHealthy(),
+		arena.Esp32.IsBlueHubHealthy(),
+		arena.Esp32.IsScoreTableActive(),
+		arena.Esp32.IsRedEstopsActive(),
+		arena.Esp32.IsBlueEstopsActive(),
+		arena.Esp32.IsRedHubActive(),
+		arena.Esp32.IsBlueHubActive(),
+		arena.Esp32.GetRedHubBatteryVoltage(),
+		arena.Esp32.GetRedHubBatteryPercent(),
+		arena.Esp32.GetBlueHubBatteryVoltage(),
+		arena.Esp32.GetBlueHubBatteryPercent(),
+		arena.HubsActive,
 	}
 }
 
@@ -209,6 +255,21 @@ func (arena *Arena) generateMatchTimingMessage() any {
 	return &game.MatchTiming
 }
 
+func (arena *Arena) generatePlcCoilsMessage() any {
+	// Get the current state of all PLC coils.
+    coilsArray := arena.Plc.GetAllCoils()
+    coilsArrayNames := arena.Plc.GetCoilNames()
+
+	// Build a map pairing coil names with their values.
+    coilsMap := make(map[string]bool)
+    for i, name := range coilsArrayNames {
+        if i < len(coilsArray) {
+            coilsMap[name] = coilsArray[i]
+        }
+    }
+	return coilsMap
+}
+
 func (arena *Arena) generateRealtimeScoreMessage() any {
 	fields := struct {
 		Red       *audienceAllianceScoreFields
@@ -293,7 +354,6 @@ func (arena *Arena) GenerateScorePostedMessage() any {
 		BlueWins            int
 		RedDestination      string
 		BlueDestination     string
-		CoopertitionEnabled bool
 	}{
 		arena.SavedMatch,
 		redScoreSummary,
@@ -315,7 +375,6 @@ func (arena *Arena) GenerateScorePostedMessage() any {
 		blueWins,
 		redDestination,
 		blueDestination,
-		game.CoralBonusCoopEnabled,
 	}
 }
 

@@ -7,14 +7,15 @@ package field
 
 import (
 	"fmt"
-	"github.com/Team254/cheesy-arena/game"
-	"github.com/Team254/cheesy-arena/model"
 	"image/color"
 	"log"
 	"net"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/Team254/cheesy-arena/game"
+	"github.com/Team254/cheesy-arena/model"
 )
 
 // Represents a collection of team number and timer signs.
@@ -95,9 +96,14 @@ func (signs *TeamSigns) Update(arena *Arena) {
 		countdownSec = game.MatchTiming.AutoDurationSec
 	case AutoPeriod:
 		countdownSec = game.MatchTiming.WarmupDurationSec + game.MatchTiming.AutoDurationSec - matchTimeSec
-	case TeleopPeriod:
+	case TransitionShift:
+	case Shift1:
+	case Shift2:
+	case Shift3:
+	case Shift4:
+	case EndGame:
 		countdownSec = game.MatchTiming.WarmupDurationSec + game.MatchTiming.AutoDurationSec +
-			game.MatchTiming.TeleopDurationSec + game.MatchTiming.PauseDurationSec - matchTimeSec
+			game.MatchTiming.TransitionShiftDurationSec + game.MatchTiming.AllianceShiftDurationSec*4 + game.MatchTiming.EndGameDurationSec - matchTimeSec
 	case TimeoutActive:
 		countdownSec = game.MatchTiming.TimeoutDurationSec - matchTimeSec
 	default:
@@ -203,30 +209,19 @@ func generateInMatchTeamRearText(arena *Arena, isRed bool, countdown string) str
 	opponentScoreTotal := opponentScoreSummary.Score - opponentScoreSummary.BargePoints
 	allianceScores := fmt.Sprintf(formatString, scoreTotal, opponentScoreTotal)
 
-	var coralRankingPointProgress string
-	if arena.CurrentMatch.Type != model.Playoff {
-		coralRankingPointProgress = fmt.Sprintf("%d/%d", scoreSummary.NumCoralLevels, scoreSummary.NumCoralLevelsGoal)
-	}
-
-	return fmt.Sprintf("%s %s %s", countdown, allianceScores, coralRankingPointProgress)
+	return fmt.Sprintf("%s %s", countdown, allianceScores)
 }
 
 // Returns the in-match rear text for the timer display for the given alliance.
 func generateInMatchTimerRearText(arena *Arena, isRed bool) string {
-	var reef *game.Reef
+	var realtimeScore *RealtimeScore
 	if isRed {
-		reef = &arena.RedRealtimeScore.CurrentScore.Reef
+		realtimeScore = arena.RedRealtimeScore
 	} else {
-		reef = &arena.BlueRealtimeScore.CurrentScore.Reef
+		realtimeScore = arena.BlueRealtimeScore
 	}
 
-	return fmt.Sprintf(
-		"1-%02d 2-%02d 3-%02d 4-%02d",
-		reef.CountTotalCoralByLevel(game.Level1),
-		reef.CountTotalCoralByLevel(game.Level2),
-		reef.CountTotalCoralByLevel(game.Level3),
-		reef.CountTotalCoralByLevel(game.Level4),
-	)
+	return fmt.Sprintf("Fuel: %d", realtimeScore.CurrentScore.Fuel)
 }
 
 // Returns the front text, front color, and rear text to display on the timer display.
@@ -301,7 +296,9 @@ func (sign *TeamSign) generateTeamNumberTexts(
 		} else if arena.FieldVolunteers {
 			frontColor = purpleColor
 		} else if allianceStation.DsConn != nil && !allianceStation.DsConn.RobotLinked &&
-			(arena.MatchState == AutoPeriod || arena.MatchState == PausePeriod || arena.MatchState == TeleopPeriod) {
+			(arena.MatchState == AutoPeriod || arena.MatchState == PausePeriod || arena.MatchState == TransitionShift ||
+				arena.MatchState == Shift1 || arena.MatchState == Shift2 || arena.MatchState == Shift3 || arena.MatchState == Shift4 ||
+				arena.MatchState == EndGame) {
 			// Blink the display to indicate that the robot is not linked while the match is in progress.
 			frontColor = blinkColor(allianceColor)
 		} else {

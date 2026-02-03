@@ -7,7 +7,7 @@ UI for configuring event settings.
 {{define "title"}}Settings{{end}}
 {{define "body"}}
 <div class="row justify-content-center">
-  {{if .ErrorMessage}}
+  {{if .ErrorMessage}}`
   <div class="alert alert-danger alert-dismissible">
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     {{.ErrorMessage}}
@@ -56,6 +56,13 @@ UI for configuring event settings.
                   <input type="text" class="form-control" name="name" value="{{.Name}}" placeholder="{{.Name}}">
                 </div>
               </div>
+              <div>Logo Suffix</div>
+              <div class="row mb-3" >
+                <label class="col-lg-6 control-label">Enter suffix used to load alterntive Logo files</label>
+                <div class="col-lg-6">
+                  <input type="text" class="form-control" name="logosuffix" value="{{.LogoSuffix}}" placeholder="{{.LogoSuffix}}">
+                </div>
+              </div>
               <div class="row mb-3">
                 <label class="col-lg-6 control-label">Playoff Type</label>
                 <div class="col-lg-6">
@@ -64,7 +71,7 @@ UI for configuring event settings.
                       <input type="radio" name="playoffType" value="DoubleEliminationPlayoff"
                         onclick="updateNumPlayoffAlliances(true);"
                         {{if eq .PlayoffType 0}}checked{{end}}>
-                      Double-Elimination (8 alliances)
+                      Double-Elimination (3-8 alliances)
                     </label>
                   </div>
                   <div class="radio">
@@ -80,8 +87,7 @@ UI for configuring event settings.
               <div class="row mb-3">
                 <label class="col-lg-6 control-label">Number of Alliances</label>
                 <div class="col-lg-6">
-                  <input type="text" class="form-control" name="numPlayoffAlliances" value="{{.NumPlayoffAlliances}}"
-                    {{if eq .PlayoffType 0}}disabled{{end}}>
+                  <input type="text" class="form-control" name="numPlayoffAlliances" value="{{.NumPlayoffAlliances}}">
                 </div>
               </div>
               <div class="row mb-3">
@@ -199,57 +205,33 @@ UI for configuring event settings.
                 </div>
               </div>
               <div class="row mb-3">
-                <label class="col-lg-6 control-label">Pause Duration<br/>(seconds)</label>
+                <label class="col-lg-6 control-label">Transition Duration<br/>(seconds)</label>
                 <div class="col-lg-6">
-                  <input type="text" class="form-control" name="pauseDurationSec" value="{{.PauseDurationSec}}">
+                  <input type="text" class="form-control" name="transitionShiftDurationSec" value="{{.TransitionShiftDurationSec}}">
                 </div>
               </div>
               <div class="row mb-3">
-                <label class="col-lg-6 control-label">Teleoperated Period Duration<br/>(seconds)</label>
+                <label class="col-lg-6 control-label">Aliance Shift Period Duration<br/>(seconds)</label>
                 <div class="col-lg-6">
-                  <input type="text" class="form-control" name="teleopDurationSec" value="{{.TeleopDurationSec}}">
+                  <input type="text" class="form-control" name="allianceShiftDurationSec" value="{{.AllianceShiftDurationSec}}">
                 </div>
               </div>
               <div class="row mb-3">
-                <label class="col-lg-6 control-label">Warning Remaining Duration<br/>(seconds)</label>
+                <label class="col-lg-6 control-label">End Game Remaining Duration<br/>(seconds)</label>
                 <div class="col-lg-6">
-                  <input type="text" class="form-control" name="warningRemainingDurationSec"
-                    value="{{.WarningRemainingDurationSec}}">
+                  <input type="text" class="form-control" name="endGameDurationSec"
+                    value="{{.EndGameDurationSec}}">
                 </div>
               </div>
               <div class="row mb-3">
-                <label class="col-lg-6 control-label">Auto Bonus RP Coral Threshold</label>
+                <label class="col-lg-6 control-label">First Shift Alliance</label>
                 <div class="col-lg-6">
-                  <input type="text" class="form-control" id="autoBonusCoralThreshold" name="autoBonusCoralThreshold"
-                    value="{{.AutoBonusCoralThreshold}}">
-                </div>
-              </div>
-              <div class="row mb-3">
-                <label class="col-lg-6 control-label">Coopertition Bonus Enabled</label>
-                <div class="col-lg-1 checkbox">
-                  <input type="checkbox" id="coralBonusCoopEnabled"
-                    name="coralBonusCoopEnabled" {{if .CoralBonusCoopEnabled}} checked{{end}}>
-                </div>
-              </div>
-              <div class="row mb-3">
-                <label class="col-lg-6 control-label">Coral Bonus RP Per-Level Threshold</label>
-                <div class="col-lg-6">
-                  <input type="text" class="form-control" id="coralBonusPerLevelThreshold"
-                    name="coralBonusPerLevelThreshold" value="{{.CoralBonusPerLevelThreshold}}">
-                </div>
-              </div>
-              <div class="row mb-3">
-                <label class="col-lg-6 control-label">Barge Bonus RP Point Threshold</label>
-                <div class="col-lg-6">
-                  <input type="text" class="form-control" id="bargeBonusPointThreshold" name="bargeBonusPointThreshold"
-                    value="{{.BargeBonusPointThreshold}}">
-                </div>
-              </div>
-              <div class="row">
-                <label class="col-lg-6 control-label">Include Algae Points Towards Barge Bonus</label>
-                <div class="col-lg-1 checkbox">
-                  <input type="checkbox" id="includeAlgaeInBargeBonus"
-                    name="includeAlgaeInBargeBonus" {{if .IncludeAlgaeInBargeBonus}} checked{{end}}>
+                  <select class="form-control" name="firstShiftAlliance">
+                    <option value="blue"{{if eq .FirstShiftAlliance "blue"}} selected{{end}}>Blue</option>
+                    <option value="red"{{if eq .FirstShiftAlliance "red"}} selected{{end}}>Red</option>
+                    <option value="random"{{if eq .FirstShiftAlliance "random"}} selected{{end}}>Random</option>
+                    <option value="lowestScore"{{if eq .FirstShiftAlliance "lowestScore"}} selected{{end}}>Lowest Score</option>
+                  </select>
                 </div>
               </div>
             </fieldset>
@@ -362,6 +344,48 @@ UI for configuring event settings.
                 <label class="col-lg-6 control-label">PLC Address</label>
                 <div class="col-lg-6">
                   <input type="text" class="form-control" name="plcAddress" value="{{.PlcAddress}}" placeholder="10.0.100.40">
+                </div>
+              </div>
+            </fieldset>
+            <fieldset class="mb-4">
+                <legend>Alternate IO</legend>
+              <div class="row mb-3">
+                <label class="col-lg-8 control-label" for="alternateIOEnabled">
+                  Enable Alternate IO (IE: Raspberry Pi)
+                </label>
+                <div class="col-lg-1 checkbox">
+                  <input type="checkbox" id="alternateIOEnabled"
+                    name="alternateIOEnabled"{{if .AlternateIOEnabled}} checked{{end}}>
+                </div>
+              </div>
+              <div class="row mb-3">
+                <label class="col-lg-6 control-label">Score Table IO Address</label>
+                <div class="col-lg-6">
+                  <input type="text" class="form-control" name="ScoreTableEstopAddress" value="{{.ScoreTableEstopAddress}}">
+                </div>
+              </div>
+              <div class="row mb-3">
+                <label class="col-lg-6 control-label">Red Alliance IO Address</label>
+                <div class="col-lg-6">
+                  <input type="text" class="form-control" name="RedAllianceStationEstopAddress" value="{{.RedAllianceStationEstopAddress}}">
+                </div>
+              </div>
+              <div class="row mb-3">
+                <label class="col-lg-6 control-label">Blue Alliance IO Address</label>
+                <div class="col-lg-6">
+                  <input type="text" class="form-control" name="BlueAllianceStationEstopAddress" value="{{.BlueAllianceStationEstopAddress}}">
+                </div>
+              </div>
+              <div class="row mb-3">
+                <label class="col-lg-6 control-label">Red Hub IO Address</label>
+                <div class="col-lg-6">
+                  <input type="text" class="form-control" name="RedHubAddress" value="{{.RedHubAddress}}">
+                </div>
+              </div>
+              <div class="row mb-3">
+                <label class="col-lg-6 control-label">Blue Hub IO Address</label>
+                <div class="col-lg-6">
+                  <input type="text" class="form-control" name="BlueHubAddress" value="{{.BlueHubAddress}}">
                 </div>
               </div>
             </fieldset>
@@ -520,6 +544,18 @@ UI for configuring event settings.
                 </div>
               </div>
             </fieldset>
+            <fieldset class="mb-4">
+              <legend>Alliance Station Enhancements</legend>
+              <p>Enable this setting to allow the driver station displays to flash orange to indiciate an e-stop, or solid orange
+                to indiciate an a-stop. When enabled, the driver station will only flash outside of the match. <b>Display reload required for changes to take effect.</b>
+              </p>
+              <div class="row mb-3">
+                <label class="col-lg-6 control-label">Enable DS E/A Stop Alerting</label>
+                <div class="col-lg-1 checkbox">
+                  <input type="checkbox" name="flashDSEnabled" {{if .FlashDSEnabled}}checked{{end}}>
+                </div>
+              </div>
+            </fieldset>
           </div>
           <div class="row justify-content-center">
             <div class="col-lg-3 align-items-center">
@@ -616,10 +652,7 @@ UI for configuring event settings.
 <script>
   updateNumPlayoffAlliances = function (isDoubleElimination) {
     const numPlayoffAlliances = $("input[name=numPlayoffAlliances]");
-    numPlayoffAlliances.prop("disabled", isDoubleElimination);
-    if (isDoubleElimination) {
-      numPlayoffAlliances.val(8);
-    }
+ 
   };
 
   // Handle initial tab selection based on URL fragment.

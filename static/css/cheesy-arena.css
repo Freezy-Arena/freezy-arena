@@ -39,6 +39,9 @@
 .bg-dark-blue {
   background-color: #113 !important;
 }
+.bg-purple {
+  background-color: #424 !important;
+}
 .bg-yellow {
   background-color: #442 !important;
 }
@@ -165,6 +168,18 @@ input[data-changed="true"], select[data-changed="true"] {
 }
 #testMatchSettings {
   display: none;
+}
+.badge-alternatIO[data-ready="0"] {
+  background-color: #666;
+}
+.badge-alternatIO[data-ready="1"] {
+  background-color: #e66;
+}
+.badge-alternatIO[data-ready="2"] {
+  background-color: #0c6;
+}
+.badge-alternatIO[data-ready="3"] {
+  background-color: #f90;
 }
 
 /* Placeholder styles for input fields*/

@@ -15,6 +15,9 @@ Display shown on the audience screen overlayed over the video.
     <link rel="stylesheet" href="/static/css/audience_display.css"/>
   </head>
   <body>
+    <div id="videoOverlay">
+      <video id="transitionVideo"></video>
+    </div>
     <div id="overlayCentering">
       <div id="matchOverlayContainer">
         <div class="playoff-alliance" id="leftPlayoffAlliance"></div>
@@ -78,7 +81,8 @@ Display shown on the audience screen overlayed over the video.
         <span id="leftPlayoffAllianceWins"></span>&nbsp;-&nbsp;<span id="rightPlayoffAllianceWins"></span>
       </div>
       <div class="text-center" id="matchCircle">
-        <img id="logo" src="/static/img/game-logo.png" alt="logo"/>
+        <img id="logo" src="/static/img/game-logo{{.EventSettings.LogoSuffix}}.png" 
+          onerror="this.src='/static/img/game-logo.png'" alt="logo"/>
         <div id="matchTime"></div>
       </div>
       <div id="timeoutDetails">
@@ -97,7 +101,8 @@ Display shown on the audience screen overlayed over the video.
         <div class="blindsCenter blank"></div>
       </div>
       <div class="blindsCenter full">
-        <img id="blindsLogo" src="/static/img/blinds-logo.png" alt="logo"/>
+        <img id="blindsLogo" src="/static/img/blinds-logo{{.EventSettings.LogoSuffix}}.png" 
+          onerror="this.src='/static/img/blinds-logo.png'" alt="logo"/>
       </div>
       <div id="finalScoreCentering">
         <div id="finalScore">
@@ -272,5 +277,20 @@ Display shown on the audience screen overlayed over the video.
     <script src="/static/js/cheesy-websocket.js"></script>
     <script src="/static/js/match_timing.js"></script>
     <script src="/static/js/audience_display.js"></script>
+    <script>
+    document.addEventListener("dblclick", () => {
+      const url = new URL(window.location.href);
+      const reversed = url.searchParams.get("reversed");
+
+      // Flip the value
+      const newValue = reversed === "true" ? "false" : "true";
+
+      // Set the new value in the URL
+      url.searchParams.set("reversed", newValue);
+
+      // Reload the page with updated URL
+      window.location.href = url.toString();
+    });
+  </script>
   </body>
 </html>

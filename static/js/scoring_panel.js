@@ -99,7 +99,12 @@ const handleMatchTime = function (data) {
       editingAuto = false;
       committed = false;
       break;
-    case "TELEOP_PERIOD":
+    case "TRANSITION_PERIOD":
+    case "SHIFT1_PERIOD":
+    case "SHIFT2_PERIOD":
+    case "SHIFT3_PERIOD":
+    case "SHIFT4_PERIOD":
+    case "ENDGAME_PERIOD":
       scoringAvailable = true;
       commitAvailable = false;
       inTeleop = true;

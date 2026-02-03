@@ -39,54 +39,60 @@ var (
 )
 
 type EventSettings struct {
-	Id                          int `db:"id"`
-	Name                        string
-	PlayoffType                 PlayoffType
-	NumPlayoffAlliances         int
-	SelectionRound2Order        string
-	SelectionRound3Order        string
-	SelectionShowUnpickedTeams  bool
-	TbaDownloadEnabled          bool
-	TbaPublishingEnabled        bool
-	TbaEventCode                string
-	TbaSecretId                 string
-	TbaSecret                   string
-	NexusEnabled                bool
-	NetworkSecurityEnabled      bool
-	ApAddress                   string
-	ApPassword                  string
-	ApChannel                   int
-	SwitchAddress               string
-	SwitchPassword              string
-	SCCManagementEnabled        bool
-	RedSCCAddress               string
-	BlueSCCAddress              string
-	SCCUsername                 string
-	SCCPassword                 string
-	SCCUpCommands               string
-	SCCDownCommands             string
-	PlcAddress                  string
-	AdminPassword               string
-	TeamSignRed1Id              int
-	TeamSignRed2Id              int
-	TeamSignRed3Id              int
-	TeamSignRedTimerId          int
-	TeamSignBlue1Id             int
-	TeamSignBlue2Id             int
-	TeamSignBlue3Id             int
-	TeamSignBlueTimerId         int
-	UseLiteUdpPort              bool
-	BlackmagicAddresses         string
-	WarmupDurationSec           int
-	AutoDurationSec             int
-	PauseDurationSec            int
-	TeleopDurationSec           int
-	WarningRemainingDurationSec int
-	AutoBonusCoralThreshold     int
-	CoralBonusPerLevelThreshold int
-	CoralBonusCoopEnabled       bool
-	BargeBonusPointThreshold    int
-	IncludeAlgaeInBargeBonus    bool
+	Id                              int `db:"id"`
+	Name                            string
+	LogoSuffix                      string
+	PlayoffType                     PlayoffType
+	NumPlayoffAlliances             int
+	SelectionRound2Order            string
+	SelectionRound3Order            string
+	SelectionShowUnpickedTeams      bool
+	TbaDownloadEnabled              bool
+	TbaPublishingEnabled            bool
+	TbaEventCode                    string
+	TbaSecretId                     string
+	TbaSecret                       string
+	NexusEnabled                    bool
+	NetworkSecurityEnabled          bool
+	ApAddress                       string
+	ApPassword                      string
+	ApChannel                       int
+	SwitchAddress                   string
+	SwitchPassword                  string
+	SCCManagementEnabled            bool
+	RedSCCAddress                   string
+	BlueSCCAddress                  string
+	SCCUsername                     string
+	SCCPassword                     string
+	SCCUpCommands                   string
+	SCCDownCommands                 string
+	PlcAddress                      string
+	AlternateIOEnabled              bool
+	ScoreTableEstopAddress          string
+	RedAllianceStationEstopAddress  string
+	BlueAllianceStationEstopAddress string
+	RedHubAddress                   string
+	BlueHubAddress                  string
+	AdminPassword                   string
+	TeamSignRed1Id                  int
+	TeamSignRed2Id                  int
+	TeamSignRed3Id                  int
+	TeamSignRedTimerId              int
+	TeamSignBlue1Id                 int
+	TeamSignBlue2Id                 int
+	TeamSignBlue3Id                 int
+	TeamSignBlueTimerId             int
+	UseLiteUdpPort                  bool
+	BlackmagicAddresses             string
+	WarmupDurationSec               int
+	AutoDurationSec                 int
+	TransitionShiftDurationSec      int
+	AllianceShiftDurationSec        int
+	EndGameDurationSec              int
+	FirstShiftAlliance       string
+	BargeBonusPointThreshold int
+	FlashDSEnabled                  bool
+	IncludeAlgaeInBargeBonus        bool
 }
 
 func (database *Database) GetEventSettings() (*EventSettings, error) {
@@ -101,6 +107,7 @@ func (database *Database) GetEventSettings() (*EventSettings, error) {
 	// Database record doesn't exist yet; create it now.
 	eventSettings := EventSettings{
 		Name:                        "Untitled Event",
+		LogoSuffix:                  "",
 		PlayoffType:                 DoubleEliminationPlayoff,
 		NumPlayoffAlliances:         8,
 		SelectionRound2Order:        "L",
@@ -108,17 +115,16 @@ func (database *Database) GetEventSettings() (*EventSettings, error) {
 		SelectionShowUnpickedTeams:  true,
 		TbaDownloadEnabled:          true,
 		ApChannel:                   36,
+		AlternateIOEnabled:          false,
 		SCCUpCommands:               strings.Join(sccDefaultUpCommands, "\n"),
 		SCCDownCommands:             strings.Join(sccDefaultDownCommands, "\n"),
 		WarmupDurationSec:           game.MatchTiming.WarmupDurationSec,
 		AutoDurationSec:             game.MatchTiming.AutoDurationSec,
-		PauseDurationSec:            game.MatchTiming.PauseDurationSec,
-		TeleopDurationSec:           game.MatchTiming.TeleopDurationSec,
-		WarningRemainingDurationSec: game.MatchTiming.WarningRemainingDurationSec,
-		AutoBonusCoralThreshold:     game.AutoBonusCoralThreshold,
-		CoralBonusPerLevelThreshold: game.CoralBonusPerLevelThreshold,
-		CoralBonusCoopEnabled:       game.CoralBonusCoopEnabled,
-		BargeBonusPointThreshold:    game.BargeBonusPointThreshold,
+		TransitionShiftDurationSec:  game.MatchTiming.TransitionShiftDurationSec,
+		AllianceShiftDurationSec:    game.MatchTiming.AllianceShiftDurationSec,
+		EndGameDurationSec:          game.MatchTiming.EndGameDurationSec,
+		FirstShiftAlliance:       "blue",
+		BargeBonusPointThreshold: game.BargeBonusPointThreshold,
 		IncludeAlgaeInBargeBonus:    game.IncludeAlgaeInBargeBonus,
 	}
 
