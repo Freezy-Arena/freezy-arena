@@ -6,15 +6,14 @@
 package web
 
 import (
-	"github.com/Team254/cheesy-arena/game"
-	//"github.com/Team254/cheesy-arena/model"
 	"encoding/json"
-	//"log"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Team254/cheesy-arena/field"
+	"github.com/Team254/cheesy-arena/game"
 )
 
 // RequestPayload represents the structure of the incoming POST data.
@@ -363,8 +362,9 @@ func (web *Web) teamHubStateGetHandler(w http.ResponseWriter, r *http.Request) {
 
 // HubBatteryPayload represents the structure of the incoming POST data for hub battery status.
 type HubBatteryPayload struct {
-	Voltage float64 `json:"voltage"`
-	Percent float64 `json:"percent"`
+	Voltage   float64 `json:"voltage"`
+	Percent   float64 `json:"percent"`
+	FuelCount int     `json:"fuelCount"`
 }
 
 // POST /api/freezy/hub_status
@@ -397,6 +397,39 @@ func (web *Web) teamHubStatusPostHandler(w http.ResponseWriter, r *http.Request)
 	case "blue", "b":
 		web.arena.Esp32.SetBlueHubBattery(payload.Voltage, payload.Percent)
 		web.arena.Esp32.UpdateBlueHubLastSeen()
+	}
+
+	// Handle FuelCount if provided
+	if payload.FuelCount > 0 {
+		// Determine if the hub is active for this alliance or within 3s grace period after endgame
+		isRed := alliance == "red" || alliance == "r"
+		canAcceptFuel := false
+
+		// Check if hub is currently active during match
+		if isRed && (web.arena.HubsActive&field.RedAllianceHubBit != 0) {
+			canAcceptFuel = true
+		} else if !isRed && (web.arena.HubsActive&field.BlueAllianceHubBit != 0) {
+			canAcceptFuel = true
+		}
+
+		// Check for 3-second grace period after endgame (PostMatch state)
+		if web.arena.MatchState == field.PostMatch {
+			timeSinceMatchStart := time.Since(web.arena.MatchStartTime).Seconds()
+			matchEndTime := game.GetDurationToTeleopEnd().Seconds()
+			if timeSinceMatchStart <= matchEndTime+3 {
+				canAcceptFuel = true
+			}
+		}
+
+		// Add fuel to the appropriate alliance's score if allowed
+		if canAcceptFuel {
+			if isRed {
+				web.arena.RedRealtimeScore.CurrentScore.Fuel += payload.FuelCount
+			} else {
+				web.arena.BlueRealtimeScore.CurrentScore.Fuel += payload.FuelCount
+			}
+			web.arena.RealtimeScoreNotifier.Notify()
+		}
 	}
 
 	// Notify arena status subscribers of the update
@@ -447,16 +480,10 @@ func (web *Web) incrementElementPostHandler(w http.ResponseWriter, r *http.Reque
 
     // Increment the requested element counter. Add cases as needed.
     switch p.Element {
-    case "ProcessorAlgae":
-        scorePtr.CurrentScore.ProcessorAlgae++
-		web.arena.RealtimeScoreNotifier.Notify()
-        //writeJsonOK(w, map[string]interface{}{"ok": true, "element": p.Element, "value": scorePtr.CurrentScore.ProcessorAlgae})
-        return
-    case "Barge":
-        scorePtr.CurrentScore.BargeAlgae++
+    case "Fuel":
+        scorePtr.CurrentScore.Fuel++
         web.arena.RealtimeScoreNotifier.Notify()
-        //writeJsonOK(w, map[string]interface{}{"ok": true, "element": p.Element, "value": scorePtr.CurrentScore.BargeAlgae})
-		return
+        return
     default:
         http.Error(w, "Unknown element", http.StatusBadRequest)
         return

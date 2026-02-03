@@ -393,30 +393,20 @@ func TestEStopStatePostHandler_InvalidPayload(t *testing.T) {
 	assert.Equal(t, 400, recorder.Code)
 }
 
-func TestIncrementElementPostHandler_ProcessorAlgae(t *testing.T) {
+func TestIncrementElementPostHandler_Fuel(t *testing.T) {
 	web := setupTestWeb(t)
 
-	initialCount := web.arena.RedRealtimeScore.CurrentScore.ProcessorAlgae
-	body := `{"alliance": "red", "element": "ProcessorAlgae"}`
+	initialCount := web.arena.RedRealtimeScore.CurrentScore.Fuel
+	body := `{"alliance": "red", "element": "Fuel"}`
 	recorder := web.postJsonHttpResponse("/freezy/alternateio/increment", body)
 	assert.Equal(t, 200, recorder.Code)
-	assert.Equal(t, initialCount+1, web.arena.RedRealtimeScore.CurrentScore.ProcessorAlgae)
-}
-
-func TestIncrementElementPostHandler_Barge(t *testing.T) {
-	web := setupTestWeb(t)
-
-	initialCount := web.arena.BlueRealtimeScore.CurrentScore.BargeAlgae
-	body := `{"alliance": "blue", "element": "Barge"}`
-	recorder := web.postJsonHttpResponse("/freezy/alternateio/increment", body)
-	assert.Equal(t, 200, recorder.Code)
-	assert.Equal(t, initialCount+1, web.arena.BlueRealtimeScore.CurrentScore.BargeAlgae)
+	assert.Equal(t, initialCount+1, web.arena.RedRealtimeScore.CurrentScore.Fuel)
 }
 
 func TestIncrementElementPostHandler_InvalidAlliance(t *testing.T) {
 	web := setupTestWeb(t)
 
-	body := `{"alliance": "green", "element": "ProcessorAlgae"}`
+	body := `{"alliance": "green", "element": "Fuel"}`
 	recorder := web.postJsonHttpResponse("/freezy/alternateio/increment", body)
 	assert.Equal(t, 400, recorder.Code)
 	assert.Contains(t, recorder.Body.String(), "Unknown alliance")
@@ -435,18 +425,18 @@ func TestIncrementElementPostHandler_AllianceVariants(t *testing.T) {
 	web := setupTestWeb(t)
 
 	// Test "r" variant for red
-	initialCount := web.arena.RedRealtimeScore.CurrentScore.ProcessorAlgae
-	body := `{"alliance": "r", "element": "ProcessorAlgae"}`
+	initialCount := web.arena.RedRealtimeScore.CurrentScore.Fuel
+	body := `{"alliance": "r", "element": "Fuel"}`
 	recorder := web.postJsonHttpResponse("/freezy/alternateio/increment", body)
 	assert.Equal(t, 200, recorder.Code)
-	assert.Equal(t, initialCount+1, web.arena.RedRealtimeScore.CurrentScore.ProcessorAlgae)
+	assert.Equal(t, initialCount+1, web.arena.RedRealtimeScore.CurrentScore.Fuel)
 
 	// Test "b" variant for blue
-	initialCount = web.arena.BlueRealtimeScore.CurrentScore.ProcessorAlgae
-	body = `{"alliance": "b", "element": "ProcessorAlgae"}`
+	initialCount = web.arena.BlueRealtimeScore.CurrentScore.Fuel
+	body = `{"alliance": "b", "element": "Fuel"}`
 	recorder = web.postJsonHttpResponse("/freezy/alternateio/increment", body)
 	assert.Equal(t, 200, recorder.Code)
-	assert.Equal(t, initialCount+1, web.arena.BlueRealtimeScore.CurrentScore.ProcessorAlgae)
+	assert.Equal(t, initialCount+1, web.arena.BlueRealtimeScore.CurrentScore.Fuel)
 }
 
 func TestIncrementElementPostHandler_InvalidPayload(t *testing.T) {

@@ -6,25 +6,18 @@
 package game
 
 type ScoreSummary struct {
-	LeavePoints             int
-	AutoPoints              int
-	NumCoral                int
-	CoralPoints             int
-	NumAlgae                int
-	AlgaePoints             int
-	BargePoints             int
-	MatchPoints             int
-	FoulPoints              int
-	Score                   int
-	CoopertitionCriteriaMet bool
-	CoopertitionBonus       bool
-	NumCoralLevels          int
-	NumCoralLevelsGoal      int
-	AutoBonusRankingPoint   bool
-	CoralBonusRankingPoint  bool
-	BargeBonusRankingPoint  bool
-	BonusRankingPoints      int
-	NumOpponentMajorFouls   int
+	LeavePoints           int
+	AutoPoints            int
+	FuelCount             int
+	FuelPoints            int
+	BargePoints           int
+	MatchPoints           int
+	FoulPoints            int
+	Score                 int
+	AutoBonusRankingPoint bool
+	BargeBonusRankingPoint bool
+	BonusRankingPoints    int
+	NumOpponentMajorFouls int
 }
 
 type MatchStatus int

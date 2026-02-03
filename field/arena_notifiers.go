@@ -122,6 +122,7 @@ func (arena *Arena) generateArenaStatusMessage() any {
 		RedHubBatteryPercent   float64
 		BlueHubBatteryVoltage  float64
 		BlueHubBatteryPercent  float64
+		HubsActive             int
 	}{
 		arena.CurrentMatch.Id,
 		arena.AllianceStations,
@@ -153,6 +154,7 @@ func (arena *Arena) generateArenaStatusMessage() any {
 		arena.Esp32.GetRedHubBatteryPercent(),
 		arena.Esp32.GetBlueHubBatteryVoltage(),
 		arena.Esp32.GetBlueHubBatteryPercent(),
+		arena.HubsActive,
 	}
 }
 
@@ -352,7 +354,6 @@ func (arena *Arena) GenerateScorePostedMessage() any {
 		BlueWins            int
 		RedDestination      string
 		BlueDestination     string
-		CoopertitionEnabled bool
 	}{
 		arena.SavedMatch,
 		redScoreSummary,
@@ -374,7 +375,6 @@ func (arena *Arena) GenerateScorePostedMessage() any {
 		blueWins,
 		redDestination,
 		blueDestination,
-		game.CoralBonusCoopEnabled,
 	}
 }
 

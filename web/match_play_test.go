@@ -127,10 +127,11 @@ func TestCommitTiebreak(t *testing.T) {
 		MatchId: match.Id,
 		// These should all be fields that aren't part of the tiebreaker.
 		RedScore: &game.Score{
-			Reef:  game.Reef{TroughFar: 1},
-			Fouls: []game.Foul{{IsMajor: false}, {IsMajor: false}},
+			Fuel:  1,
+			Fouls: []game.Foul{{IsMajor: false}},
 		},
 		BlueScore: &game.Score{
+			Fuel:  1,
 			Fouls: []game.Foul{{IsMajor: false}},
 		},
 	}
@@ -156,7 +157,11 @@ func TestCommitTiebreak(t *testing.T) {
 	assert.Equal(t, game.TieMatch, match.Status)
 
 	// Change the score to still be equal nominally but trigger the tiebreaker criteria.
-	matchResult.BlueScore.ProcessorAlgae = 1
+	// Red has 4 minors (8 points to Blue), Blue has 1 major + 1 minor (8 points to Red)
+	// Blue has more majors (1 vs 0), so Red wins tiebreaker
+	matchResult.BlueScore.Fuel = 2
+	matchResult.RedScore.Fuel = 2
+	matchResult.RedScore.Fouls = []game.Foul{{IsMajor: false}, {IsMajor: false}, {IsMajor: false}, {IsMajor: false}}
 	matchResult.BlueScore.Fouls = []game.Foul{{IsMajor: false}, {IsMajor: true}}
 
 	// Sanity check that the test scores are equal; they will need to be updated accordingly for each new game.
@@ -335,11 +340,11 @@ func TestMatchPlayWebsocketCommands(t *testing.T) {
 	ws.Write("abortMatch", nil)
 	readWebsocketType(t, ws, "audienceDisplayMode")
 	assert.Equal(t, field.PostMatch, web.arena.MatchState)
-	web.arena.RedRealtimeScore.CurrentScore.BargeAlgae = 6
+	web.arena.RedRealtimeScore.CurrentScore.Fuel = 6
 	web.arena.BlueRealtimeScore.CurrentScore.LeaveStatuses = [3]bool{true, false, true}
 	ws.Write("commitResults", nil)
 	readWebsocketMultiple(t, ws, 5) // scorePosted, matchLoad, realtimeScore, allianceStationDisplayMode, scoringStatus
-	assert.Equal(t, 6, web.arena.SavedMatchResult.RedScore.BargeAlgae)
+	assert.Equal(t, 6, web.arena.SavedMatchResult.RedScore.Fuel)
 	assert.Equal(t, [3]bool{true, false, true}, web.arena.SavedMatchResult.BlueScore.LeaveStatuses)
 	assert.Equal(t, field.PreMatch, web.arena.MatchState)
 	ws.Write("discardResults", nil)
