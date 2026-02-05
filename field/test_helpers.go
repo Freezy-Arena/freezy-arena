@@ -6,12 +6,13 @@
 package field
 
 import (
-	"github.com/Team254/cheesy-arena/game"
-	"github.com/Team254/cheesy-arena/model"
-	"github.com/stretchr/testify/assert"
 	"math/rand"
 	"path/filepath"
 	"testing"
+
+	"github.com/Team254/cheesy-arena/game"
+	"github.com/Team254/cheesy-arena/model"
+	"github.com/stretchr/testify/assert"
 )
 
 func SetupTestArena(t *testing.T) *Arena {
@@ -31,6 +32,6 @@ func SetupTestArena(t *testing.T) *Arena {
 
 func setupTestArena(t *testing.T) *Arena {
 	game.MatchTiming.WarmupDurationSec = 3
-	game.MatchTiming.PauseDurationSec = 2
+	game.MatchTiming.TransitionShiftDurationSec = 2
 	return SetupTestArena(t)
 }

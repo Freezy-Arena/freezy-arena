@@ -12,27 +12,41 @@ const (
 )
 
 var MatchTiming = struct {
-	WarmupDurationSec           int
-	AutoDurationSec             int
-	PauseDurationSec            int
-	TeleopDurationSec           int
-	WarningRemainingDurationSec int
-	TimeoutDurationSec          int
-}{0, 15, 3, 135, 20, 0}
+	WarmupDurationSec          int
+	AutoDurationSec            int
+	PauseDurationSec           int
+	TransitionShiftDurationSec int
+	AllianceShiftDurationSec   int
+	EndGameDurationSec         int
+	TimeoutDurationSec         int
+}{0, 20, 3, 10, 25, 30, 0}
 
 func GetDurationToAutoEnd() time.Duration {
 	return time.Duration(MatchTiming.WarmupDurationSec+MatchTiming.AutoDurationSec) * time.Second
 }
 
-func GetDurationToTeleopStart() time.Duration {
+func GetDurationToPauseEnd() time.Duration {
 	return time.Duration(
 		MatchTiming.WarmupDurationSec+MatchTiming.AutoDurationSec+MatchTiming.PauseDurationSec,
 	) * time.Second
 }
 
+func GetDurationToShift1Start() time.Duration {
+	return time.Duration(
+		MatchTiming.WarmupDurationSec+MatchTiming.AutoDurationSec+MatchTiming.PauseDurationSec+MatchTiming.TransitionShiftDurationSec,
+	) * time.Second
+}
+
+// There are 1-4 shifts
+func GetDurationToShiftEnd(shift int) time.Duration {
+	return time.Duration(
+		MatchTiming.WarmupDurationSec+MatchTiming.AutoDurationSec+MatchTiming.PauseDurationSec+MatchTiming.TransitionShiftDurationSec+(MatchTiming.AllianceShiftDurationSec*shift),
+	) * time.Second
+}
+
 func GetDurationToTeleopEnd() time.Duration {
 	return time.Duration(
-		MatchTiming.WarmupDurationSec+MatchTiming.AutoDurationSec+MatchTiming.PauseDurationSec+
-			MatchTiming.TeleopDurationSec,
+		MatchTiming.WarmupDurationSec+MatchTiming.AutoDurationSec+MatchTiming.PauseDurationSec+MatchTiming.TransitionShiftDurationSec+
+			MatchTiming.AllianceShiftDurationSec*4+MatchTiming.EndGameDurationSec,
 	) * time.Second
 }

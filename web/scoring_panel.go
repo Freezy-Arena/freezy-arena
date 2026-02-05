@@ -81,7 +81,7 @@ func (web *Web) scoringPanelHandler(w http.ResponseWriter, r *http.Request) {
 	position := r.PathValue("position")
 	parameters, ok := positionParameters[position]
 	if !ok {
-		handleWebErr(w, fmt.Errorf("Invalid position '%s'.", position))
+		handleWebErr(w, fmt.Errorf("Invalid positionn '%s'.", position))
 		return
 	}
 
@@ -167,33 +167,6 @@ func (web *Web) scoringPanelWebsocketHandler(w http.ResponseWriter, r *http.Requ
 			}
 			web.arena.ScoringPanelRegistry.SetScoreCommitted(position, ws)
 			web.arena.ScoringStatusNotifier.Notify()
-		} else if command == "reef" {
-			args := struct {
-				ReefPosition int
-				ReefLevel    int
-				Current      bool
-				Autonomous   bool
-			}{}
-			err = mapstructure.Decode(data, &args)
-			if err != nil {
-				ws.WriteError(err.Error())
-				continue
-			}
-
-			if args.ReefPosition >= 1 && args.ReefPosition <= 12 && args.ReefLevel >= 2 && args.ReefLevel <= 4 {
-				level := game.Level(args.ReefLevel - 2)
-				reefIndex := args.ReefPosition - 1
-				if args.Current {
-					score.Reef.Branches[level][reefIndex] = !score.Reef.Branches[level][reefIndex]
-					scoreChanged = true
-				}
-				if args.Autonomous {
-					score.Reef.AutoBranches[level][reefIndex] = !score.Reef.AutoBranches[level][reefIndex]
-					scoreChanged = true
-				}
-				scoreChanged = true
-			}
-
 		} else if command == "endgame" {
 			args := struct {
 				TeamPosition  int
@@ -246,12 +219,9 @@ func (web *Web) scoringPanelWebsocketHandler(w http.ResponseWriter, r *http.Requ
 					append(web.arena.BlueRealtimeScore.CurrentScore.Fouls, foul)
 			}
 			web.arena.RealtimeScoreNotifier.Notify()
-		} else {
+		} else if command == "fuel" {
 			args := struct {
 				Adjustment int
-				Current    bool
-				Autonomous bool
-				NearSide   bool
 			}{}
 			err = mapstructure.Decode(data, &args)
 			if err != nil {
@@ -259,31 +229,8 @@ func (web *Web) scoringPanelWebsocketHandler(w http.ResponseWriter, r *http.Requ
 				continue
 			}
 
-			switch command {
-			case "barge":
-				score.BargeAlgae = max(0, score.BargeAlgae+args.Adjustment)
-				scoreChanged = true
-			case "processor":
-				score.ProcessorAlgae = max(0, score.ProcessorAlgae+args.Adjustment)
-				scoreChanged = true
-			case "trough":
-				if args.Current {
-					if args.NearSide {
-						score.Reef.TroughNear = max(0, score.Reef.TroughNear+args.Adjustment)
-					} else {
-						score.Reef.TroughFar = max(0, score.Reef.TroughFar+args.Adjustment)
-					}
-					scoreChanged = true
-				}
-				if args.Autonomous {
-					if args.NearSide {
-						score.Reef.AutoTroughNear = max(0, score.Reef.AutoTroughNear+args.Adjustment)
-					} else {
-						score.Reef.AutoTroughFar = max(0, score.Reef.AutoTroughFar+args.Adjustment)
-					}
-					scoreChanged = true
-				}
-			}
+			score.Fuel = max(0, score.Fuel+args.Adjustment)
+			scoreChanged = true
 		}
 
 		if scoreChanged {

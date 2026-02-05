@@ -7,7 +7,7 @@ UI for configuring event settings.
 {{define "title"}}Settings{{end}}
 {{define "body"}}
 <div class="row justify-content-center">
-  {{if .ErrorMessage}}
+  {{if .ErrorMessage}}`
   <div class="alert alert-danger alert-dismissible">
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     {{.ErrorMessage}}
@@ -56,6 +56,13 @@ UI for configuring event settings.
                   <input type="text" class="form-control" name="name" value="{{.Name}}" placeholder="{{.Name}}">
                 </div>
               </div>
+              <div>Logo Suffix</div>
+              <div class="row mb-3" >
+                <label class="col-lg-6 control-label">Enter suffix used to load alterntive Logo files</label>
+                <div class="col-lg-6">
+                  <input type="text" class="form-control" name="logosuffix" value="{{.LogoSuffix}}" placeholder="{{.LogoSuffix}}">
+                </div>
+              </div>
               <div class="row mb-3">
                 <label class="col-lg-6 control-label">Playoff Type</label>
                 <div class="col-lg-6">
@@ -64,7 +71,7 @@ UI for configuring event settings.
                       <input type="radio" name="playoffType" value="DoubleEliminationPlayoff"
                         onclick="updateNumPlayoffAlliances(true);"
                         {{if eq .PlayoffType 0}}checked{{end}}>
-                      Double-Elimination (8 alliances)
+                      Double-Elimination (3-8 alliances)
                     </label>
                   </div>
                   <div class="radio">
@@ -80,8 +87,7 @@ UI for configuring event settings.
               <div class="row mb-3">
                 <label class="col-lg-6 control-label">Number of Alliances</label>
                 <div class="col-lg-6">
-                  <input type="text" class="form-control" name="numPlayoffAlliances" value="{{.NumPlayoffAlliances}}"
-                    {{if eq .PlayoffType 0}}disabled{{end}}>
+                  <input type="text" class="form-control" name="numPlayoffAlliances" value="{{.NumPlayoffAlliances}}">
                 </div>
               </div>
               <div class="row mb-3">
@@ -199,57 +205,33 @@ UI for configuring event settings.
                 </div>
               </div>
               <div class="row mb-3">
-                <label class="col-lg-6 control-label">Pause Duration<br/>(seconds)</label>
+                <label class="col-lg-6 control-label">Transition Duration<br/>(seconds)</label>
                 <div class="col-lg-6">
-                  <input type="text" class="form-control" name="pauseDurationSec" value="{{.PauseDurationSec}}">
+                  <input type="text" class="form-control" name="transitionShiftDurationSec" value="{{.TransitionShiftDurationSec}}">
                 </div>
               </div>
               <div class="row mb-3">
-                <label class="col-lg-6 control-label">Teleoperated Period Duration<br/>(seconds)</label>
+                <label class="col-lg-6 control-label">Aliance Shift Period Duration<br/>(seconds)</label>
                 <div class="col-lg-6">
-                  <input type="text" class="form-control" name="teleopDurationSec" value="{{.TeleopDurationSec}}">
+                  <input type="text" class="form-control" name="allianceShiftDurationSec" value="{{.AllianceShiftDurationSec}}">
                 </div>
               </div>
               <div class="row mb-3">
-                <label class="col-lg-6 control-label">Warning Remaining Duration<br/>(seconds)</label>
+                <label class="col-lg-6 control-label">End Game Remaining Duration<br/>(seconds)</label>
                 <div class="col-lg-6">
-                  <input type="text" class="form-control" name="warningRemainingDurationSec"
-                    value="{{.WarningRemainingDurationSec}}">
+                  <input type="text" class="form-control" name="endGameDurationSec"
+                    value="{{.EndGameDurationSec}}">
                 </div>
               </div>
               <div class="row mb-3">
-                <label class="col-lg-6 control-label">Auto Bonus RP Coral Threshold</label>
+                <label class="col-lg-6 control-label">First Shift Alliance</label>
                 <div class="col-lg-6">
-                  <input type="text" class="form-control" id="autoBonusCoralThreshold" name="autoBonusCoralThreshold"
-                    value="{{.AutoBonusCoralThreshold}}">
-                </div>
-              </div>
-              <div class="row mb-3">
-                <label class="col-lg-6 control-label">Coopertition Bonus Enabled</label>
-                <div class="col-lg-1 checkbox">
-                  <input type="checkbox" id="coralBonusCoopEnabled"
-                    name="coralBonusCoopEnabled" {{if .CoralBonusCoopEnabled}} checked{{end}}>
-                </div>
-              </div>
-              <div class="row mb-3">
-                <label class="col-lg-6 control-label">Coral Bonus RP Per-Level Threshold</label>
-                <div class="col-lg-6">
-                  <input type="text" class="form-control" id="coralBonusPerLevelThreshold"
-                    name="coralBonusPerLevelThreshold" value="{{.CoralBonusPerLevelThreshold}}">
-                </div>
-              </div>
-              <div class="row mb-3">
-                <label class="col-lg-6 control-label">Barge Bonus RP Point Threshold</label>
-                <div class="col-lg-6">
-                  <input type="text" class="form-control" id="bargeBonusPointThreshold" name="bargeBonusPointThreshold"
-                    value="{{.BargeBonusPointThreshold}}">
-                </div>
-              </div>
-              <div class="row">
-                <label class="col-lg-6 control-label">Include Algae Points Towards Barge Bonus</label>
-                <div class="col-lg-1 checkbox">
-                  <input type="checkbox" id="includeAlgaeInBargeBonus"
-                    name="includeAlgaeInBargeBonus" {{if .IncludeAlgaeInBargeBonus}} checked{{end}}>
+                  <select class="form-control" name="firstShiftAlliance">
+                    <option value="blue"{{if eq .FirstShiftAlliance "blue"}} selected{{end}}>Blue</option>
+                    <option value="red"{{if eq .FirstShiftAlliance "red"}} selected{{end}}>Red</option>
+                    <option value="random"{{if eq .FirstShiftAlliance "random"}} selected{{end}}>Random</option>
+                    <option value="lowestScore"{{if eq .FirstShiftAlliance "lowestScore"}} selected{{end}}>Lowest Score</option>
+                  </select>
                 </div>
               </div>
             </fieldset>
@@ -362,6 +344,48 @@ UI for configuring event settings.
                 <label class="col-lg-6 control-label">PLC Address</label>
                 <div class="col-lg-6">
                   <input type="text" class="form-control" name="plcAddress" value="{{.PlcAddress}}" placeholder="10.0.100.40">
+                </div>
+              </div>
+            </fieldset>
+            <fieldset class="mb-4">
+                <legend>Alternate IO</legend>
+              <div class="row mb-3">
+                <label class="col-lg-8 control-label" for="alternateIOEnabled">
+                  Enable Alternate IO (IE: Raspberry Pi)
+                </label>
+                <div class="col-lg-1 checkbox">
+                  <input type="checkbox" id="alternateIOEnabled"
+                    name="alternateIOEnabled"{{if .AlternateIOEnabled}} checked{{end}}>
+                </div>
+              </div>
+              <div class="row mb-3">
+                <label class="col-lg-6 control-label">Score Table IO Address</label>
+                <div class="col-lg-6">
+                  <input type="text" class="form-control" name="ScoreTableEstopAddress" value="{{.ScoreTableEstopAddress}}">
+                </div>
+              </div>
+              <div class="row mb-3">
+                <label class="col-lg-6 control-label">Red Alliance IO Address</label>
+                <div class="col-lg-6">
+                  <input type="text" class="form-control" name="RedAllianceStationEstopAddress" value="{{.RedAllianceStationEstopAddress}}">
+                </div>
+              </div>
+              <div class="row mb-3">
+                <label class="col-lg-6 control-label">Blue Alliance IO Address</label>
+                <div class="col-lg-6">
+                  <input type="text" class="form-control" name="BlueAllianceStationEstopAddress" value="{{.BlueAllianceStationEstopAddress}}">
+                </div>
+              </div>
+              <div class="row mb-3">
+                <label class="col-lg-6 control-label">Red Hub IO Address</label>
+                <div class="col-lg-6">
+                  <input type="text" class="form-control" name="RedHubAddress" value="{{.RedHubAddress}}">
+                </div>
+              </div>
+              <div class="row mb-3">
+                <label class="col-lg-6 control-label">Blue Hub IO Address</label>
+                <div class="col-lg-6">
+                  <input type="text" class="form-control" name="BlueHubAddress" value="{{.BlueHubAddress}}">
                 </div>
               </div>
             </fieldset>
@@ -521,158 +545,14 @@ UI for configuring event settings.
               </div>
             </fieldset>
             <fieldset class="mb-4">
-              <legend>BitFocus Companion Integration</legend>
-              <p>
-                If you are using BitFocus Companion for automation, configure the server address/port and button locations (page/row/column)
-                for each event type to automatically trigger button presses during match events. Leave the server address blank to disable
-                the integration.
+              <legend>Alliance Station Enhancements</legend>
+              <p>Enable this setting to allow the driver station displays to flash orange to indiciate an e-stop, or solid orange
+                to indiciate an a-stop. When enabled, the driver station will only flash outside of the match. <b>Display reload required for changes to take effect.</b>
               </p>
-
               <div class="row mb-3">
-                <label class="col-lg-3 control-label">Server Address</label>
-                <div class="col-lg-3">
-                  <input type="text" class="form-control" name="companionAddress" value="{{.CompanionAddress}}" placeholder="">
-                </div>
-                <label class="col-lg-2 control-label">Port</label>
-                <div class="col-lg-2">
-                  <input type="number" class="form-control" name="companionPort" value="{{if .CompanionPort}}{{.CompanionPort}}{{end}}" placeholder="51234" min="0" max="65535">
-                </div>
-              </div>
-              <div class="row mb-3">
-                <div class="col-lg-12">
-                  <p class="text-muted small mb-0">
-                    <strong>Note:</strong> Enter the IP address and enable the TCP Listener in BitFocus Companion settings.
-                    The default TCP port is 51234. Leave address blank to disable Companion integration.
-                  </p>
-                </div>
-              </div>
-
-              <h5>Event Button Mappings</h5>
-              <p class="text-muted">Configure page/row/column coordinates for each event. <strong>Set Page to 0 to disable a specific event trigger.</strong>
-              Note: Companion uses 0 as a valid row/column number, so only the Page field is used to enable/disable events.</p>
-
-              <div class="row mb-2">
-                <div class="col-lg-3"><strong>Event</strong></div>
-                <div class="col-lg-2"><strong>Page</strong></div>
-                <div class="col-lg-2"><strong>Row</strong></div>
-                <div class="col-lg-2"><strong>Column</strong></div>
-              </div>
-
-
-              <div class="row mb-2">
-                <label class="col-lg-3 control-label">Match Preview</label>
-                <div class="col-lg-2">
-                  <input type="number" class="form-control form-control-sm" name="companionMatchPreviewPage" value="{{.CompanionMatchPreviewPage}}" min="0">
-                </div>
-                <div class="col-lg-2">
-                  <input type="number" class="form-control form-control-sm" name="companionMatchPreviewRow" value="{{.CompanionMatchPreviewRow}}" min="0">
-                </div>
-                <div class="col-lg-2">
-                  <input type="number" class="form-control form-control-sm" name="companionMatchPreviewColumn" value="{{.CompanionMatchPreviewColumn}}" min="0">
-                </div>
-              </div>
-
-              <div class="row mb-2">
-                <label class="col-lg-3 control-label">Show Overlay</label>
-                <div class="col-lg-2">
-                  <input type="number" class="form-control form-control-sm" name="companionSetAudiencePage" value="{{.CompanionSetAudiencePage}}" min="0">
-                </div>
-                <div class="col-lg-2">
-                  <input type="number" class="form-control form-control-sm" name="companionSetAudienceRow" value="{{.CompanionSetAudienceRow}}" min="0">
-                </div>
-                <div class="col-lg-2">
-                  <input type="number" class="form-control form-control-sm" name="companionSetAudienceColumn" value="{{.CompanionSetAudienceColumn}}" min="0">
-                </div>
-              </div>
-
-              <div class="row mb-2">
-                <label class="col-lg-3 control-label">Match Start</label>
-                <div class="col-lg-2">
-                  <input type="number" class="form-control form-control-sm" name="companionMatchStartPage" value="{{.CompanionMatchStartPage}}" min="0">
-                </div>
-                <div class="col-lg-2">
-                  <input type="number" class="form-control form-control-sm" name="companionMatchStartRow" value="{{.CompanionMatchStartRow}}" min="0">
-                </div>
-                <div class="col-lg-2">
-                  <input type="number" class="form-control form-control-sm" name="companionMatchStartColumn" value="{{.CompanionMatchStartColumn}}" min="0">
-                </div>
-              </div>
-
-              <div class="row mb-2">
-                <label class="col-lg-3 control-label">Teleop Start</label>
-                <div class="col-lg-2">
-                  <input type="number" class="form-control form-control-sm" name="companionTeleopStartPage" value="{{.CompanionTeleopStartPage}}" min="0">
-                </div>
-                <div class="col-lg-2">
-                  <input type="number" class="form-control form-control-sm" name="companionTeleopStartRow" value="{{.CompanionTeleopStartRow}}" min="0">
-                </div>
-                <div class="col-lg-2">
-                  <input type="number" class="form-control form-control-sm" name="companionTeleopStartColumn" value="{{.CompanionTeleopStartColumn}}" min="0">
-                </div>
-              </div>
-
-              <div class="row mb-2">
-                <label class="col-lg-3 control-label">Endgame Start</label>
-                <div class="col-lg-2">
-                  <input type="number" class="form-control form-control-sm" name="companionEndgameStartPage" value="{{.CompanionEndgameStartPage}}" min="0">
-                </div>
-                <div class="col-lg-2">
-                  <input type="number" class="form-control form-control-sm" name="companionEndgameStartRow" value="{{.CompanionEndgameStartRow}}" min="0">
-                </div>
-                <div class="col-lg-2">
-                  <input type="number" class="form-control form-control-sm" name="companionEndgameStartColumn" value="{{.CompanionEndgameStartColumn}}" min="0">
-                </div>
-              </div>
-
-              <div class="row mb-2">
-                <label class="col-lg-3 control-label">Match End</label>
-                <div class="col-lg-2">
-                  <input type="number" class="form-control form-control-sm" name="companionMatchEndPage" value="{{.CompanionMatchEndPage}}" min="0">
-                </div>
-                <div class="col-lg-2">
-                  <input type="number" class="form-control form-control-sm" name="companionMatchEndRow" value="{{.CompanionMatchEndRow}}" min="0">
-                </div>
-                <div class="col-lg-2">
-                  <input type="number" class="form-control form-control-sm" name="companionMatchEndColumn" value="{{.CompanionMatchEndColumn}}" min="0">
-                </div>
-              </div>
-
-              <div class="row mb-2">
-                <label class="col-lg-3 control-label">Match Abort</label>
-                <div class="col-lg-2">
-                  <input type="number" class="form-control form-control-sm" name="companionMatchAbortPage" value="{{.CompanionMatchAbortPage}}" min="0">
-                </div>
-                <div class="col-lg-2">
-                  <input type="number" class="form-control form-control-sm" name="companionMatchAbortRow" value="{{.CompanionMatchAbortRow}}" min="0">
-                </div>
-                <div class="col-lg-2">
-                  <input type="number" class="form-control form-control-sm" name="companionMatchAbortColumn" value="{{.CompanionMatchAbortColumn}}" min="0">
-                </div>
-              </div>
-
-              <div class="row mb-2">
-                <label class="col-lg-3 control-label">Show Final Score</label>
-                <div class="col-lg-2">
-                  <input type="number" class="form-control form-control-sm" name="companionPostResultPage" value="{{.CompanionPostResultPage}}" min="0">
-                </div>
-                <div class="col-lg-2">
-                  <input type="number" class="form-control form-control-sm" name="companionPostResultRow" value="{{.CompanionPostResultRow}}" min="0">
-                </div>
-                <div class="col-lg-2">
-                  <input type="number" class="form-control form-control-sm" name="companionPostResultColumn" value="{{.CompanionPostResultColumn}}" min="0">
-                </div>
-              </div>
-
-              <div class="row mb-2">
-                <label class="col-lg-3 control-label">Alliance Selection</label>
-                <div class="col-lg-2">
-                  <input type="number" class="form-control form-control-sm" name="companionAllianceSelectionPage" value="{{.CompanionAllianceSelectionPage}}" min="0">
-                </div>
-                <div class="col-lg-2">
-                  <input type="number" class="form-control form-control-sm" name="companionAllianceSelectionRow" value="{{.CompanionAllianceSelectionRow}}" min="0">
-                </div>
-                <div class="col-lg-2">
-                  <input type="number" class="form-control form-control-sm" name="companionAllianceSelectionColumn" value="{{.CompanionAllianceSelectionColumn}}" min="0">
+                <label class="col-lg-6 control-label">Enable DS E/A Stop Alerting</label>
+                <div class="col-lg-1 checkbox">
+                  <input type="checkbox" name="flashDSEnabled" {{if .FlashDSEnabled}}checked{{end}}>
                 </div>
               </div>
             </fieldset>
@@ -772,10 +652,7 @@ UI for configuring event settings.
 <script>
   updateNumPlayoffAlliances = function (isDoubleElimination) {
     const numPlayoffAlliances = $("input[name=numPlayoffAlliances]");
-    numPlayoffAlliances.prop("disabled", isDoubleElimination);
-    if (isDoubleElimination) {
-      numPlayoffAlliances.val(8);
-    }
+ 
   };
 
   // Handle initial tab selection based on URL fragment.

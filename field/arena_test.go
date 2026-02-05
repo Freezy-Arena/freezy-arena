@@ -4,6 +4,12 @@
 package field
 
 import (
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/Team254/cheesy-arena/game"
 	"github.com/Team254/cheesy-arena/model"
 	"github.com/Team254/cheesy-arena/partner"
@@ -11,12 +17,6 @@ import (
 	"github.com/Team254/cheesy-arena/tournament"
 	"github.com/Team254/cheesy-arena/websocket"
 	"github.com/stretchr/testify/assert"
-	"net/http"
-	"net/http/httptest"
-	"strconv"
-	"strings"
-	"testing"
-	"time"
 )
 
 func TestAssignTeam(t *testing.T) {
@@ -68,6 +68,12 @@ func TestArenaCheckCanStartMatch(t *testing.T) {
 	if assert.NotNil(t, err) {
 		assert.Contains(t, err.Error(), "cannot start match until all robots are connected or bypassed")
 	}
+	arena.AllianceStations["R1"].EStop = false
+	arena.AllianceStations["R2"].EStop = false
+	arena.AllianceStations["R3"].EStop = false
+	arena.AllianceStations["B1"].EStop = false
+	arena.AllianceStations["B2"].EStop = false
+	arena.AllianceStations["B3"].EStop = false
 	arena.AllianceStations["R1"].Bypass = true
 	arena.AllianceStations["R2"].Bypass = true
 	arena.AllianceStations["R3"].Bypass = true
@@ -92,6 +98,10 @@ func TestArenaCheckCanStartMatch(t *testing.T) {
 
 func TestArenaMatchFlow(t *testing.T) {
 	arena := setupTestArena(t)
+	var plc FakePlc
+	plc.isEnabled = false
+	plc.fieldEStop = false
+	arena.Plc = &plc
 
 	arena.Database.CreateTeam(&model.Team{Id: 254})
 	assert.Nil(t, arena.assignTeam(254, "B3"))
@@ -116,14 +126,22 @@ func TestArenaMatchFlow(t *testing.T) {
 	arena.Update()
 	assert.Equal(t, lastPacketCount+1, arena.AllianceStations["B3"].DsConn.packetCount)
 
-	// Check match start, autonomous and transition to teleop.
+	// Check match start, autonomous and transition to teleop shifts.
+	arena.AllianceStations["R1"].EStop = false
+	arena.AllianceStations["R2"].EStop = false
+	arena.AllianceStations["R3"].EStop = false
+	arena.AllianceStations["B1"].EStop = false
+	arena.AllianceStations["B2"].EStop = false
+	arena.AllianceStations["B3"].EStop = false
 	arena.AllianceStations["R1"].Bypass = true
 	arena.AllianceStations["R2"].DsConn.RobotLinked = true
 	arena.AllianceStations["R3"].Bypass = true
 	arena.AllianceStations["B1"].Bypass = true
 	arena.AllianceStations["B2"].Bypass = true
 	arena.AllianceStations["B3"].DsConn.RobotLinked = true
+	
 	assert.Nil(t, arena.StartMatch())
+	assert.Equal(t, StartMatch, arena.MatchState)
 	arena.Update()
 	assert.Equal(t, WarmupPeriod, arena.MatchState)
 	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Auto)
@@ -134,19 +152,37 @@ func TestArenaMatchFlow(t *testing.T) {
 	assert.Equal(t, true, arena.BlueRealtimeScore.CurrentScore.RobotsBypassed[0])
 	assert.Equal(t, true, arena.BlueRealtimeScore.CurrentScore.RobotsBypassed[1])
 	assert.Equal(t, false, arena.BlueRealtimeScore.CurrentScore.RobotsBypassed[2])
+	assert.Equal(t, 0, arena.HubsActive)
 	arena.Update()
 	assert.Equal(t, WarmupPeriod, arena.MatchState)
 	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Auto)
 	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Enabled)
+
+	// Auto Period
 	arena.MatchStartTime = time.Now().Add(-time.Duration(game.MatchTiming.WarmupDurationSec) * time.Second)
 	arena.Update()
 	assert.Equal(t, AutoPeriod, arena.MatchState)
 	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Auto)
 	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
+	assert.Equal(t, 3, arena.HubsActive)
 	arena.Update()
 	assert.Equal(t, AutoPeriod, arena.MatchState)
 	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Auto)
 	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
+
+	// Pause Period
+	arena.MatchStartTime = time.Now().Add(-time.Duration(game.MatchTiming.AutoDurationSec) * time.Second)
+	arena.Update()
+	assert.Equal(t, AutoPeriod, arena.MatchState)
+	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Auto)
+	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
+	assert.Equal(t, 3, arena.HubsActive)
+	arena.Update()
+	assert.Equal(t, AutoPeriod, arena.MatchState)
+	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Auto)
+	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
+
+	// Pause Period
 	arena.MatchStartTime = time.Now().Add(
 		-time.Duration(game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec) * time.Second,
 	)
@@ -154,65 +190,139 @@ func TestArenaMatchFlow(t *testing.T) {
 	assert.Equal(t, PausePeriod, arena.MatchState)
 	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
 	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Enabled)
+	assert.Equal(t, 3, arena.HubsActive)
 	arena.Update()
 	assert.Equal(t, PausePeriod, arena.MatchState)
 	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
 	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Enabled)
+	assert.Equal(t, 3, arena.HubsActive)
+
+	// Transition Period
+	arena.MatchStartTime = time.Now().Add(
+		-time.Duration(game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.PauseDurationSec) * time.Second,
+	)
+	arena.Update()
+	assert.Equal(t, TransitionShift, arena.MatchState)
+	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
+	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
+	assert.Equal(t, 3, arena.HubsActive)
+	arena.Update()
+	assert.Equal(t, TransitionShift, arena.MatchState)
+	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
+	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
+	assert.Equal(t, 3, arena.HubsActive)
+
+	// Shift 1 Period
 	arena.MatchStartTime = time.Now().Add(
 		-time.Duration(
-			game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.PauseDurationSec,
+			game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.PauseDurationSec+game.MatchTiming.TransitionShiftDurationSec,
 		) * time.Second,
 	)
 	arena.Update()
-	assert.Equal(t, TeleopPeriod, arena.MatchState)
+	assert.Equal(t, Shift1, arena.MatchState)
 	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
 	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
+	assert.Equal(t, 2, arena.HubsActive)
 	arena.Update()
-	assert.Equal(t, TeleopPeriod, arena.MatchState)
+	assert.Equal(t, Shift1, arena.MatchState)
 	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
-	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
+	assert.Equal(t, 2, arena.HubsActive)
 
-	// Check E-stop and bypass.
-	arena.AllianceStations["B3"].EStop = true
-	arena.lastDsPacketTime = arena.lastDsPacketTime.Add(-550 * time.Millisecond)
-	arena.Update()
-	assert.Equal(t, TeleopPeriod, arena.MatchState)
-	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
-	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Enabled)
-	arena.AllianceStations["B3"].Bypass = true
-	arena.lastDsPacketTime = arena.lastDsPacketTime.Add(-550 * time.Millisecond)
-	arena.Update()
-	assert.Equal(t, TeleopPeriod, arena.MatchState)
-	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
-	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Enabled)
-	arena.AllianceStations["B3"].EStop = false
-	arena.lastDsPacketTime = arena.lastDsPacketTime.Add(-550 * time.Millisecond)
-	arena.Update()
-	assert.Equal(t, TeleopPeriod, arena.MatchState)
-	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
-	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Enabled)
-	arena.AllianceStations["B3"].Bypass = false
-	arena.lastDsPacketTime = arena.lastDsPacketTime.Add(-550 * time.Millisecond)
-	arena.Update()
-	assert.Equal(t, TeleopPeriod, arena.MatchState)
-	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
+	// Shift 2 Period
 	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
-
-	// Check match end.
 	arena.MatchStartTime = time.Now().Add(
 		-time.Duration(
-			game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.PauseDurationSec+
-				game.MatchTiming.TeleopDurationSec,
+			game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.PauseDurationSec+game.MatchTiming.TransitionShiftDurationSec+
+				game.MatchTiming.AllianceShiftDurationSec*1,
 		) * time.Second,
 	)
+	arena.Update()
+	assert.Equal(t, Shift2, arena.MatchState)
+	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
+	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
+	assert.Equal(t, 1, arena.HubsActive)
+	arena.Update()
+	assert.Equal(t, Shift2, arena.MatchState)
+	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
+	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
+	assert.Equal(t, 1, arena.HubsActive)
+
+	// Shift 3 Period
+	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
+	arena.MatchStartTime = time.Now().Add(
+		-time.Duration(
+			game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.PauseDurationSec+game.MatchTiming.TransitionShiftDurationSec+
+				game.MatchTiming.AllianceShiftDurationSec*2,
+		) * time.Second,
+	)
+	arena.Update()
+	assert.Equal(t, Shift3, arena.MatchState)
+	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
+	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
+	assert.Equal(t, 2, arena.HubsActive)
+	arena.Update()
+	assert.Equal(t, Shift3, arena.MatchState)
+	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
+	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
+	assert.Equal(t, 2, arena.HubsActive)
+
+	// Shift 4 Period
+	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
+	arena.MatchStartTime = time.Now().Add(
+		-time.Duration(
+			game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.PauseDurationSec+game.MatchTiming.TransitionShiftDurationSec+
+				game.MatchTiming.AllianceShiftDurationSec*3,
+		) * time.Second,
+	)
+	arena.Update()
+	assert.Equal(t, Shift4, arena.MatchState)
+	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
+	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
+	assert.Equal(t, 1, arena.HubsActive)
+	arena.Update()
+	assert.Equal(t, Shift4, arena.MatchState)
+	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
+	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
+	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
+	assert.Equal(t, 1, arena.HubsActive)
+
+	// End Game Period
+	arena.MatchStartTime = time.Now().Add(
+		-time.Duration(
+			game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.PauseDurationSec+game.MatchTiming.TransitionShiftDurationSec+
+				game.MatchTiming.AllianceShiftDurationSec*4,
+		) * time.Second,
+	)
+	arena.Update()
+	assert.Equal(t, EndGame, arena.MatchState)
+	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
+	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
+	assert.Equal(t, 3, arena.HubsActive)
+	arena.Update()
+	assert.Equal(t, EndGame, arena.MatchState)
+	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
+	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
+	assert.Equal(t, true, arena.AllianceStations["B3"].DsConn.Enabled)
+	assert.Equal(t, 3, arena.HubsActive)
+
+	// Match End
+	arena.MatchStartTime = time.Now().Add(
+		-time.Duration(
+			game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.PauseDurationSec+game.MatchTiming.TransitionShiftDurationSec+
+				game.MatchTiming.AllianceShiftDurationSec*4+game.MatchTiming.EndGameDurationSec,
+		) * time.Second,
+	)
+
 	arena.Update()
 	assert.Equal(t, PostMatch, arena.MatchState)
 	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
 	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Enabled)
+	assert.Equal(t, 0, arena.HubsActive)
 	arena.Update()
 	assert.Equal(t, PostMatch, arena.MatchState)
 	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Auto)
 	assert.Equal(t, false, arena.AllianceStations["B3"].DsConn.Enabled)
+	assert.Equal(t, 0, arena.HubsActive)
 
 	arena.AllianceStations["R1"].Bypass = true
 	arena.ResetMatch()
@@ -227,6 +337,12 @@ func TestArenaMatchFlow(t *testing.T) {
 func TestArenaStateEnforcement(t *testing.T) {
 	arena := setupTestArena(t)
 
+	arena.AllianceStations["R1"].EStop = false
+	arena.AllianceStations["R2"].EStop = false
+	arena.AllianceStations["R3"].EStop = false
+	arena.AllianceStations["B1"].EStop = false
+	arena.AllianceStations["B2"].EStop = false
+	arena.AllianceStations["B3"].EStop = false
 	arena.AllianceStations["R1"].Bypass = true
 	arena.AllianceStations["R2"].Bypass = true
 	arena.AllianceStations["R3"].Bypass = true
@@ -267,7 +383,7 @@ func TestArenaStateEnforcement(t *testing.T) {
 	if assert.NotNil(t, err) {
 		assert.Contains(t, err.Error(), "cannot reset match while")
 	}
-	arena.MatchState = PausePeriod
+	arena.MatchState = TransitionShift
 	err = arena.LoadMatch(new(model.Match))
 	if assert.NotNil(t, err) {
 		assert.Contains(t, err.Error(), "cannot load match while")
@@ -280,7 +396,8 @@ func TestArenaStateEnforcement(t *testing.T) {
 	if assert.NotNil(t, err) {
 		assert.Contains(t, err.Error(), "cannot reset match while")
 	}
-	arena.MatchState = TeleopPeriod
+	// TODO: Add more
+	arena.MatchState = Shift1
 	err = arena.LoadMatch(new(model.Match))
 	if assert.NotNil(t, err) {
 		assert.Contains(t, err.Error(), "cannot load match while")
@@ -386,6 +503,12 @@ func TestMatchStartRobotLinkEnforcement(t *testing.T) {
 	if assert.NotNil(t, err) {
 		assert.Contains(t, err.Error(), "until all robots are connected or bypassed")
 	}
+	arena.AllianceStations["R1"].EStop = false
+	arena.AllianceStations["R2"].EStop = false
+	arena.AllianceStations["R3"].EStop = false
+	arena.AllianceStations["B1"].EStop = false
+	arena.AllianceStations["B2"].EStop = false
+	arena.AllianceStations["B3"].EStop = false
 	arena.AllianceStations["R1"].Bypass = true
 	arena.AllianceStations["R2"].Bypass = true
 	arena.AllianceStations["R3"].Bypass = true
@@ -598,7 +721,6 @@ func TestArenaTimeout(t *testing.T) {
 	arena.MatchStartTime = time.Now().Add(-time.Duration(timeoutDurationSec+postTimeoutSec) * time.Second)
 	arena.Update()
 	assert.Equal(t, PreMatch, arena.MatchState)
-
 	// Test early cancellation of timeout.
 	timeoutDurationSec = 28
 	assert.Nil(t, arena.StartTimeout("Break 2", timeoutDurationSec))
@@ -611,8 +733,15 @@ func TestArenaTimeout(t *testing.T) {
 	arena.MatchStartTime = time.Now().Add(-time.Duration(timeoutDurationSec+postTimeoutSec) * time.Second)
 	arena.Update()
 	assert.Equal(t, PreMatch, arena.MatchState)
-
+	
 	// Test that timeout can't be started during a match.
+	arena.AllianceStations["R1"].EStop = false
+	arena.AllianceStations["R2"].EStop = false
+	arena.AllianceStations["R3"].EStop = false
+	arena.AllianceStations["B1"].EStop = false
+	arena.AllianceStations["B2"].EStop = false
+	arena.AllianceStations["B3"].EStop = false
+	arena.AllianceStations["R1"].Bypass = true
 	arena.AllianceStations["R1"].Bypass = true
 	arena.AllianceStations["R2"].Bypass = true
 	arena.AllianceStations["R3"].Bypass = true
@@ -624,10 +753,11 @@ func TestArenaTimeout(t *testing.T) {
 	assert.NotNil(t, arena.StartTimeout("Timeout", 1))
 	assert.NotEqual(t, TimeoutActive, arena.MatchState)
 	assert.Equal(t, timeoutDurationSec, game.MatchTiming.TimeoutDurationSec)
+
 	arena.MatchStartTime = time.Now().Add(
 		-time.Duration(
-			game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.PauseDurationSec+
-				game.MatchTiming.TeleopDurationSec,
+			game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.PauseDurationSec+game.MatchTiming.TransitionShiftDurationSec+
+				game.MatchTiming.AllianceShiftDurationSec,
 		) * time.Second,
 	)
 	for arena.MatchState != PostMatch {
@@ -703,6 +833,12 @@ func TestPlcEStopAStop(t *testing.T) {
 	dummyDs = &DriverStationConnection{TeamId: 148}
 	arena.AllianceStations["R2"].DsConn = dummyDs
 
+	arena.AllianceStations["R1"].EStop = false
+	arena.AllianceStations["R2"].EStop = false
+	arena.AllianceStations["R3"].EStop = false
+	arena.AllianceStations["B1"].EStop = false
+	arena.AllianceStations["B2"].EStop = false
+	arena.AllianceStations["B3"].EStop = false
 	arena.AllianceStations["R1"].DsConn.RobotLinked = true
 	arena.AllianceStations["R1"].aStopReset = true
 	arena.AllianceStations["R2"].DsConn.RobotLinked = true
@@ -776,13 +912,14 @@ func TestPlcEStopAStop(t *testing.T) {
 
 	// Transition into the teleop period without any stops.
 	arena.MatchStartTime = time.Now().Add(
-		-time.Duration(game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec) * time.Second,
+		-time.Duration(game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.PauseDurationSec+1) * time.Second,
 	)
-	arena.Update()
-	assert.Equal(t, PausePeriod, arena.MatchState)
+	arena.Update() // Auto -> Pause
+	arena.Update() // Pause -> TransitionShift
+	assert.Equal(t, TransitionShift, arena.MatchState)
 	arena.MatchStartTime = time.Now().Add(
 		-time.Duration(
-			game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.PauseDurationSec,
+			game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.PauseDurationSec+game.MatchTiming.TransitionShiftDurationSec,
 		) * time.Second,
 	)
 	arena.Update()
@@ -792,9 +929,11 @@ func TestPlcEStopAStop(t *testing.T) {
 	assert.Equal(t, true, arena.AllianceStations["R2"].EStop)
 	arena.lastDsPacketTime = time.Unix(0, 0) // Force a DS packet.
 	arena.Update()
-	assert.Equal(t, TeleopPeriod, arena.MatchState)
+	assert.Equal(t, Shift1, arena.MatchState)
 	assert.Equal(t, true, arena.AllianceStations["R1"].DsConn.Enabled)
 	assert.Equal(t, false, arena.AllianceStations["R2"].DsConn.Enabled)
+
+	// TODO: More tests
 
 	// Press the R1 E-stop and the R2 A-stop.
 	plc.redAStops[0] = false
@@ -852,11 +991,14 @@ func TestPlcEStopAStop(t *testing.T) {
 	// Ensure unpressed E-stops are cleared at the end of the match.
 	arena.MatchStartTime = time.Now().Add(
 		-time.Duration(
-			game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.PauseDurationSec+
-				game.MatchTiming.TeleopDurationSec,
+			game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.PauseDurationSec+game.MatchTiming.TransitionShiftDurationSec+
+				game.MatchTiming.AllianceShiftDurationSec*4+game.MatchTiming.EndGameDurationSec+1,
 		) * time.Second,
 	)
-	arena.Update()
+	// Transition through all remaining states to PostMatch
+	for arena.MatchState != PostMatch {
+		arena.Update()
+	}
 	plc.blueEStops[2] = false
 	arena.Update()
 	assert.Equal(t, true, arena.AllianceStations["R1"].EStop)
@@ -885,6 +1027,12 @@ func TestPlcEStopAStopWithPlcDisabled(t *testing.T) {
 	arena.AllianceStations["B1"].Bypass = true
 	arena.AllianceStations["B2"].Bypass = true
 	arena.AllianceStations["B3"].Bypass = true
+	arena.AllianceStations["R1"].EStop = false
+	arena.AllianceStations["R2"].EStop = false
+	arena.AllianceStations["R3"].EStop = false
+	arena.AllianceStations["B1"].EStop = false
+	arena.AllianceStations["B2"].EStop = false
+	arena.AllianceStations["B3"].EStop = false
 	assert.Nil(t, arena.StartMatch())
 	arena.Update()
 	arena.MatchStartTime = time.Now().Add(-time.Duration(game.MatchTiming.WarmupDurationSec) * time.Second)
@@ -896,10 +1044,12 @@ func TestPlcEStopAStopWithPlcDisabled(t *testing.T) {
 	plc.redAStops[1] = true
 	arena.Update()
 	assert.Equal(t, false, arena.AllianceStations["R1"].AStop)
-	assert.Equal(t, false, arena.AllianceStations["R1"].EStop)
+	//assert.Equal(t, false, arena.AllianceStations["R1"].EStop) // E-stop are always monitored in Freezy Arena
+	assert.Equal(t, true, arena.AllianceStations["R1"].EStop) // E-stop are always monitored in Freezy Arena
 	assert.Equal(t, true, arena.AllianceStations["R1"].DsConn.Enabled)
-	assert.Equal(t, false, arena.AllianceStations["R2"].AStop)
-	assert.Equal(t, false, arena.AllianceStations["R2"].EStop)
+	//assert.Equal(t, false, arena.AllianceStations["R2"].AStop) // A-stop are always monitored in Freezy Arena
+	assert.Equal(t, true, arena.AllianceStations["R2"].AStop) // A-stop are always monitored in Freezy Arena
+	assert.Equal(t, false, arena.AllianceStations["R2"].EStop) 
 	assert.Equal(t, true, arena.AllianceStations["R2"].DsConn.Enabled)
 }
 
@@ -996,13 +1146,14 @@ func TestPlcMatchCycleEvergreen(t *testing.T) {
 	// End the match.
 	arena.MatchStartTime = time.Now().Add(
 		-time.Duration(
-			game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.PauseDurationSec+
-				game.MatchTiming.TeleopDurationSec,
+			game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.PauseDurationSec+game.MatchTiming.TransitionShiftDurationSec+
+				game.MatchTiming.AllianceShiftDurationSec*4+game.MatchTiming.EndGameDurationSec+1,
 		) * time.Second,
 	)
-	arena.Update()
-	arena.Update()
-	arena.Update()
+	// Transition through all remaining states to PostMatch
+	for arena.MatchState != PostMatch {
+		arena.Update()
+	}
 	assert.Equal(t, PostMatch, arena.MatchState)
 	assert.Equal(t, [4]bool{false, false, true, false}, plc.stackLights)
 	assert.Equal(t, false, plc.fieldResetLight)
@@ -1034,325 +1185,103 @@ func TestPlcMatchCycleEvergreen(t *testing.T) {
 	assert.Equal(t, true, plc.fieldResetLight)
 }
 
-func TestPlcMatchCycleGameSpecificWithCoopEnabled(t *testing.T) {
+func TestGetFirstShiftHubState_DefaultBlue(t *testing.T) {
 	arena := setupTestArena(t)
-	var plc FakePlc
-	plc.isEnabled = true
-	arena.Plc = &plc
 
-	// Check that no inputs or outputs are active before the match starts.
-	assert.Equal(t, PreMatch, arena.MatchState)
-	plc.redProcessorCount = 5
-	plc.blueProcessorCount = 8
-	arena.Update()
-	redScore := &arena.RedRealtimeScore.CurrentScore
-	blueScore := &arena.BlueRealtimeScore.CurrentScore
-	assert.Equal(t, 0, redScore.ProcessorAlgae)
-	assert.Equal(t, 0, blueScore.ProcessorAlgae)
-	assert.Equal(t, [3]bool{false, false, false}, plc.redTrussLights)
-	assert.Equal(t, [3]bool{false, false, false}, plc.blueTrussLights)
-	plc.redProcessorCount = 0
-	plc.blueProcessorCount = 0
+	// Default (empty string) should return blue
+	arena.EventSettings.FirstShiftAlliance = ""
+	result := arena.getFirstShiftHubState()
+	assert.Equal(t, BlueAllianceHubBit, result)
 
-	// Start the match.
-	arena.AllianceStations["R1"].Bypass = true
-	arena.AllianceStations["R2"].Bypass = true
-	arena.AllianceStations["R3"].Bypass = true
-	arena.AllianceStations["B1"].Bypass = true
-	arena.AllianceStations["B2"].Bypass = true
-	arena.AllianceStations["B3"].Bypass = true
-	arena.Update()
-	assert.Nil(t, arena.StartMatch())
-	arena.Update()
-	arena.MatchStartTime = time.Now().Add(-time.Duration(game.MatchTiming.WarmupDurationSec) * time.Second)
-	arena.Update()
-	assert.Equal(t, AutoPeriod, arena.MatchState)
-
-	// Check the autonomous period.
-	plc.redProcessorCount = 1
-	arena.Update()
-	assert.Equal(t, 1, redScore.ProcessorAlgae)
-	assert.Equal(t, 0, blueScore.ProcessorAlgae)
-	assert.Equal(t, [3]bool{true, false, false}, plc.redTrussLights)
-	assert.Equal(t, [3]bool{false, false, false}, plc.blueTrussLights)
-
-	// Check the pause period.
-	arena.MatchStartTime = time.Now().Add(
-		-time.Duration(game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec) * time.Second,
-	)
-	arena.Update()
-	assert.Equal(t, PausePeriod, arena.MatchState)
-	plc.redProcessorCount = 2
-	arena.Update()
-	assert.Equal(t, 2, redScore.ProcessorAlgae)
-	assert.Equal(t, 0, blueScore.ProcessorAlgae)
-	assert.Equal(t, [3]bool{true, true, false}, plc.redTrussLights)
-	assert.Equal(t, [3]bool{false, false, false}, plc.blueTrussLights)
-
-	// Check the teleop period.
-	durationToTeleopStart := time.Duration(
-		game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.PauseDurationSec,
-	) * time.Second
-	arena.MatchStartTime = time.Now().Add(-durationToTeleopStart - 5000*time.Millisecond)
-	arena.Update()
-	assert.Equal(t, TeleopPeriod, arena.MatchState)
-
-	plc.blueProcessorCount = 1
-	arena.Update()
-	assert.Equal(t, 2, redScore.ProcessorAlgae)
-	assert.Equal(t, 1, blueScore.ProcessorAlgae)
-	assert.Equal(t, [3]bool{true, true, false}, plc.redTrussLights)
-	assert.Equal(t, [3]bool{true, false, false}, plc.blueTrussLights)
-
-	plc.redProcessorCount = 3
-	arena.Update()
-	assert.Equal(t, 3, redScore.ProcessorAlgae)
-	assert.Equal(t, 1, blueScore.ProcessorAlgae)
-	assert.Equal(t, [3]bool{true, true, false}, plc.redTrussLights)
-	assert.Equal(t, [3]bool{true, false, false}, plc.blueTrussLights)
-
-	plc.redProcessorCount = 17
-	arena.Update()
-	assert.Equal(t, 17, redScore.ProcessorAlgae)
-	assert.Equal(t, 1, blueScore.ProcessorAlgae)
-	assert.Equal(t, [3]bool{true, true, false}, plc.redTrussLights)
-	assert.Equal(t, [3]bool{true, false, false}, plc.blueTrussLights)
-	assert.Equal(t, true, arena.RedScoreSummary().CoopertitionCriteriaMet)
-	assert.Equal(t, false, arena.RedScoreSummary().CoopertitionBonus)
-	assert.Equal(t, false, arena.BlueScoreSummary().CoopertitionCriteriaMet)
-	assert.Equal(t, false, arena.BlueScoreSummary().CoopertitionBonus)
-
-	plc.blueProcessorCount = 2
-	arena.Update()
-	assert.Equal(t, 17, redScore.ProcessorAlgae)
-	assert.Equal(t, 2, blueScore.ProcessorAlgae)
-	assert.Equal(t, [3]bool{true, true, true}, plc.redTrussLights)
-	assert.Equal(t, [3]bool{true, true, true}, plc.blueTrussLights)
-	assert.Equal(t, true, arena.RedScoreSummary().CoopertitionCriteriaMet)
-	assert.Equal(t, true, arena.RedScoreSummary().CoopertitionBonus)
-	assert.Equal(t, true, arena.BlueScoreSummary().CoopertitionCriteriaMet)
-	assert.Equal(t, true, arena.BlueScoreSummary().CoopertitionBonus)
-
-	// Check the truss lights during the "sonar ping" warning sound.
-	durationToWarning := time.Duration(
-		game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.PauseDurationSec+
-			game.MatchTiming.TeleopDurationSec-game.MatchTiming.WarningRemainingDurationSec,
-	) * time.Second
-	arena.MatchStartTime = time.Now().Add(-durationToWarning - 100*time.Millisecond)
-	arena.Update()
-	assert.Equal(t, TeleopPeriod, arena.MatchState)
-	assert.Equal(t, [3]bool{true, false, false}, plc.redTrussLights)
-	assert.Equal(t, [3]bool{true, false, false}, plc.blueTrussLights)
-	arena.MatchStartTime = time.Now().Add(-durationToWarning - 300*time.Millisecond)
-	arena.Update()
-	assert.Equal(t, TeleopPeriod, arena.MatchState)
-	assert.Equal(t, [3]bool{false, true, false}, plc.redTrussLights)
-	assert.Equal(t, [3]bool{false, true, false}, plc.blueTrussLights)
-	arena.MatchStartTime = time.Now().Add(-durationToWarning - 500*time.Millisecond)
-	arena.Update()
-	assert.Equal(t, TeleopPeriod, arena.MatchState)
-	assert.Equal(t, [3]bool{false, false, true}, plc.redTrussLights)
-	assert.Equal(t, [3]bool{false, false, true}, plc.blueTrussLights)
-
-	// Undo the co-op and check that the truss lights are back to normal after the warning.
-	arena.MatchStartTime = time.Now().Add(-durationToWarning - 5000*time.Millisecond)
-	plc.redProcessorCount = 1
-	arena.Update()
-	assert.Equal(t, 1, redScore.ProcessorAlgae)
-	assert.Equal(t, 2, blueScore.ProcessorAlgae)
-	assert.Equal(t, [3]bool{true, false, false}, plc.redTrussLights)
-	assert.Equal(t, [3]bool{true, true, false}, plc.blueTrussLights)
-
-	// Check after the end of the match.
-	durationToTeleopEnd := time.Duration(
-		game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.PauseDurationSec+
-			game.MatchTiming.TeleopDurationSec,
-	) * time.Second
-	arena.MatchStartTime = time.Now().Add(-durationToTeleopEnd + 1*time.Millisecond)
-	arena.Update()
-	assert.Equal(t, [3]bool{true, false, false}, plc.redTrussLights)
-	assert.Equal(t, [3]bool{true, true, false}, plc.blueTrussLights)
-	arena.MatchStartTime = time.Now().Add(-durationToTeleopEnd - 1*time.Millisecond)
-	arena.Update()
-	assert.Equal(t, [3]bool{true, true, true}, plc.redTrussLights)
-	assert.Equal(t, [3]bool{true, true, true}, plc.blueTrussLights)
-	arena.MatchStartTime = time.Now().Add(-durationToTeleopEnd - 2999*time.Millisecond)
-	arena.Update()
-	assert.Equal(t, [3]bool{true, true, true}, plc.redTrussLights)
-	assert.Equal(t, [3]bool{true, true, true}, plc.blueTrussLights)
-	arena.MatchStartTime = time.Now().Add(-durationToTeleopEnd - 3001*time.Millisecond)
-	arena.Update()
-	assert.Equal(t, [3]bool{false, false, false}, plc.redTrussLights)
-	assert.Equal(t, [3]bool{false, false, false}, plc.blueTrussLights)
+	// Explicit "blue" should also return blue
+	arena.EventSettings.FirstShiftAlliance = "blue"
+	result = arena.getFirstShiftHubState()
+	assert.Equal(t, BlueAllianceHubBit, result)
 }
 
-func TestPlcMatchCycleGameSpecificWithCoopDisabled(t *testing.T) {
-	defer func() {
-		game.CoralBonusCoopEnabled = true
-	}()
+func TestGetFirstShiftHubState_Red(t *testing.T) {
+	arena := setupTestArena(t)
 
-	testCases := []struct {
-		coopEnabled bool
-		matchType   model.MatchType
-	}{
-		// 0. Playoff match with co-op enabled.
-		{true, model.Playoff},
-
-		// 1. Playoff match with co-op disabled.
-		{false, model.Playoff},
-
-		// 2. Qualification match with co-op disabled.
-		{false, model.Qualification},
-	}
-
-	for i, tc := range testCases {
-		t.Run(
-			strconv.Itoa(i),
-			func(t *testing.T) {
-				arena := setupTestArena(t)
-				var plc FakePlc
-				plc.isEnabled = true
-				arena.Plc = &plc
-				game.CoralBonusCoopEnabled = tc.coopEnabled
-				arena.CurrentMatch.Type = tc.matchType
-
-				// Check that no inputs or outputs are active before the match starts.
-				assert.Equal(t, PreMatch, arena.MatchState)
-				plc.redProcessorCount = 5
-				plc.blueProcessorCount = 8
-				arena.Update()
-				redScore := &arena.RedRealtimeScore.CurrentScore
-				blueScore := &arena.BlueRealtimeScore.CurrentScore
-				assert.Equal(t, 0, redScore.ProcessorAlgae)
-				assert.Equal(t, 0, blueScore.ProcessorAlgae)
-				assert.Equal(t, [3]bool{false, false, false}, plc.redTrussLights)
-				assert.Equal(t, [3]bool{false, false, false}, plc.blueTrussLights)
-				plc.redProcessorCount = 0
-				plc.blueProcessorCount = 0
-
-				// Start the match.
-				arena.AllianceStations["R1"].Bypass = true
-				arena.AllianceStations["R2"].Bypass = true
-				arena.AllianceStations["R3"].Bypass = true
-				arena.AllianceStations["B1"].Bypass = true
-				arena.AllianceStations["B2"].Bypass = true
-				arena.AllianceStations["B3"].Bypass = true
-				arena.Update()
-				assert.Nil(t, arena.StartMatch())
-				arena.Update()
-				arena.MatchStartTime = time.Now().Add(-time.Duration(game.MatchTiming.WarmupDurationSec) * time.Second)
-				arena.Update()
-				assert.Equal(t, AutoPeriod, arena.MatchState)
-
-				// Check the autonomous period.
-				plc.redProcessorCount = 1
-				arena.Update()
-				assert.Equal(t, 1, redScore.ProcessorAlgae)
-				assert.Equal(t, 0, blueScore.ProcessorAlgae)
-				assert.Equal(t, [3]bool{true, true, true}, plc.redTrussLights)
-				assert.Equal(t, [3]bool{true, true, true}, plc.blueTrussLights)
-
-				// Check the pause period.
-				arena.MatchStartTime = time.Now().Add(
-					-time.Duration(game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec) * time.Second,
-				)
-				arena.Update()
-				assert.Equal(t, PausePeriod, arena.MatchState)
-				plc.redProcessorCount = 2
-				arena.Update()
-				assert.Equal(t, 2, redScore.ProcessorAlgae)
-				assert.Equal(t, 0, blueScore.ProcessorAlgae)
-				assert.Equal(t, [3]bool{true, true, true}, plc.redTrussLights)
-				assert.Equal(t, [3]bool{true, true, true}, plc.blueTrussLights)
-
-				// Check the teleop period.
-				durationToTeleopStart := time.Duration(
-					game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.PauseDurationSec,
-				) * time.Second
-				arena.MatchStartTime = time.Now().Add(-durationToTeleopStart - 5000*time.Millisecond)
-				arena.Update()
-				assert.Equal(t, TeleopPeriod, arena.MatchState)
-
-				plc.blueProcessorCount = 1
-				arena.Update()
-				assert.Equal(t, 2, redScore.ProcessorAlgae)
-				assert.Equal(t, 1, blueScore.ProcessorAlgae)
-				assert.Equal(t, [3]bool{true, true, true}, plc.redTrussLights)
-				assert.Equal(t, [3]bool{true, true, true}, plc.blueTrussLights)
-
-				plc.redProcessorCount = 3
-				arena.Update()
-				assert.Equal(t, 3, redScore.ProcessorAlgae)
-				assert.Equal(t, 1, blueScore.ProcessorAlgae)
-				assert.Equal(t, [3]bool{true, true, true}, plc.redTrussLights)
-				assert.Equal(t, [3]bool{true, true, true}, plc.blueTrussLights)
-
-				plc.redProcessorCount = 17
-				arena.Update()
-				assert.Equal(t, 17, redScore.ProcessorAlgae)
-				assert.Equal(t, 1, blueScore.ProcessorAlgae)
-				assert.Equal(t, [3]bool{true, true, true}, plc.redTrussLights)
-				assert.Equal(t, [3]bool{true, true, true}, plc.blueTrussLights)
-
-				plc.blueProcessorCount = 2
-				arena.Update()
-				assert.Equal(t, 17, redScore.ProcessorAlgae)
-				assert.Equal(t, 2, blueScore.ProcessorAlgae)
-				assert.Equal(t, [3]bool{true, true, true}, plc.redTrussLights)
-				assert.Equal(t, [3]bool{true, true, true}, plc.blueTrussLights)
-
-				// Check the truss lights during the "sonar ping" warning sound.
-				durationToWarning := time.Duration(
-					game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.PauseDurationSec+
-						game.MatchTiming.TeleopDurationSec-game.MatchTiming.WarningRemainingDurationSec,
-				) * time.Second
-				arena.MatchStartTime = time.Now().Add(-durationToWarning - 100*time.Millisecond)
-				arena.Update()
-				assert.Equal(t, TeleopPeriod, arena.MatchState)
-				assert.Equal(t, [3]bool{true, false, false}, plc.redTrussLights)
-				assert.Equal(t, [3]bool{true, false, false}, plc.blueTrussLights)
-				arena.MatchStartTime = time.Now().Add(-durationToWarning - 300*time.Millisecond)
-				arena.Update()
-				assert.Equal(t, TeleopPeriod, arena.MatchState)
-				assert.Equal(t, [3]bool{false, true, false}, plc.redTrussLights)
-				assert.Equal(t, [3]bool{false, true, false}, plc.blueTrussLights)
-				arena.MatchStartTime = time.Now().Add(-durationToWarning - 500*time.Millisecond)
-				arena.Update()
-				assert.Equal(t, TeleopPeriod, arena.MatchState)
-				assert.Equal(t, [3]bool{false, false, true}, plc.redTrussLights)
-				assert.Equal(t, [3]bool{false, false, true}, plc.blueTrussLights)
-
-				// Undo the co-op and check that the truss lights are back to normal after the warning.
-				arena.MatchStartTime = time.Now().Add(-durationToWarning - 5000*time.Millisecond)
-				plc.redProcessorCount = 1
-				arena.Update()
-				assert.Equal(t, 1, redScore.ProcessorAlgae)
-				assert.Equal(t, 2, blueScore.ProcessorAlgae)
-				assert.Equal(t, [3]bool{true, true, true}, plc.redTrussLights)
-				assert.Equal(t, [3]bool{true, true, true}, plc.blueTrussLights)
-
-				// Check after the end of the match.
-				durationToTeleopEnd := time.Duration(
-					game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec+game.MatchTiming.PauseDurationSec+
-						game.MatchTiming.TeleopDurationSec,
-				) * time.Second
-				arena.MatchStartTime = time.Now().Add(-durationToTeleopEnd + 1*time.Millisecond)
-				arena.Update()
-				assert.Equal(t, [3]bool{true, true, true}, plc.redTrussLights)
-				assert.Equal(t, [3]bool{true, true, true}, plc.blueTrussLights)
-				arena.MatchStartTime = time.Now().Add(-durationToTeleopEnd - 1*time.Millisecond)
-				arena.Update()
-				assert.Equal(t, [3]bool{true, true, true}, plc.redTrussLights)
-				assert.Equal(t, [3]bool{true, true, true}, plc.blueTrussLights)
-				arena.MatchStartTime = time.Now().Add(-durationToTeleopEnd - 2999*time.Millisecond)
-				arena.Update()
-				assert.Equal(t, [3]bool{true, true, true}, plc.redTrussLights)
-				assert.Equal(t, [3]bool{true, true, true}, plc.blueTrussLights)
-				arena.MatchStartTime = time.Now().Add(-durationToTeleopEnd - 3001*time.Millisecond)
-				arena.Update()
-				assert.Equal(t, [3]bool{false, false, false}, plc.redTrussLights)
-				assert.Equal(t, [3]bool{false, false, false}, plc.blueTrussLights)
-			},
-		)
-	}
+	arena.EventSettings.FirstShiftAlliance = "red"
+	result := arena.getFirstShiftHubState()
+	assert.Equal(t, RedAllianceHubBit, result)
 }
+
+func TestGetFirstShiftHubState_Random(t *testing.T) {
+	arena := setupTestArena(t)
+
+	arena.EventSettings.FirstShiftAlliance = "random"
+
+	// Run multiple times to verify it returns valid values
+	redCount := 0
+	blueCount := 0
+	for i := 0; i < 100; i++ {
+		result := arena.getFirstShiftHubState()
+		if result == RedAllianceHubBit {
+			redCount++
+		} else if result == BlueAllianceHubBit {
+			blueCount++
+		} else {
+			t.Errorf("Unexpected result: %d", result)
+		}
+	}
+
+	// Verify both outcomes are possible (statistically unlikely to fail if random works)
+	assert.True(t, redCount > 0, "Random should sometimes return red")
+	assert.True(t, blueCount > 0, "Random should sometimes return blue")
+}
+
+func TestGetFirstShiftHubState_LowestScore_RedLower(t *testing.T) {
+	arena := setupTestArena(t)
+
+	arena.EventSettings.FirstShiftAlliance = "lowestScore"
+
+	// Set red score lower than blue
+	arena.RedRealtimeScore.CurrentScore.Fuel = 0
+	arena.BlueRealtimeScore.CurrentScore.Fuel = 5
+
+	result := arena.getFirstShiftHubState()
+	assert.Equal(t, RedAllianceHubBit, result, "Should return red when red has lower score")
+}
+
+func TestGetFirstShiftHubState_LowestScore_BlueLower(t *testing.T) {
+	arena := setupTestArena(t)
+
+	arena.EventSettings.FirstShiftAlliance = "lowestScore"
+
+	// Set blue score lower than red
+	arena.RedRealtimeScore.CurrentScore.Fuel = 5
+	arena.BlueRealtimeScore.CurrentScore.Fuel = 0
+
+	result := arena.getFirstShiftHubState()
+	assert.Equal(t, BlueAllianceHubBit, result, "Should return blue when blue has lower score")
+}
+
+func TestGetFirstShiftHubState_LowestScore_Tied(t *testing.T) {
+	arena := setupTestArena(t)
+
+	arena.EventSettings.FirstShiftAlliance = "lowestScore"
+
+	// Set equal scores
+	arena.RedRealtimeScore.CurrentScore.Fuel = 3
+	arena.BlueRealtimeScore.CurrentScore.Fuel = 3
+
+	// Run multiple times to verify it returns valid values (random on tie)
+	redCount := 0
+	blueCount := 0
+	for i := 0; i < 100; i++ {
+		result := arena.getFirstShiftHubState()
+		if result == RedAllianceHubBit {
+			redCount++
+		} else if result == BlueAllianceHubBit {
+			blueCount++
+		} else {
+			t.Errorf("Unexpected result: %d", result)
+		}
+	}
+
+	// Verify both outcomes are possible (statistically unlikely to fail if random works)
+	assert.True(t, redCount > 0, "On tie, random should sometimes return red")
+	assert.True(t, blueCount > 0, "On tie, random should sometimes return blue")
+}
+

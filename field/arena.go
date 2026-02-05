@@ -8,6 +8,7 @@ package field
 import (
 	"fmt"
 	"log"
+	"math/rand"
 	"reflect"
 	"strconv"
 	"strings"
@@ -34,6 +35,8 @@ const (
 	scheduledBreakDelaySec   = 5
 	earlyLateThresholdMin    = 2.5
 	MaxMatchGapMin           = 20
+	RedAllianceHubBit        = 1
+	BlueAllianceHubBit       = 2
 )
 
 // Progression of match states.
@@ -45,7 +48,14 @@ const (
 	WarmupPeriod
 	AutoPeriod
 	PausePeriod
-	TeleopPeriod
+	//  2026 Rebuilt Game
+	TransitionShift
+	Shift1
+	Shift2
+	Shift3
+	Shift4
+	EndGame
+
 	PostMatch
 	TimeoutActive
 	PostTimeout
@@ -62,7 +72,6 @@ type Arena struct {
 	TbaClient        *partner.TbaClient
 	NexusClient      *partner.NexusClient
 	BlackmagicClient *partner.BlackmagicClient
-	CompanionClient  *partner.CompanionClient
 	AllianceStations map[string]*AllianceStation
 	Displays         map[string]*Display
 	TeamSigns        *TeamSigns
@@ -97,7 +106,10 @@ type Arena struct {
 	soundsPlayed                      map[*game.MatchSound]struct{}
 	breakDescription                  string
 	preloadedTeams                    *[6]*model.Team
-	NextFoulId                        int
+	lastPlcNotifyTime 				  time.Time
+	Esp32                             plc.Esp32
+	HubsActive                        int // Bitmask 1=Red, 2=Blue
+	FirstShiftHubState                int // Calculated at end of Auto, used for Shift1
 }
 
 type AllianceStation struct {
@@ -116,6 +128,7 @@ func NewArena(dbPath string) (*Arena, error) {
 	arena := new(Arena)
 	arena.configureNotifiers()
 	arena.Plc = new(plc.ModbusPlc)
+	arena.Esp32 = new(plc.Esp32IO)
 
 	arena.AllianceStations = make(map[string]*AllianceStation)
 	arena.AllianceStations["R1"] = new(AllianceStation)
@@ -206,75 +219,23 @@ func (arena *Arena) LoadSettings() error {
 		sccDownCommands,
 	)
 	arena.Plc.SetAddress(settings.PlcAddress)
+	arena.Esp32.SetScoreTableAddress(settings.ScoreTableEstopAddress)
+	arena.Esp32.SetRedAllianceStationEstopAddress(settings.RedAllianceStationEstopAddress)
+	arena.Esp32.SetBlueAllianceStationEstopAddress(settings.BlueAllianceStationEstopAddress)
+	arena.Esp32.SetRedAllianceHubAddress(settings.RedHubAddress)
+	arena.Esp32.SetBlueAllianceHubAddress(settings.BlueHubAddress)
 	arena.TbaClient = partner.NewTbaClient(settings.TbaEventCode, settings.TbaSecretId, settings.TbaSecret)
 	arena.NexusClient = partner.NewNexusClient(settings.TbaEventCode)
 	arena.BlackmagicClient = partner.NewBlackmagicClient(settings.BlackmagicAddresses)
 
-	// Initialize Companion client with event configurations
-	companionEventConfigs := map[partner.CompanionEvent]partner.CompanionEventConfig{
-		partner.EventMatchPreview: {
-			Page:   settings.CompanionMatchPreviewPage,
-			Row:    settings.CompanionMatchPreviewRow,
-			Column: settings.CompanionMatchPreviewColumn,
-		},
-		partner.EventShowOverlay: {
-			Page:   settings.CompanionSetAudiencePage,
-			Row:    settings.CompanionSetAudienceRow,
-			Column: settings.CompanionSetAudienceColumn,
-		},
-		partner.EventMatchStart: {
-			Page:   settings.CompanionMatchStartPage,
-			Row:    settings.CompanionMatchStartRow,
-			Column: settings.CompanionMatchStartColumn,
-		},
-		partner.EventTeleopStart: {
-			Page:   settings.CompanionTeleopStartPage,
-			Row:    settings.CompanionTeleopStartRow,
-			Column: settings.CompanionTeleopStartColumn,
-		},
-		partner.EventEndgameStart: {
-			Page:   settings.CompanionEndgameStartPage,
-			Row:    settings.CompanionEndgameStartRow,
-			Column: settings.CompanionEndgameStartColumn,
-		},
-		partner.EventMatchEnd: {
-			Page:   settings.CompanionMatchEndPage,
-			Row:    settings.CompanionMatchEndRow,
-			Column: settings.CompanionMatchEndColumn,
-		},
-		partner.EventShowFinalScore: {
-			Page:   settings.CompanionPostResultPage,
-			Row:    settings.CompanionPostResultRow,
-			Column: settings.CompanionPostResultColumn,
-		},
-		partner.EventAllianceSelection: {
-			Page:   settings.CompanionAllianceSelectionPage,
-			Row:    settings.CompanionAllianceSelectionRow,
-			Column: settings.CompanionAllianceSelectionColumn,
-		},
-		partner.EventMatchAbort: {
-			Page:   settings.CompanionMatchAbortPage,
-			Row:    settings.CompanionMatchAbortRow,
-			Column: settings.CompanionMatchAbortColumn,
-		},
-	}
-	arena.CompanionClient = partner.NewCompanionClient(
-		settings.CompanionAddress,
-		settings.CompanionPort,
-		companionEventConfigs,
-	)
-
 	game.MatchTiming.WarmupDurationSec = settings.WarmupDurationSec
 	game.MatchTiming.AutoDurationSec = settings.AutoDurationSec
-	game.MatchTiming.PauseDurationSec = settings.PauseDurationSec
-	game.MatchTiming.TeleopDurationSec = settings.TeleopDurationSec
-	game.MatchTiming.WarningRemainingDurationSec = settings.WarningRemainingDurationSec
+	game.MatchTiming.TransitionShiftDurationSec = settings.TransitionShiftDurationSec
+	game.MatchTiming.AllianceShiftDurationSec = settings.AllianceShiftDurationSec
+	game.MatchTiming.EndGameDurationSec = settings.EndGameDurationSec
 	game.UpdateMatchSounds()
 	arena.MatchTimingNotifier.Notify()
 
-	game.AutoBonusCoralThreshold = settings.AutoBonusCoralThreshold
-	game.CoralBonusPerLevelThreshold = settings.CoralBonusPerLevelThreshold
-	game.CoralBonusCoopEnabled = settings.CoralBonusCoopEnabled
 	game.BargeBonusPointThreshold = settings.BargeBonusPointThreshold
 	game.IncludeAlgaeInBargeBonus = settings.IncludeAlgaeInBargeBonus
 
@@ -387,7 +348,6 @@ func (arena *Arena) LoadMatch(match *model.Match) error {
 	arena.BlueRealtimeScore = NewRealtimeScore()
 	arena.ScoringPanelRegistry.resetScoreCommitted()
 	arena.Plc.ResetMatch()
-	arena.NextFoulId = 1
 
 	// Notify any listeners about the new match.
 	arena.MatchLoadNotifier.Notify()
@@ -548,7 +508,6 @@ func (arena *Arena) AbortMatch() error {
 	arena.AudienceDisplayMode = "blank"
 	arena.AudienceDisplayModeNotifier.Notify()
 	go arena.BlackmagicClient.StopRecording()
-	go arena.CompanionClient.SendEvent(partner.EventMatchAbort)
 	return nil
 }
 
@@ -599,13 +558,6 @@ func (arena *Arena) SetAudienceDisplayMode(mode string) {
 		arena.AudienceDisplayModeNotifier.Notify()
 		if mode == "score" {
 			arena.PlaySound("match_result")
-			go arena.CompanionClient.SendEvent(partner.EventShowFinalScore)
-		} else if mode == "allianceSelection" {
-			go arena.CompanionClient.SendEvent(partner.EventAllianceSelection)
-		} else if mode == "intro" {
-			go arena.CompanionClient.SendEvent(partner.EventMatchPreview)
-		} else if mode == "match" {
-			go arena.CompanionClient.SendEvent(partner.EventShowOverlay)
 		}
 	}
 }
@@ -647,8 +599,8 @@ func (arena *Arena) Update() {
 		arena.AudienceDisplayModeNotifier.Notify()
 		arena.AllianceStationDisplayMode = "match"
 		arena.AllianceStationDisplayModeNotifier.Notify()
+		arena.HubsActive = 0
 		go arena.BlackmagicClient.StartRecording()
-		go arena.CompanionClient.SendEvent(partner.EventMatchStart)
 		if game.MatchTiming.WarmupDurationSec > 0 {
 			arena.MatchState = WarmupPeriod
 			enabled = false
@@ -657,6 +609,7 @@ func (arena *Arena) Update() {
 			arena.MatchState = AutoPeriod
 			enabled = true
 			sendDsPacket = true
+			arena.HubsActive =  BlueAllianceHubBit | RedAllianceHubBit
 		}
 		arena.Plc.ResetMatch()
 		arena.FieldVolunteers = false
@@ -669,42 +622,92 @@ func (arena *Arena) Update() {
 			auto = true
 			enabled = true
 			sendDsPacket = true
+			arena.HubsActive =  BlueAllianceHubBit | RedAllianceHubBit
 		}
 	case AutoPeriod:
 		auto = true
 		enabled = true
+		arena.HubsActive = BlueAllianceHubBit | RedAllianceHubBit
 		if matchTimeSec >= game.GetDurationToAutoEnd().Seconds() {
 			auto = false
+			enabled = false
 			sendDsPacket = true
-			if game.MatchTiming.PauseDurationSec > 0 {
-				arena.MatchState = PausePeriod
-				enabled = false
-			} else {
-				arena.MatchState = TeleopPeriod
-				enabled = true
-				go arena.CompanionClient.SendEvent(partner.EventTeleopStart)
-			}
+			arena.MatchState = PausePeriod
+			arena.HubsActive = BlueAllianceHubBit | RedAllianceHubBit
+			// Calculate first shift alliance now (at end of Auto) so lowestScore uses Auto-end scores
+			arena.FirstShiftHubState = arena.getFirstShiftHubState()
 		}
 	case PausePeriod:
 		auto = false
 		enabled = false
-		if matchTimeSec >= game.GetDurationToTeleopStart().Seconds() {
-			arena.MatchState = TeleopPeriod
+		arena.HubsActive = BlueAllianceHubBit | RedAllianceHubBit
+		if matchTimeSec >= game.GetDurationToPauseEnd().Seconds() {
+			arena.MatchState = TransitionShift
+			sendDsPacket = true
+			enabled = true
+		}
+	case TransitionShift:
+		auto = false
+		enabled = false
+		if matchTimeSec >= game.GetDurationToShift1Start().Seconds() {
+			arena.MatchState = Shift1
 			auto = false
 			enabled = true
 			sendDsPacket = true
-			go arena.CompanionClient.SendEvent(partner.EventTeleopStart)
+			arena.HubsActive = arena.FirstShiftHubState
 		}
-	case TeleopPeriod:
+	case Shift1:
 		auto = false
 		enabled = true
+		if matchTimeSec >= game.GetDurationToShiftEnd(1).Seconds() {
+			arena.MatchState = Shift2
+			auto = false
+			enabled = true
+			sendDsPacket = true
+			// Flip the hubs
+			arena.HubsActive = arena.HubsActive ^ (RedAllianceHubBit | BlueAllianceHubBit)
+		}
+	case Shift2:
+		auto = false
+		enabled = true
+		if matchTimeSec >= game.GetDurationToShiftEnd(2).Seconds() {
+			arena.MatchState = Shift3
+			auto = false
+			enabled = true
+			sendDsPacket = true
+			// Flip the hubs
+			arena.HubsActive = arena.HubsActive ^ (RedAllianceHubBit | BlueAllianceHubBit)
+		}
+	case Shift3:
+		auto = false
+		enabled = true
+		if matchTimeSec >= game.GetDurationToShiftEnd(3).Seconds() {
+			arena.MatchState = Shift4
+			auto = false
+			enabled = true
+			sendDsPacket = true
+			// Flip the hubs
+			arena.HubsActive = arena.HubsActive ^ (RedAllianceHubBit | BlueAllianceHubBit)
+		}
+	case Shift4:
+		auto = false
+		enabled = true
+		if matchTimeSec >= game.GetDurationToShiftEnd(4).Seconds() {
+			arena.MatchState = EndGame
+			auto = false
+			enabled = true
+			sendDsPacket = true
+			arena.HubsActive = BlueAllianceHubBit | RedAllianceHubBit
+		}
+	case EndGame:
+		arena.HubsActive =  BlueAllianceHubBit | RedAllianceHubBit
 		if matchTimeSec >= game.GetDurationToTeleopEnd().Seconds() {
 			arena.MatchState = PostMatch
 			auto = false
 			enabled = false
 			sendDsPacket = true
+			arena.HubsActive = 0
 			go arena.BlackmagicClient.StopRecording()
-			go arena.CompanionClient.SendEvent(partner.EventMatchEnd)
 			go func() {
 				// Leave the scores on the screen briefly at the end of the match.
 				time.Sleep(time.Second * matchEndScoreDwellSec)
@@ -750,9 +753,6 @@ func (arena *Arena) Update() {
 		arena.ArenaStatusNotifier.Notify()
 	}
 
-	// Handle the Companion EndGameStart event.
-	arena.checkEndgameStart(matchTimeSec)
-
 	arena.handleSounds(matchTimeSec)
 
 	// Handle field sensors/lights/actuators.
@@ -763,25 +763,7 @@ func (arena *Arena) Update() {
 
 	arena.LastMatchTimeSec = matchTimeSec
 	arena.lastMatchState = arena.MatchState
-}
 
-// Checks if the endgame warning period has started and triggers the Companion event if so.
-func (arena *Arena) checkEndgameStart(matchTimeSec float64) {
-	// Only check during teleop period
-	if arena.MatchState != TeleopPeriod {
-		return
-	}
-
-	// Calculate the time when endgame warning should start
-	endgameStartTime := float64(
-		game.MatchTiming.AutoDurationSec + game.MatchTiming.PauseDurationSec +
-			game.MatchTiming.TeleopDurationSec - game.MatchTiming.WarningRemainingDurationSec,
-	)
-
-	// Check if we've crossed the endgame threshold and haven't already triggered it
-	if matchTimeSec >= endgameStartTime && arena.LastMatchTimeSec < endgameStartTime {
-		go arena.CompanionClient.SendEvent(partner.EventEndgameStart)
-	}
 }
 
 // Loops indefinitely to track and update the arena components.
@@ -791,6 +773,7 @@ func (arena *Arena) Run() {
 	go arena.listenForDsUdpPackets()
 	go arena.accessPoint.Run()
 	go arena.Plc.Run()
+	go arena.Esp32.Run()
 
 	for {
 		loopStartTime := time.Now()
@@ -930,7 +913,7 @@ func (arena *Arena) preLoadNextMatch() {
 		}
 	}
 	arena.setupNetwork(teams, true)
-	arena.TeamSigns.SetNextMatchTeams(teamIds)
+	arena.TeamSigns.SetNextMatchTeams(nextMatch)
 }
 
 // Enable or disable the team ethernet ports on both SCCs
@@ -1058,14 +1041,8 @@ func (arena *Arena) getAssignedAllianceStation(teamId int) string {
 
 // Updates the score given new input information from the field PLC, and actuates PLC outputs accordingly.
 func (arena *Arena) handlePlcInputOutput() {
-	if !arena.Plc.IsEnabled() {
-		return
-	}
 
-	// Handle PLC functions that are always active.
-	if arena.Plc.GetFieldEStop() && !arena.matchAborted {
-		arena.AbortMatch()
-	}
+	// Handle the team E-stop and A-stop buttons always.
 	redEStops, blueEStops := arena.Plc.GetTeamEStops()
 	redAStops, blueAStops := arena.Plc.GetTeamAStops()
 	arena.handleTeamStop("R1", redEStops[0], redAStops[0])
@@ -1074,6 +1051,23 @@ func (arena *Arena) handlePlcInputOutput() {
 	arena.handleTeamStop("B1", blueEStops[0], blueAStops[0])
 	arena.handleTeamStop("B2", blueEStops[1], blueAStops[1])
 	arena.handleTeamStop("B3", blueEStops[2], blueAStops[2])
+	
+	// Only notify every 500ms
+    if arena.lastPlcNotifyTime.IsZero() || time.Since(arena.lastPlcNotifyTime) >= 500*time.Millisecond {
+        //arena.PlcCoilsNotifier.Notify()
+        //arena.Plc.IoChangeNotifier().Notify()
+        arena.lastPlcNotifyTime = time.Now()
+    }
+
+	// If the PLC is not enabled, or alternate I/O is not enabled, do not process any further PLC inputs.
+	if !arena.Plc.IsEnabled() && !arena.EventSettings.AlternateIOEnabled { // && not alternateIO Enabled
+		return
+	}
+
+	// Handle PLC functions that are always active.
+	if arena.Plc.GetFieldEStop() && !arena.matchAborted {
+		arena.AbortMatch()
+	}
 	redEthernets, blueEthernets := arena.Plc.GetEthernetConnected()
 	arena.AllianceStations["R1"].Ethernet = redEthernets[0]
 	arena.AllianceStations["R2"].Ethernet = redEthernets[1]
@@ -1087,15 +1081,12 @@ func (arena *Arena) handlePlcInputOutput() {
 	oldRedScore := *redScore
 	blueScore := &arena.BlueRealtimeScore.CurrentScore
 	oldBlueScore := *blueScore
-	matchStartTime := arena.MatchStartTime
-	currentTime := time.Now()
-	teleopGracePeriod := matchStartTime.Add(game.GetDurationToTeleopEnd() + game.TeleopGracePeriodSec*time.Second)
-	inGracePeriod := arena.MatchState == PostMatch && currentTime.Before(teleopGracePeriod) && !arena.matchAborted
 
 	redAllianceReady := arena.checkAllianceStationsReady("R1", "R2", "R3") == nil
 	blueAllianceReady := arena.checkAllianceStationsReady("B1", "B2", "B3") == nil
 
 	// Handle the evergreen PLC functions: stack lights, stack buzzer, and field reset light.
+	arena.Plc.SetMatchState(uint16(arena.MatchState))
 	switch arena.MatchState {
 	case PreMatch:
 		if arena.lastMatchState != PreMatch {
@@ -1128,53 +1119,13 @@ func (arena *Arena) handlePlcInputOutput() {
 			arena.positionPostMatchScoreReady("red_near") && arena.positionPostMatchScoreReady("red_far") &&
 			arena.positionPostMatchScoreReady("blue_near") && arena.positionPostMatchScoreReady("blue_far")
 		arena.Plc.SetStackLights(false, false, !scoreReady, false)
-	case AutoPeriod, PausePeriod, TeleopPeriod:
+	case AutoPeriod, PausePeriod, TransitionShift, Shift1, Shift2, Shift3, Shift4, EndGame:
 		arena.Plc.SetStackBuzzer(false)
 		arena.Plc.SetStackLights(!redAllianceReady, !blueAllianceReady, false, true)
 	}
 
-	// Get all the game-specific inputs and update the score.
-	if arena.MatchState == AutoPeriod || arena.MatchState == PausePeriod || arena.MatchState == TeleopPeriod ||
-		inGracePeriod {
-		redScore.ProcessorAlgae, blueScore.ProcessorAlgae = arena.Plc.GetProcessorCounts()
-	}
 	if !oldRedScore.Equals(redScore) || !oldBlueScore.Equals(blueScore) {
 		arena.RealtimeScoreNotifier.Notify()
-	}
-
-	// Handle the truss lights.
-	if arena.MatchState == AutoPeriod || arena.MatchState == PausePeriod || arena.MatchState == TeleopPeriod {
-		warningSequenceActive, lights := trussLightWarningSequence(arena.MatchTimeSec())
-		if warningSequenceActive {
-			arena.Plc.SetTrussLights(lights, lights)
-		} else {
-			if !game.CoralBonusCoopEnabled || arena.CurrentMatch.Type == model.Playoff {
-				// Just leave the lights on all match if co-op is not enabled for this match (or event).
-				arena.Plc.SetTrussLights([3]bool{true, true, true}, [3]bool{true, true, true})
-			} else {
-				// Set the lights to reflect co-op status.
-				if arena.RedScoreSummary().CoopertitionBonus && arena.BlueScoreSummary().CoopertitionBonus {
-					arena.Plc.SetTrussLights([3]bool{true, true, true}, [3]bool{true, true, true})
-				} else {
-					arena.Plc.SetTrussLights(
-						[3]bool{
-							arena.RedRealtimeScore.CurrentScore.ProcessorAlgae >= 1,
-							arena.RedRealtimeScore.CurrentScore.ProcessorAlgae >= 2,
-							false,
-						},
-						[3]bool{
-							arena.BlueRealtimeScore.CurrentScore.ProcessorAlgae >= 1,
-							arena.BlueRealtimeScore.CurrentScore.ProcessorAlgae >= 2,
-							false,
-						},
-					)
-				}
-			}
-		}
-	} else {
-		arena.Plc.SetTrussLights(
-			[3]bool{inGracePeriod, inGracePeriod, inGracePeriod}, [3]bool{inGracePeriod, inGracePeriod, inGracePeriod},
-		)
 	}
 }
 
@@ -1232,25 +1183,31 @@ func (arena *Arena) runPeriodicTasks() {
 	arena.purgeDisconnectedDisplays()
 }
 
-// trussLightWarningSequence generates the sequence of truss light states during the "sonar ping" warning sound. It
-// returns true if the sequence is active, and an array of booleans indicating the state of each truss light.
-func trussLightWarningSequence(matchTimeSec float64) (bool, [3]bool) {
-	stepTimeSec := 0.2
-	sequence := []int{1, 2, 3, 2, 1, 2, 3, 0, 0, 1, 2, 3, 2, 1, 2, 3, 0, 0}
-	startTime := float64(
-		game.MatchTiming.WarmupDurationSec + game.MatchTiming.AutoDurationSec + game.MatchTiming.PauseDurationSec +
-			game.MatchTiming.TeleopDurationSec - game.MatchTiming.WarningRemainingDurationSec,
-	)
-	lights := [3]bool{false, false, false}
-
-	if matchTimeSec < startTime {
-		// The sequence is not active yet.
-		return false, lights
+// Calculate the HubState for Shift1 based on the configured FirstShiftAlliance setting.
+func (arena *Arena) getFirstShiftHubState() int {
+	switch arena.EventSettings.FirstShiftAlliance {
+	case "red":
+		return RedAllianceHubBit
+	case "random":
+		if rand.Intn(2) == 0 {
+			return RedAllianceHubBit
+		}
+		return BlueAllianceHubBit
+	case "lowestScore":
+		redScore := arena.RedScoreSummary().Score
+		blueScore := arena.BlueScoreSummary().Score
+		if redScore < blueScore {
+			return RedAllianceHubBit
+		} else if blueScore < redScore {
+			return BlueAllianceHubBit
+		}
+		// Scores are tied, use random
+		if rand.Intn(2) == 0 {
+			return RedAllianceHubBit
+		}
+		return BlueAllianceHubBit
+	default:
+		// Default to blue if not set or set to "blue"
+		return BlueAllianceHubBit
 	}
-
-	step := int((matchTimeSec - startTime) / stepTimeSec)
-	if step < len(sequence) && sequence[step] > 0 {
-		lights[sequence[step]-1] = true
-	}
-	return step < len(sequence), lights
 }

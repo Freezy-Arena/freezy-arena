@@ -5,6 +5,10 @@ package web
 
 import (
 	"bytes"
+	"log"
+	"testing"
+	"time"
+
 	"github.com/Team254/cheesy-arena/field"
 	"github.com/Team254/cheesy-arena/game"
 	"github.com/Team254/cheesy-arena/model"
@@ -13,9 +17,6 @@ import (
 	gorillawebsocket "github.com/gorilla/websocket"
 	"github.com/mitchellh/mapstructure"
 	"github.com/stretchr/testify/assert"
-	"log"
-	"testing"
-	"time"
 )
 
 func TestMatchPlay(t *testing.T) {
@@ -126,11 +127,12 @@ func TestCommitTiebreak(t *testing.T) {
 		MatchId: match.Id,
 		// These should all be fields that aren't part of the tiebreaker.
 		RedScore: &game.Score{
-			Reef:  game.Reef{TroughFar: 1},
-			Fouls: []game.Foul{{FoulId: 1, IsMajor: false}, {FoulId: 2, IsMajor: false}},
+			Fuel:  1,
+			Fouls: []game.Foul{{IsMajor: false}},
 		},
 		BlueScore: &game.Score{
-			Fouls: []game.Foul{{FoulId: 3, IsMajor: false}},
+			Fuel:  1,
+			Fouls: []game.Foul{{IsMajor: false}},
 		},
 	}
 
@@ -155,8 +157,12 @@ func TestCommitTiebreak(t *testing.T) {
 	assert.Equal(t, game.TieMatch, match.Status)
 
 	// Change the score to still be equal nominally but trigger the tiebreaker criteria.
-	matchResult.BlueScore.ProcessorAlgae = 1
-	matchResult.BlueScore.Fouls = []game.Foul{{FoulId: 3, IsMajor: false}, {FoulId: 4, IsMajor: true}}
+	// Red has 4 minors (8 points to Blue), Blue has 1 major + 1 minor (8 points to Red)
+	// Blue has more majors (1 vs 0), so Red wins tiebreaker
+	matchResult.BlueScore.Fuel = 2
+	matchResult.RedScore.Fuel = 2
+	matchResult.RedScore.Fouls = []game.Foul{{IsMajor: false}, {IsMajor: false}, {IsMajor: false}, {IsMajor: false}}
+	matchResult.BlueScore.Fouls = []game.Foul{{IsMajor: false}, {IsMajor: true}}
 
 	// Sanity check that the test scores are equal; they will need to be updated accordingly for each new game.
 	assert.Equal(
@@ -334,11 +340,11 @@ func TestMatchPlayWebsocketCommands(t *testing.T) {
 	ws.Write("abortMatch", nil)
 	readWebsocketType(t, ws, "audienceDisplayMode")
 	assert.Equal(t, field.PostMatch, web.arena.MatchState)
-	web.arena.RedRealtimeScore.CurrentScore.BargeAlgae = 6
+	web.arena.RedRealtimeScore.CurrentScore.Fuel = 6
 	web.arena.BlueRealtimeScore.CurrentScore.LeaveStatuses = [3]bool{true, false, true}
 	ws.Write("commitResults", nil)
 	readWebsocketMultiple(t, ws, 5) // scorePosted, matchLoad, realtimeScore, allianceStationDisplayMode, scoringStatus
-	assert.Equal(t, 6, web.arena.SavedMatchResult.RedScore.BargeAlgae)
+	assert.Equal(t, 6, web.arena.SavedMatchResult.RedScore.Fuel)
 	assert.Equal(t, [3]bool{true, false, true}, web.arena.SavedMatchResult.BlueScore.LeaveStatuses)
 	assert.Equal(t, field.PreMatch, web.arena.MatchState)
 	ws.Write("discardResults", nil)
@@ -510,7 +516,7 @@ func TestMatchPlayWebsocketNotifications(t *testing.T) {
 	assert.Equal(t, field.AutoPeriod, matchTime.MatchState)
 	assert.Equal(t, 2, matchTime.MatchTimeSec)
 
-	// Check across a match state boundary.
+	// Check across a match state boundary (Auto -> Pause).
 	web.arena.MatchStartTime = time.Now().Add(
 		-time.Duration(game.MatchTiming.WarmupDurationSec+game.MatchTiming.AutoDurationSec) * time.Second,
 	)

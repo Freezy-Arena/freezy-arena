@@ -173,6 +173,17 @@ const handleMatchTime = function (data) {
   });
 };
 
+// Handles a websocket message to play a sound to signal match start/stop/etc.
+const handlePlaySound = function(sound) {
+  $("audio").each(function(k, v) {
+    // Stop and reset any sounds that are still playing.
+    v.pause();
+    v.currentTime = 0;
+  });
+  $("#sound-" + sound)[0].play();
+};
+
+
 // Handles a websocket message to update the match score.
 const handleRealtimeScore = function (data, reversed) {
 
@@ -180,10 +191,39 @@ const handleRealtimeScore = function (data, reversed) {
     $("#rightScore").text(data.Red.ScoreSummary.Score);
     $("#leftScore").text(data.Blue.ScoreSummary.Score);
   } else {
-    $("#rightScore").text(data.Blue.ScoreSummary.Score);
-    $("#leftScore").text(data.Red.ScoreSummary.Score);
+    redCoral = `${data.Red.ScoreSummary.NumCoralLevels}/${data.Red.ScoreSummary.NumCoralLevelsGoal}`;
+    blueCoral = `${data.Blue.ScoreSummary.NumCoralLevels}/${data.Blue.ScoreSummary.NumCoralLevelsGoal}`;
+  } 
 
+  let level1, level2, level3, level4;
+  if (reversed  === "true") {
+    $("#rightScoreAllianceDisplay").text(data.Red.ScoreSummary.Score);
+    $("#leftScoreAllianceDisplay").text(data.Blue.ScoreSummary.Score);
+    $("#currentCoral").text(blueCoral);
+    $("#currentAlgae").text(data.Blue.ScoreSummary.NumAlgae);
+    level1 = data.Blue.Score.Reef.TroughNear+data.Blue.Score.Reef.TroughFar;
+    level2 = data.Blue.Score.Reef.Branches[0].filter(Boolean).length;
+    level3 = data.Blue.Score.Reef.Branches[1].filter(Boolean).length;
+    level4 = data.Blue.Score.Reef.Branches[2].filter(Boolean).length;
+    $("#level1").text("1-" + level1.toString().padStart(2, "0"));
+    $("#level2").text("2-" + level2.toString().padStart(2, "0"));
+    $("#level3").text("3-" + level3.toString().padStart(2, "0"));
+    $("#level4").text("4-" + level4.toString().padStart(2, "0"));
+  } else {
+    $("#rightScoreAllianceDisplay").text(data.Blue.ScoreSummary.Score);
+    $("#leftScoreAllianceDisplay").text(data.Red.ScoreSummary.Score);
+    $("#currentCoral").text(redCoral);
+    $("#currentAlgae").text(data.Red.ScoreSummary.NumAlgae);
+    level1 = data.Red.Score.Reef.TroughNear+data.Red.Score.Reef.TroughFar;
+    level2 = data.Red.Score.Reef.Branches[0].filter(Boolean).length;
+    level3 = data.Red.Score.Reef.Branches[1].filter(Boolean).length;
+    level4 = data.Red.Score.Reef.Branches[2].filter(Boolean).length;
+    $("#level1").text("1-" + level1.toString().padStart(2, "0"));
+    $("#level2").text("2-" + level2.toString().padStart(2, "0"));
+    $("#level3").text("3-" + level3.toString().padStart(2, "0"));
+    $("#level4").text("4-" + level4.toString().padStart(2, "0"));
   }
+
 };
 
 // Handles a websocket message to update current match
@@ -260,7 +300,10 @@ $(function () {
       handleMatchTime(event.data);
     },
     realtimeScore: function (event) {
-      handleRealtimeScore(event.data, reversed);
+      handleRealtimeScore(event.data);
+    },
+    playSound: function(event) {
+      handlePlaySound(event.data);
     },
   });
 });

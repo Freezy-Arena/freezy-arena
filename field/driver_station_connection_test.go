@@ -5,12 +5,13 @@ package field
 
 import (
 	"fmt"
-	"github.com/Team254/cheesy-arena/model"
-	"github.com/Team254/cheesy-arena/network"
-	"github.com/stretchr/testify/assert"
 	"net"
 	"testing"
 	"time"
+
+	"github.com/Team254/cheesy-arena/model"
+	"github.com/Team254/cheesy-arena/network"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestEncodeControlPacket(t *testing.T) {
@@ -26,7 +27,7 @@ func TestEncodeControlPacket(t *testing.T) {
 	assert.Equal(t, byte(0), data[5])
 	assert.Equal(t, byte(0), data[6])
 	assert.Equal(t, byte(0), data[20])
-	assert.Equal(t, byte(15), data[21])
+	assert.Equal(t, byte(20), data[21])
 
 	// Check the different alliance station values.
 	dsConn.AllianceStation = "R2"
@@ -117,18 +118,22 @@ func TestEncodeControlPacket(t *testing.T) {
 	arena.MatchState = AutoPeriod
 	arena.MatchStartTime = time.Now().Add(-time.Duration(4 * time.Second))
 	data = dsConn.encodeControlPacket(arena)
-	assert.Equal(t, byte(11), data[21])
-	arena.MatchState = PausePeriod
-	arena.MatchStartTime = time.Now().Add(-time.Duration(16 * time.Second))
+	assert.Equal(t, byte(16), data[21]) // AutoDurationSec - 4 = 16 seconds remaining
+
+	arena.MatchState = TransitionShift
+	arena.MatchStartTime = time.Now().Add(-time.Duration(25 * time.Second))
 	data = dsConn.encodeControlPacket(arena)
-	assert.Equal(t, byte(135), data[21])
-	arena.MatchState = TeleopPeriod
-	arena.MatchStartTime = time.Now().Add(-time.Duration(33 * time.Second))
+	assert.Equal(t, byte(132), data[21]) // Teleop countdown
+
+	arena.MatchState = Shift1
+	arena.MatchStartTime = time.Now().Add(-time.Duration(35 * time.Second))
 	data = dsConn.encodeControlPacket(arena)
-	assert.Equal(t, byte(119), data[21])
+	assert.Equal(t, byte(120), data[21]) // Match time remaining
+
 	arena.MatchStartTime = time.Now().Add(-time.Duration(150 * time.Second))
 	data = dsConn.encodeControlPacket(arena)
-	assert.Equal(t, byte(2), data[21])
+	assert.Equal(t, byte(5), data[21]) // Match time remaining
+
 	arena.MatchState = PostMatch
 	arena.MatchStartTime = time.Now().Add(-time.Duration(180 * time.Second))
 	data = dsConn.encodeControlPacket(arena)

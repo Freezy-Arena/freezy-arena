@@ -4,8 +4,9 @@
 package model
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestEventSettingsReadWrite(t *testing.T) {
@@ -19,6 +20,7 @@ func TestEventSettingsReadWrite(t *testing.T) {
 		EventSettings{
 			Id:                          1,
 			Name:                        "Untitled Event",
+			LogoSuffix: 				 "",
 			PlayoffType:                 DoubleEliminationPlayoff,
 			NumPlayoffAlliances:         8,
 			SelectionRound2Order:        "L",
@@ -26,20 +28,17 @@ func TestEventSettingsReadWrite(t *testing.T) {
 			SelectionShowUnpickedTeams:  true,
 			TbaDownloadEnabled:          true,
 			ApChannel:                   36,
+			AlternateIOEnabled:          false,
 			SCCUpCommands:               "configure terminal\ninterface range gigabitEthernet 1/2-4\nno shutdown\nexit\nexit\nexit",
 			SCCDownCommands:             "configure terminal\ninterface range gigabitEthernet 1/2-4\nshutdown\nexit\nexit\nexit",
-			WarmupDurationSec:           0,
-			AutoDurationSec:             15,
-			PauseDurationSec:            3,
-			TeleopDurationSec:           135,
-			WarningRemainingDurationSec: 20,
-			AutoBonusCoralThreshold:     1,
-			CoralBonusPerLevelThreshold: 7,
-			CoralBonusCoopEnabled:       true,
-			BargeBonusPointThreshold:    16,
-			IncludeAlgaeInBargeBonus:    false,
-			CompanionAddress:            "",
-			CompanionPort:               0,
+			WarmupDurationSec:          0,
+			AutoDurationSec:            20,
+			TransitionShiftDurationSec: 10,
+			AllianceShiftDurationSec:   25,
+			EndGameDurationSec:         30,
+			FirstShiftAlliance:         "blue",
+			BargeBonusPointThreshold:   16,
+			IncludeAlgaeInBargeBonus:   false,
 		},
 		*eventSettings,
 	)

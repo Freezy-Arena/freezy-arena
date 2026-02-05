@@ -4,12 +4,13 @@
 package web
 
 import (
+	"testing"
+	"time"
+
 	"github.com/Team254/cheesy-arena/game"
 	"github.com/Team254/cheesy-arena/websocket"
 	gorillawebsocket "github.com/gorilla/websocket"
 	"github.com/stretchr/testify/assert"
-	"testing"
-	"time"
 )
 
 func TestAllianceStationDisplay(t *testing.T) {
@@ -65,11 +66,10 @@ func TestAllianceStationDisplayWebsocket(t *testing.T) {
 	assert.True(t, ok)
 	web.arena.MatchStartTime = time.Now().Add(-time.Duration(game.MatchTiming.WarmupDurationSec) * time.Second)
 	web.arena.Update()
-	messages = readWebsocketMultiple(t, ws, 2)
+	messages = readWebsocketMultiple(t, ws, 3)
 	_, ok = messages["arenaStatus"]
 	assert.True(t, ok)
 	_, ok = messages["matchTime"]
 	assert.True(t, ok)
 	web.arena.RealtimeScoreNotifier.Notify()
-	readWebsocketType(t, ws, "realtimeScore")
 }

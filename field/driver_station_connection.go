@@ -241,11 +241,11 @@ func (dsConn *DriverStationConnection) encodeControlPacket(arena *Arena) [22]byt
 		matchSecondsRemaining = game.MatchTiming.AutoDurationSec
 	case StartMatch, AutoPeriod:
 		matchSecondsRemaining = game.MatchTiming.AutoDurationSec - int(arena.MatchTimeSec())
-	case PausePeriod:
-		matchSecondsRemaining = game.MatchTiming.TeleopDurationSec
-	case TeleopPeriod:
-		matchSecondsRemaining = game.MatchTiming.AutoDurationSec + game.MatchTiming.TeleopDurationSec +
-			game.MatchTiming.PauseDurationSec - int(arena.MatchTimeSec())
+	case TransitionShift:
+		matchSecondsRemaining = game.MatchTiming.TransitionShiftDurationSec + game.MatchTiming.AllianceShiftDurationSec*4 + game.MatchTiming.EndGameDurationSec
+	case PausePeriod, Shift1, Shift2, Shift3, Shift4, EndGame:
+		matchSecondsRemaining = game.MatchTiming.AutoDurationSec + game.MatchTiming.PauseDurationSec + game.MatchTiming.TransitionShiftDurationSec +
+			game.MatchTiming.AllianceShiftDurationSec*4 + game.MatchTiming.EndGameDurationSec - int(arena.MatchTimeSec())
 	default:
 		matchSecondsRemaining = 0
 	}

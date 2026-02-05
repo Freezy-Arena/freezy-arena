@@ -73,10 +73,12 @@ var handleMatchLoad = function (data) {
   }
 };
 
-// Handles a websocket message to update the team connection status.
+// Handles a websocket message to update the team connection status and A/E-stop.
 var handleArenaStatus = function (data) {
   stationStatus = data.AllianceStations[station];
   var blink = false;
+
+  // Existing DS connection/blink logic
   if (stationStatus && stationStatus.Bypass) {
     $("#match").attr("data-status", "bypass");
   } else if (stationStatus) {
@@ -99,6 +101,18 @@ var handleArenaStatus = function (data) {
     clearInterval(blinkInterval);
     blinkInterval = null;
   }
+
+
+  // Flash driver station display when A-Stopped or solid orange when E-Stopped
+  // Make sure match is not in progress to prevent flashing during match
+  $("#match").removeClass("solid-orange blink-orange");
+  if (stationStatus.EStop && data.MatchState==0) {
+    $("#match").addClass("solid-orange"); // E-stop: solid orange
+    console.log("E-Stopped")
+  } else if (stationStatus.AStop && data.MatchState==0) {
+    $("#match").addClass("blink-orange"); // A-stop: blinking orange
+    console.log("A-Stopped")
+  }
 };
 
 // Handles a websocket message to update the match time countdown.
@@ -106,6 +120,7 @@ var handleMatchTime = function (data) {
   translateMatchTime(data, function (matchState, matchStateText, countdownSec) {
     if (station[0] === "N") {
       // Pin the state for a non-alliance display to an in-match state, so as to always show time or score.
+      // TODO: 2026
       matchState = "TELEOP_PERIOD";
     }
     var countdownString = String(countdownSec % 60);
@@ -116,6 +131,15 @@ var handleMatchTime = function (data) {
     $("#timeRemaining").text(countdownString);
     $("#match").attr("data-state", matchState);
   });
+};
+
+// Handles a websocket message to play a sound to signal match start/stop/etc.
+const handlePlaySound = function(sound) {
+  $("audio").each(function(k, v) {
+    v.pause();
+    v.currentTime = 0;
+  });
+  $("#sound-" + sound)[0].play();
 };
 
 // Handles a websocket message to update the match score.
@@ -130,6 +154,7 @@ var handleRealtimeScore = function (data) {
 
 $(function () {
   // Read the configuration for this display from the URL query string.
+  console.log()
   var urlParams = new URLSearchParams(window.location.search);
   station = urlParams.get("station");
 
@@ -152,6 +177,9 @@ $(function () {
     },
     realtimeScore: function (event) {
       handleRealtimeScore(event.data);
+    },
+    playSound: function(event) {
+      handlePlaySound(event.data);
     }
   });
 });

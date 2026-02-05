@@ -200,7 +200,12 @@ const handleArenaStatus = function (data) {
     case "WARMUP_PERIOD":
     case "AUTO_PERIOD":
     case "PAUSE_PERIOD":
-    case "TELEOP_PERIOD":
+    case "TRANSITION_PERIOD":
+    case "SHIFT1_PERIOD":
+    case "SHIFT2_PERIOD":
+    case "SHIFT3_PERIOD":
+    case "SHIFT4_PERIOD":
+    case "ENDGAME_PERIOD":
       $("#showOverlay").prop("disabled", true);
       $("#introRadio").prop("disabled", true);
       $("#showFinalScore").prop("disabled", true);
@@ -274,10 +279,121 @@ const handleArenaStatus = function (data) {
     $("#plcStatus").text("Not Connected");
     $("#plcStatus").attr("data-ready", false);
   }
+
   $("#fieldEStop").attr("data-ready", !data.FieldEStop);
   $.each(data.PlcArmorBlockStatuses, function (name, status) {
     $("#plc" + name + "Status").attr("data-ready", status);
   });
+
+  if (data.ScoreTableIOEnabled) {
+    if (data.ScoreTableIOIsHealthy) {
+      if (data.ScoreTableIOIsActive) {
+        $("#scoreTableIO").text("Score Connected");
+        $("#scoreTableIO").attr("data-ready", 2);
+      } else {
+        $("#scoreTableIO").text("Score Not Responding");
+        $("#scoreTableIO").attr("data-ready", 3);
+      }
+    } else {
+      $("#scoreTableIO").text("Score Not Connected");
+      $("#scoreTableIO").attr("data-ready", 1);
+    }
+  } else {
+    $("#scoreTableIO").text("Score Disabled");
+    $("#scoreTableIO").attr("data-ready", 0);
+  }
+  if (data.RedEstopsEnabled) {
+    if (data.RedEstopsIsHealthy) {
+      if (data.RedEstopsIsActive) {
+        $("#redEstopsIO").text("Red Estops Connected");
+        $("#redEstopsIO").attr("data-ready", 2);
+      } else {
+        $("#redEstopsIO").text("Red Estops Not Responding");
+        $("#redEstopsIO").attr("data-ready", 3);
+      }
+    } else {
+      $("#redEstopsIO").text("Red Estops Not Connected");
+      $("#redEstopsIO").attr("data-ready", 1);
+    }
+  } else {
+    $("#redEstopsIO").text("Red Estops Disabled");
+    $("#redEstopsIO").attr("data-ready", 0);
+  }
+  if (data.BlueEstopsEnabled) {
+    if (data.BlueEStopsIsHealthy) {
+      if (data.BlueEstopsIsActive) {
+        $("#blueEstopsIO").text("Blue Estops Connected");
+        $("#blueEstopsIO").attr("data-ready", 2);
+      } else {
+        $("#blueEstopsIO").text("Blue Estops Not Responding");
+        $("#blueEstopsIO").attr("data-ready", 3);
+      }
+    } else {
+      $("#blueEstopsIO").text("Blue Estops Not Connected");
+      $("#blueEstopsIO").attr("data-ready", 1);
+    }
+  } else {
+    $("#blueEstopsIO").text("Blue Estops Disabled");
+    $("#blueEstopsIO").attr("data-ready", 0);
+  }
+  if (data.RedHubEnabled) {
+    if (data.RedHubIsHealthy) {
+      if (data.RedHubIsActive) {
+        const batteryText = data.RedHubBatteryVoltage > 0
+          ? ` ${data.RedHubBatteryVoltage.toFixed(1)}V ${data.RedHubBatteryPercent.toFixed(0)}%`
+          : "";
+        $("#redHubIO").text("Red Hub" + batteryText);
+        $("#redHubIO").attr("data-ready", 2);
+      } else {
+        $("#redHubIO").text("Red Hub Not Responding");
+        $("#redHubIO").attr("data-ready", 3);
+      }
+    } else {
+      $("#redHubIO").text("Red Hub Not Connected");
+      $("#redHubIO").attr("data-ready", 1);
+    }
+  } else {
+    $("#redHubIO").text("Red Hub Disabled");
+    $("#redHubIO").attr("data-ready", 0);
+  }
+  if (data.BlueHubEnabled) {
+    if (data.BlueHubIsHealthy) {
+      if (data.BlueHubIsActive) {
+        const batteryText = data.BlueHubBatteryVoltage > 0
+          ? ` ${data.BlueHubBatteryVoltage.toFixed(1)}V ${data.BlueHubBatteryPercent.toFixed(0)}%`
+          : "";
+        $("#blueHubIO").text("Blue Hub" + batteryText);
+        $("#blueHubIO").attr("data-ready", 2);
+      } else {
+        $("#blueHubIO").text("Blue Hub Not Responding");
+        $("#blueHubIO").attr("data-ready", 3);
+      }
+    } else {
+      $("#blueHubIO").text("Blue Hub Not Connected");
+      $("#blueHubIO").attr("data-ready", 1);
+    }
+  } else {
+    $("#blueHubIO").text("Blue Hub Disabled");
+    $("#blueHubIO").attr("data-ready", 0);
+  }
+
+  // Update matchTime background color based on which hubs are active
+  // HubsActive: 0=none, 1=red, 2=blue, 3=both
+  $("#matchTime").removeClass("bg-red bg-blue bg-purple bg-body-tertiary");
+  switch (data.HubsActive) {
+    case 1:
+      $("#matchTime").addClass("bg-red");
+      break;
+    case 2:
+      $("#matchTime").addClass("bg-blue");
+      break;
+    case 3:
+      $("#matchTime").addClass("bg-purple");
+      break;
+    default:
+      $("#matchTime").addClass("bg-body-tertiary");
+      break;
+  }
 };
 
 // Handles a websocket message to update the teams for the current match.
@@ -377,6 +493,13 @@ const handleEventStatus = function (data) {
   $("#earlyLateMessage").text(data.EarlyLateMessage);
 };
 
+const matchListUpdate = function () {
+ //window.location.reload();
+ fetch("/match_play/match_load")
+    .then(response => response.text())
+    .then(html => $("#matchListColumn").html(html));
+};
+
 const formatPlayoffAllianceInfo = function (allianceNumber, offFieldTeams) {
   if (allianceNumber === 0) {
     return "";
@@ -424,6 +547,9 @@ $(function () {
     },
     scoringStatus: function (event) {
       handleScoringStatus(event.data);
+    },
+    matchListUpdate: function () {
+      matchListUpdate();
     },
   });
 });
