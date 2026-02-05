@@ -49,7 +49,6 @@ type TeamSign struct {
 
 const (
 	teamSignAddressPrefix            = "10.0.100."
-	teamSignYear                     = 2025
 	teamSignPort                     = 10011
 	teamSignPacketMagicString        = "CYPRX"
 	teamSignPacketHeaderLength       = 7
@@ -129,13 +128,13 @@ func (signs *TeamSigns) Update(arena *Arena) {
 }
 
 // Sets the team numbers for the next match on all signs.
-func (signs *TeamSigns) SetNextMatchTeams(teams [6]int) {
-	signs.Red1.nextMatchTeamId = teams[0]
-	signs.Red2.nextMatchTeamId = teams[1]
-	signs.Red3.nextMatchTeamId = teams[2]
-	signs.Blue1.nextMatchTeamId = teams[3]
-	signs.Blue2.nextMatchTeamId = teams[4]
-	signs.Blue3.nextMatchTeamId = teams[5]
+func (signs *TeamSigns) SetNextMatchTeams(match *model.Match) {
+	signs.Red1.nextMatchTeamId = match.Red1
+	signs.Red2.nextMatchTeamId = match.Red2
+	signs.Red3.nextMatchTeamId = match.Red3
+	signs.Blue1.nextMatchTeamId = match.Blue1
+	signs.Blue2.nextMatchTeamId = match.Blue2
+	signs.Blue3.nextMatchTeamId = match.Blue3
 }
 
 // Sets the IP address of the sign.
@@ -242,7 +241,7 @@ func generateTimerTexts(arena *Arena, countdown, inMatchRearText string) (string
 	var frontColor color.RGBA
 	rearText := inMatchRearText
 	if arena.AllianceStationDisplayMode == "logo" {
-		frontText = fmt.Sprintf("%5d", teamSignYear)
+		frontText = fmt.Sprintf("%5d", time.Now().Year())
 		frontColor = whiteColor
 	} else if arena.AllianceStationDisplayMode == "timeout" {
 		frontText = countdown
@@ -279,7 +278,7 @@ func (sign *TeamSign) generateTeamNumberTexts(
 	var frontText string
 	var frontColor color.RGBA
 	if arena.AllianceStationDisplayMode == "logo" {
-		frontText = fmt.Sprintf("%5d", teamSignYear)
+		frontText = fmt.Sprintf("%5d", time.Now().Year())
 		frontColor = allianceColor
 	} else {
 		if allianceStation.Team == nil {
