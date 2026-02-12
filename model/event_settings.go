@@ -86,6 +86,7 @@ type EventSettings struct {
 	BlackmagicAddresses             string
 	WarmupDurationSec               int
 	AutoDurationSec                 int
+	PauseDurationSec                int
 	TransitionShiftDurationSec      int
 	AllianceShiftDurationSec        int
 	EndGameDurationSec              int
@@ -120,6 +121,7 @@ func (database *Database) GetEventSettings() (*EventSettings, error) {
 		SCCDownCommands:             strings.Join(sccDefaultDownCommands, "\n"),
 		WarmupDurationSec:           game.MatchTiming.WarmupDurationSec,
 		AutoDurationSec:             game.MatchTiming.AutoDurationSec,
+		PauseDurationSec:            game.MatchTiming.PauseDurationSec,
 		TransitionShiftDurationSec:  game.MatchTiming.TransitionShiftDurationSec,
 		AllianceShiftDurationSec:    game.MatchTiming.AllianceShiftDurationSec,
 		EndGameDurationSec:          game.MatchTiming.EndGameDurationSec,

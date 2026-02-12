@@ -230,6 +230,7 @@ func (arena *Arena) LoadSettings() error {
 
 	game.MatchTiming.WarmupDurationSec = settings.WarmupDurationSec
 	game.MatchTiming.AutoDurationSec = settings.AutoDurationSec
+	game.MatchTiming.PauseDurationSec = settings.PauseDurationSec
 	game.MatchTiming.TransitionShiftDurationSec = settings.TransitionShiftDurationSec
 	game.MatchTiming.AllianceShiftDurationSec = settings.AllianceShiftDurationSec
 	game.MatchTiming.EndGameDurationSec = settings.EndGameDurationSec
