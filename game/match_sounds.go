@@ -30,19 +30,39 @@ func UpdateMatchSounds() {
 		{
 			"resume",
 			"wav",
-			float64(MatchTiming.AutoDurationSec + MatchTiming.TransitionShiftDurationSec),
+			float64(MatchTiming.AutoDurationSec + MatchTiming.PauseDurationSec),
 		},
 		{
-			"warning_sonar",
+			"alliance_shift",
+			"wav",
+			float64(MatchTiming.AutoDurationSec + MatchTiming.PauseDurationSec + MatchTiming.TransitionShiftDurationSec),
+		},
+		{
+			"alliance_shift",
+			"wav",
+			float64(MatchTiming.AutoDurationSec + MatchTiming.PauseDurationSec + MatchTiming.TransitionShiftDurationSec + MatchTiming.AllianceShiftDurationSec),
+		},
+		{
+			"alliance_shift",
+			"wav",
+			float64(MatchTiming.AutoDurationSec + MatchTiming.PauseDurationSec + MatchTiming.TransitionShiftDurationSec + (2*MatchTiming.AllianceShiftDurationSec)),
+		},
+		{
+			"alliance_shift",
+			"wav",
+			float64(MatchTiming.AutoDurationSec + MatchTiming.PauseDurationSec + MatchTiming.TransitionShiftDurationSec + (3*MatchTiming.AllianceShiftDurationSec)),
+		},
+		{
+			"steam_whistle",
 			"wav",
 			float64(
-				MatchTiming.AutoDurationSec + MatchTiming.TransitionShiftDurationSec + MatchTiming.AllianceShiftDurationSec * 4,
+				MatchTiming.AutoDurationSec + MatchTiming.PauseDurationSec + MatchTiming.TransitionShiftDurationSec + MatchTiming.AllianceShiftDurationSec * 4,
 			),
 		},
 		{
 			"end",
 			"wav",
-			float64(MatchTiming.AutoDurationSec + MatchTiming.TransitionShiftDurationSec + MatchTiming.AllianceShiftDurationSec*4 + MatchTiming.EndGameDurationSec),
+			float64(MatchTiming.AutoDurationSec + MatchTiming.PauseDurationSec + MatchTiming.TransitionShiftDurationSec + MatchTiming.AllianceShiftDurationSec*4 + MatchTiming.EndGameDurationSec),
 		},
 		{
 			"abort",
