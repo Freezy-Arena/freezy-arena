@@ -142,6 +142,25 @@ const handleMatchTime = function (data) {
   translateMatchTime(data, function (matchState, matchStateText, countdownSec) {
     $("#matchTime").text(getCountdownString(countdownSec));
   });
+
+    // Update matchTime background color based on which hubs are active
+  // HubsActive: 0=none, 1=red, 2=blue, 3=both
+  $("#matchTime").removeClass("bg-red bg-blue bg-purple bg-body-tertiary");
+  switch (data.HubsActive) {
+    case 1:
+      $("#matchTime").addClass("bg-red");
+      break;
+    case 2:
+      $("#matchTime").addClass("bg-blue");
+      break;
+    case 3:
+      $("#matchTime").addClass("bg-purple");
+      break;
+    default:
+      $("#matchTime").addClass("bg-body-tertiary");
+      break;
+  }
+
 };
 
 // Handles a websocket message to update the match score.

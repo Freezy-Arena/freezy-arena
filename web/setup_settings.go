@@ -127,6 +127,7 @@ func (web *Web) settingsPostHandler(w http.ResponseWriter, r *http.Request) {
 	eventSettings.IncludeAlgaeInBargeBonus = r.PostFormValue("includeAlgaeInBargeBonus") == "on"
 
 	eventSettings.AlternateIOEnabled = r.PostFormValue("alternateIOEnabled") == "on"
+	eventSettings.ApiMonitorEnabled = r.PostFormValue("apiMonitorEnabled") == "on"
 	eventSettings.ScoreTableEstopAddress = r.PostFormValue("ScoreTableEstopAddress")
 	eventSettings.RedAllianceStationEstopAddress = r.PostFormValue("RedAllianceStationEstopAddress")
 	eventSettings.BlueAllianceStationEstopAddress = r.PostFormValue("BlueAllianceStationEstopAddress")

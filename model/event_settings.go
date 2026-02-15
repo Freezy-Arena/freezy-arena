@@ -68,6 +68,7 @@ type EventSettings struct {
 	SCCDownCommands                 string
 	PlcAddress                      string
 	AlternateIOEnabled              bool
+	ApiMonitorEnabled              bool
 	ScoreTableEstopAddress          string
 	RedAllianceStationEstopAddress  string
 	BlueAllianceStationEstopAddress string
@@ -117,6 +118,7 @@ func (database *Database) GetEventSettings() (*EventSettings, error) {
 		TbaDownloadEnabled:          true,
 		ApChannel:                   36,
 		AlternateIOEnabled:          false,
+		ApiMonitorEnabled:          false,
 		SCCUpCommands:               strings.Join(sccDefaultUpCommands, "\n"),
 		SCCDownCommands:             strings.Join(sccDefaultDownCommands, "\n"),
 		WarmupDurationSec:           game.MatchTiming.WarmupDurationSec,

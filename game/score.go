@@ -12,6 +12,7 @@ type Score struct {
 	EndgameStatuses [3]EndgameStatus
 	Fouls           []Foul
 	PlayoffDq       bool
+	Hubstate		bool
 }
 
 // Game-specific settings that can be changed via the settings.

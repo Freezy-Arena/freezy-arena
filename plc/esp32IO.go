@@ -43,6 +43,7 @@ type Esp32 interface {
 	SetBlueAllianceStationEstopAddress(string)
 	SetRedAllianceHubAddress(string)
 	SetBlueAllianceHubAddress(string)
+	SetApiMonitorEnabled(bool)
 	// Hub battery status
 	GetRedHubBatteryVoltage() float64
 	GetRedHubBatteryPercent() float64
@@ -63,6 +64,7 @@ type Esp32IO struct {
 	BlueEstopsHealthy    bool
 	RedHubHealthy        bool
 	BlueHubHealthy       bool
+	ApiMonitorEnabled    bool
 	// Timestamps for tracking when each module last called its API
 	ScoreTableLastSeen   time.Time
 	RedEstopsLastSeen    time.Time
@@ -343,27 +345,47 @@ func (esp32 *Esp32IO) UpdateBlueHubLastSeen() {
 
 // Returns whether the Score Table module is actively calling the API.
 func (esp32 *Esp32IO) IsScoreTableActive() bool {
-	return time.Since(esp32.ScoreTableLastSeen).Seconds() < ModuleActivityTimeoutSec
+	if (esp32.ApiMonitorEnabled){
+		return time.Since(esp32.ScoreTableLastSeen).Seconds() < ModuleActivityTimeoutSec
+	}else{
+		return true
+	}
 }
 
 // Returns whether the Red Estops module is actively calling the API.
 func (esp32 *Esp32IO) IsRedEstopsActive() bool {
-	return time.Since(esp32.RedEstopsLastSeen).Seconds() < ModuleActivityTimeoutSec
+	if (esp32.ApiMonitorEnabled){
+		return time.Since(esp32.RedEstopsLastSeen).Seconds() < ModuleActivityTimeoutSec
+	}else{
+		return true
+	}
 }
 
 // Returns whether the Blue Estops module is actively calling the API.
 func (esp32 *Esp32IO) IsBlueEstopsActive() bool {
-	return time.Since(esp32.BlueEstopsLastSeen).Seconds() < ModuleActivityTimeoutSec
+	if (esp32.ApiMonitorEnabled){
+		return time.Since(esp32.BlueEstopsLastSeen).Seconds() < ModuleActivityTimeoutSec
+	}else{
+		return true
+	}
 }
 
 // Returns whether the Red Hub module is actively calling the API.
 func (esp32 *Esp32IO) IsRedHubActive() bool {
-	return time.Since(esp32.RedHubLastSeen).Seconds() < ModuleActivityTimeoutSec
+	if (esp32.ApiMonitorEnabled){
+		return time.Since(esp32.RedHubLastSeen).Seconds() < ModuleActivityTimeoutSec
+	}else{
+		return true
+	}
 }
 
 // Returns whether the Blue Hub module is actively calling the API.
 func (esp32 *Esp32IO) IsBlueHubActive() bool {
+	if (esp32.ApiMonitorEnabled){
 	return time.Since(esp32.BlueHubLastSeen).Seconds() < ModuleActivityTimeoutSec
+	}else{
+		return true
+	}
 }
 
 // Returns the Red Hub battery voltage.
@@ -396,4 +418,10 @@ func (esp32 *Esp32IO) SetRedHubBattery(voltage, percent float64) {
 func (esp32 *Esp32IO) SetBlueHubBattery(voltage, percent float64) {
 	esp32.BlueHubBatteryVoltage = voltage
 	esp32.BlueHubBatteryPercent = percent
+}
+
+func (esp32 *Esp32IO) SetApiMonitorEnabled(enabled bool) {
+	// This function would send a command to the ESP32 to enable or disable the API monitor.
+	// The implementation would depend on how the ESP32 is set up to receive commands (e.g., via HTTP, MQTT, etc.).
+	esp32.ApiMonitorEnabled = enabled
 }
