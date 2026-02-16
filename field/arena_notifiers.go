@@ -248,6 +248,24 @@ func (arena *Arena) GenerateMatchLoadMessage() any {
 }
 
 func (arena *Arena) generateMatchTimeMessage() any {
+	switch arena.MatchState{
+	case PreMatch, StartMatch, PostMatch:
+		return MatchTimeMessage{arena.MatchState, 0}
+	case AutoPeriod:
+		return MatchTimeMessage{arena.MatchState, int(arena.MatchTimeSec())}
+	case TransitionShift:
+		return MatchTimeMessage{arena.MatchState, int(arena.MatchTimeSec() - float64(arena.EventSettings.EndGameDurationSec) - (4*float64(arena.EventSettings.AllianceShiftDurationSec)))}
+	case Shift1:
+		return MatchTimeMessage{arena.MatchState, int(arena.MatchTimeSec() - float64(arena.EventSettings.EndGameDurationSec) - (3*float64(arena.EventSettings.AllianceShiftDurationSec)))}
+	case Shift2:
+		return MatchTimeMessage{arena.MatchState, int(arena.MatchTimeSec() - float64(arena.EventSettings.EndGameDurationSec) - (2*float64(arena.EventSettings.AllianceShiftDurationSec)))}
+	case Shift3:
+		return MatchTimeMessage{arena.MatchState, int(arena.MatchTimeSec() - float64(arena.EventSettings.EndGameDurationSec) - float64(arena.EventSettings.AllianceShiftDurationSec))}
+	case Shift4:
+		return MatchTimeMessage{arena.MatchState, int(arena.MatchTimeSec() - float64(arena.EventSettings.EndGameDurationSec))}
+	case EndGame:
+		return MatchTimeMessage{arena.MatchState, int(arena.MatchTimeSec())}
+	}
 	return MatchTimeMessage{arena.MatchState, int(arena.MatchTimeSec())}
 }
 
