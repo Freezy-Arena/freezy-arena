@@ -18,6 +18,8 @@ type ScoreSummary struct {
 	BargeBonusRankingPoint bool
 	BonusRankingPoints    int
 	NumOpponentMajorFouls int
+	Hubstate		bool
+	
 }
 
 type MatchStatus int

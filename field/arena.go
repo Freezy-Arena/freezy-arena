@@ -768,6 +768,9 @@ func (arena *Arena) Update() {
 	arena.LastMatchTimeSec = matchTimeSec
 	arena.lastMatchState = arena.MatchState
 
+	arena.RedRealtimeScore.CurrentScore.Hubstate = arena.HubsActive == 1
+	arena.BlueRealtimeScore.CurrentScore.Hubstate = arena.HubsActive == 2
+	arena.RealtimeScoreNotifier.Notify()
 }
 
 // Loops indefinitely to track and update the arena components.

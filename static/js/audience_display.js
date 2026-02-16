@@ -139,27 +139,10 @@ const handleMatchLoad = function (data) {
 
 // Handles a websocket message to update the match time countdown.
 const handleMatchTime = function (data) {
-  translateMatchTime(data, function (matchState, matchStateText, countdownSec) {
+  translateMatchTime(data, function (matchState, matchStateText, countdownSec, shiftTimeSec) {
     $("#matchTime").text(getCountdownString(countdownSec));
+    $("#shiftTime").text(matchStateText);
   });
-
-    // Update matchTime background color based on which hubs are active
-  // HubsActive: 0=none, 1=red, 2=blue, 3=both
-  $("#matchTime").removeClass("bg-red bg-blue bg-purple bg-body-tertiary");
-  switch (data.HubsActive) {
-    case 1:
-      $("#matchTime").addClass("bg-red");
-      break;
-    case 2:
-      $("#matchTime").addClass("bg-blue");
-      break;
-    case 3:
-      $("#matchTime").addClass("bg-purple");
-      break;
-    default:
-      $("#matchTime").addClass("bg-body-tertiary");
-      break;
-  }
 
 };
 
@@ -180,6 +163,24 @@ const handleRealtimeScore = function (data) {
   $(`#${redSide}Algae`).text(data.Red.ScoreSummary.NumAlgae);
   $(`#${blueSide}Coral`).text(blueCoral);
   $(`#${blueSide}Algae`).text(data.Blue.ScoreSummary.NumAlgae);
+
+  const elem = $("#shiftTime");
+  let bgColor = "#2a2a2a";  // default / neutral / both false
+
+  if (!data.Red?.ScoreSummary?.Hubstate && !data.Blue?.ScoreSummary?.Hubstate) {
+      bgColor = "#8A2BE2";   // vivid violet (classic "both" mix - #8A2BE2)
+      // Alternatives you can swap in:
+      // "#9F00FF"  // bright magenta-violet
+      // "#7F00FF"  // pure violet
+      // "#A020F0"  // strong purple
+      // "#6A1B9A"  // deeper purple (less blinding)
+  } else if (data.Red?.ScoreSummary?.Hubstate) {
+      bgColor = "#ff4444";   // your bright red
+  } else if (data.Blue?.ScoreSummary?.Hubstate) {
+      bgColor = "#2080ff";   // your blue
+  }
+
+  elem.css("background-color", bgColor);
 };
 
 // Handles a websocket message to populate the final score data.

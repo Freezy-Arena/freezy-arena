@@ -20,6 +20,7 @@ Display shown on the audience screen overlayed over the video.
     </div>
     <div id="overlayCentering">
       <div id="matchOverlayContainer">
+        
         <div class="playoff-alliance" id="leftPlayoffAlliance"></div>
         <div id="matchOverlay">
           <div id="matchOverlayTop">
@@ -34,7 +35,6 @@ Display shown on the audience screen overlayed over the video.
                 <img class="avatar" id="leftTeam2Avatar" src=""/>
                 <img class="avatar" id="leftTeam3Avatar" src=""/>
               </div>
-              
               <div class="score-number" id="leftScoreNumber"></div>
             </div>
             <div class="score score-right reversible-right">
@@ -52,10 +52,12 @@ Display shown on the audience screen overlayed over the video.
               <div id="rightTeam3"></div>
             </div>
           </div>
+          
           <div id="eventMatchInfo">
             <span>{{.EventSettings.Name}}</span>
             <span id="matchName"></span>
           </div>
+          <div id="shiftTime"></div>
         </div>
         <div class="playoff-alliance" id="rightPlayoffAlliance"></div>
       </div>
@@ -66,6 +68,7 @@ Display shown on the audience screen overlayed over the video.
         <img id="logo" src="/static/img/game-logo{{.EventSettings.LogoSuffix}}.png" 
           onerror="this.src='/static/img/game-logo.png'" alt="logo"/>
         <div id="matchTime"></div>
+        
       </div>
       <div id="timeoutDetails">
         <div class="timeout-detail" id="timeoutBreakDescription"></div>

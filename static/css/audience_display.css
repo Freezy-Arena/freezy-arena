@@ -659,3 +659,11 @@ html {
   height: 100%;
   object-fit: contain; /* Preserve aspect ratio; use 'cover' if you want to fill the screen */
 }
+
+#shiftTime {
+  display: flex;
+  justify-content: center;      /* horizontal centering */
+
+  background: #f0f0f8;
+  color: #fff;
+}
