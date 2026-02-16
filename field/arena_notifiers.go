@@ -37,7 +37,6 @@ type ArenaNotifiers struct {
 type MatchTimeMessage struct {
 	MatchState
 	MatchTimeSec int
-	ShiftTimeSec int
 }
 
 type audienceAllianceScoreFields struct {
@@ -249,25 +248,7 @@ func (arena *Arena) GenerateMatchLoadMessage() any {
 }
 
 func (arena *Arena) generateMatchTimeMessage() any {
-	switch arena.MatchState{
-	case PreMatch, StartMatch, PostMatch:
-		return MatchTimeMessage{arena.MatchState, 0, 0}
-	case AutoPeriod:
-		return MatchTimeMessage{arena.MatchState, int(arena.MatchTimeSec()) , int(arena.MatchTimeSec())}
-	case TransitionShift:
-		return MatchTimeMessage{arena.MatchState, int(arena.MatchTimeSec() - float64(arena.EventSettings.EndGameDurationSec) - (4*float64(arena.EventSettings.AllianceShiftDurationSec))), int(arena.MatchTimeSec())}
-	case Shift1:
-		return MatchTimeMessage{arena.MatchState, int(arena.MatchTimeSec() - float64(arena.EventSettings.EndGameDurationSec) - (3*float64(arena.EventSettings.AllianceShiftDurationSec))), int(arena.MatchTimeSec())}
-	case Shift2:
-		return MatchTimeMessage{arena.MatchState, int(arena.MatchTimeSec() - float64(arena.EventSettings.EndGameDurationSec) - (2*float64(arena.EventSettings.AllianceShiftDurationSec))), int(arena.MatchTimeSec())}
-	case Shift3:
-		return MatchTimeMessage{arena.MatchState, int(arena.MatchTimeSec() - float64(arena.EventSettings.EndGameDurationSec) - float64(arena.EventSettings.AllianceShiftDurationSec)), int(arena.MatchTimeSec())}
-	case Shift4:
-		return MatchTimeMessage{arena.MatchState, int(arena.MatchTimeSec() - float64(arena.EventSettings.EndGameDurationSec)), int(arena.MatchTimeSec())}
-	case EndGame:
-		return MatchTimeMessage{arena.MatchState, int(arena.MatchTimeSec()), int(arena.MatchTimeSec())}
-	}
-	return MatchTimeMessage{arena.MatchState, int(arena.MatchTimeSec()), int(arena.MatchTimeSec())}
+	return MatchTimeMessage{arena.MatchState, int(arena.MatchTimeSec())}
 }
 
 func (arena *Arena) generateMatchTimingMessage() any {

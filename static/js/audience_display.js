@@ -139,9 +139,10 @@ const handleMatchLoad = function (data) {
 
 // Handles a websocket message to update the match time countdown.
 const handleMatchTime = function (data) {
-  translateMatchTime(data, function (matchState, matchStateText, countdownSec, shiftTimeSec) {
+  translateMatchTime(data, function (matchState, matchStateText, countdownSec, shiftCountdownSec) {
     $("#matchTime").text(getCountdownString(countdownSec));
-    $("#shiftTime").text(matchStateText);
+    $("#shiftText").text(matchStateText);
+    $("#shiftCountdown").text(getCountdownString(shiftCountdownSec));
   });
 
 };
@@ -164,7 +165,7 @@ const handleRealtimeScore = function (data) {
   $(`#${blueSide}Coral`).text(blueCoral);
   $(`#${blueSide}Algae`).text(data.Blue.ScoreSummary.NumAlgae);
 
-  const elem = $("#shiftTime");
+  const elem = $(".shift-container");
   let bgColor = "#2a2a2a";  // default / neutral / both false
 
   if (!data.Red?.ScoreSummary?.Hubstate && !data.Blue?.ScoreSummary?.Hubstate) {

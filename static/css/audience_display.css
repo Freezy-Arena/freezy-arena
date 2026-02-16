@@ -660,10 +660,25 @@ html {
   object-fit: contain; /* Preserve aspect ratio; use 'cover' if you want to fill the screen */
 }
 
-#shiftTime {
-  display: flex;
-  justify-content: center;      /* horizontal centering */
-
-  background: #f0f0f8;
+#shiftText {
   color: #fff;
+}
+
+.shift-container {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    justify-content: center;
+    background: #f0f0f8;
+    color: #fff;
+}
+
+#shiftText,
+#shiftCountdown {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: bold;
+    min-width: 100px;
+    text-align: center;
+    color: #fff;
 }

@@ -76,11 +76,42 @@ const translateMatchTime = function (data, callback) {
       matchStateText = "TIMEOUT";
       break;
   }
-  callback(matchStates[data.MatchState], matchStateText, getCountdown(data.MatchState, data.MatchTimeSec));
+  callback(matchStates[data.MatchState], matchStateText, getCountdown(data.MatchState, data.MatchTimeSec),getShiftCountdown(data.MatchState, data.MatchTimeSec));
 };
 
 // Returns the per-period countdown for the given match state and overall time into the match.
 const getCountdown = function (matchState, matchTimeSec) {
+  let teleopTimeSec = matchTiming.TransitionShiftDurationSec + matchTiming.AllianceShiftDurationSec*4 + matchTiming.EndGameDurationSec;
+  
+  switch (matchStates[matchState]) {
+    case "PRE_MATCH":
+    case "START_MATCH":
+    case "WARMUP_PERIOD":
+      return matchTiming.AutoDurationSec;
+    case "AUTO_PERIOD":
+      return matchTiming.WarmupDurationSec + matchTiming.AutoDurationSec - matchTimeSec;
+    case "TRANSITION_PERIOD":
+      return matchTiming.WarmupDurationSec + matchTiming.AutoDurationSec + matchTiming.PauseDurationSec + teleopTimeSec - matchTimeSec;
+    case "SHIFT1_PERIOD":
+      return matchTiming.WarmupDurationSec + matchTiming.AutoDurationSec + matchTiming.PauseDurationSec + teleopTimeSec - matchTimeSec;
+    case "SHIFT2_PERIOD":
+      return matchTiming.WarmupDurationSec + matchTiming.AutoDurationSec + matchTiming.PauseDurationSec + teleopTimeSec - matchTimeSec;
+    case "SHIFT3_PERIOD":
+      return matchTiming.WarmupDurationSec + matchTiming.AutoDurationSec + matchTiming.PauseDurationSec + teleopTimeSec - matchTimeSec;
+    case "SHIFT4_PERIOD":
+      return matchTiming.WarmupDurationSec + matchTiming.AutoDurationSec + matchTiming.PauseDurationSec + teleopTimeSec - matchTimeSec;
+    case "TELEOP_PERIOD":
+      return matchTiming.WarmupDurationSec + matchTiming.AutoDurationSec + matchTiming.TeleopDurationSec + matchTiming.PauseDurationSec - matchTimeSec;
+    case "ENDGAME_PERIOD":
+      return matchTiming.WarmupDurationSec + matchTiming.AutoDurationSec + matchTiming.PauseDurationSec + teleopTimeSec - matchTimeSec;
+    case "TIMEOUT_ACTIVE":
+      return matchTiming.TimeoutDurationSec - matchTimeSec;
+    default:
+      return 0;
+  }
+};
+
+const getShiftCountdown = function (matchState, matchTimeSec) {
   switch (matchStates[matchState]) {
     case "PRE_MATCH":
     case "START_MATCH":
