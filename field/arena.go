@@ -653,7 +653,7 @@ func (arena *Arena) Update() {
 		}
 	case TransitionShift:
 		auto = false
-		enabled = false
+		enabled = true
 		if matchTimeSec >= game.GetDurationToShift1Start().Seconds() {
 			arena.MatchState = Shift1
 			auto = false
@@ -709,7 +709,7 @@ func (arena *Arena) Update() {
 		if matchTimeSec >= game.GetDurationToTeleopEnd().Seconds() {
 			arena.MatchState = PostMatch
 			auto = false
-			enabled = false
+			enabled = true
 			sendDsPacket = true
 			arena.HubsActive = 0
 			go arena.BlackmagicClient.StopRecording()
