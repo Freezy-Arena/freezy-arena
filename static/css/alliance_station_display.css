@@ -96,7 +96,7 @@ body[data-mode=timeout] .mode#match {
   background-color: #fff;
   color: #000;
 }
-#preMatch, #inMatch {
+#preMatch {
   display: none;
 }
 #match[data-state=PRE_MATCH] #preMatch, #match[data-state=POST_MATCH] #preMatch {
