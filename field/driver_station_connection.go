@@ -239,13 +239,26 @@ func (dsConn *DriverStationConnection) encodeControlPacket(arena *Arena) [22]byt
 	switch arena.MatchState {
 	case PreMatch, TimeoutActive, PostTimeout:
 		matchSecondsRemaining = game.MatchTiming.AutoDurationSec
+
 	case StartMatch, AutoPeriod:
-		matchSecondsRemaining = game.MatchTiming.AutoDurationSec - int(arena.MatchTimeSec())
+		matchSecondsRemaining = game.MatchTiming.AutoDurationSec - 
+		int(arena.MatchTimeSec())
+
 	case TransitionShift:
-		matchSecondsRemaining = game.MatchTiming.TransitionShiftDurationSec + game.MatchTiming.AllianceShiftDurationSec*4 + game.MatchTiming.EndGameDurationSec
+		matchSecondsRemaining = game.MatchTiming.TransitionShiftDurationSec + 
+			game.MatchTiming.AllianceShiftDurationSec*4 + 
+			game.MatchTiming.EndGameDurationSec
+
 	case PausePeriod, Shift1, Shift2, Shift3, Shift4, EndGame:
-		matchSecondsRemaining = game.MatchTiming.AutoDurationSec + game.MatchTiming.PauseDurationSec + game.MatchTiming.TransitionShiftDurationSec +
-			game.MatchTiming.AllianceShiftDurationSec*4 + game.MatchTiming.EndGameDurationSec - int(arena.MatchTimeSec())
+		matchSecondsRemaining = game.MatchTiming.AutoDurationSec + 
+			game.MatchTiming.PauseDurationSec + 
+			game.MatchTiming.TransitionShiftDurationSec +
+			game.MatchTiming.AllianceShiftDurationSec * 4 + 
+			game.MatchTiming.EndGameDurationSec - 
+			int(arena.MatchTimeSec())
+			//log.Println(arena.MatchTimeSec())
+			//log.Printf("matchSecondsRemaining %s/n" matchSecondsRemaining  )
+
 	default:
 		matchSecondsRemaining = 0
 	}
