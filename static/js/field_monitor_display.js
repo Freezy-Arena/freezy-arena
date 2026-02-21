@@ -162,9 +162,12 @@ const handleArenaStatus = function (data) {
 
 // Handles a websocket message to update the match time countdown.
 const handleMatchTime = function (data) {
-  translateMatchTime(data, function (matchState, matchStateText, countdownSec) {
+  translateMatchTime(data, function (matchState, matchStateText, countdownSec, shiftCountdownSec) {
+    $("#shiftText").text(matchStateText);
+    $("#shiftCountdown").text(getCountdownString(shiftCountdownSec));
     $("#matchState").text(matchStateText);
     $("#matchTime").text(countdownSec);
+    $("#matchTimeAllianceStation").text(countdownSec);
     if (matchStateText === "PRE-MATCH" || matchStateText === "POST-MATCH") {
       $(".ds-dependent").attr("data-preMatch", "true");
     } else {
@@ -172,6 +175,12 @@ const handleMatchTime = function (data) {
     }
   });
 };
+
+/* translateMatchTime(data, function (matchState, matchStateText, countdownSec, shiftCountdownSec) {
+    $("#matchTime").text(getCountdownString(countdownSec));
+    $("#shiftText").text(matchStateText);
+    $("#shiftCountdown").text(getCountdownString(shiftCountdownSec));
+  }); */
 
 // Handles a websocket message to play a sound to signal match start/stop/etc.
 const handlePlaySound = function(sound) {
