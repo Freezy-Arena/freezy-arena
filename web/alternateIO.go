@@ -113,6 +113,7 @@ func (web *Web) fieldStackLightGetHandler(w http.ResponseWriter, r *http.Request
 	// Get the current state of the field stack light.
 	var stackLight fieldStackLight
 	stackLight.Red, stackLight.Blue, stackLight.Orange, stackLight.Green = web.arena.Plc.GetFieldStackLight()
+	
 
 	// Marshal the response payload.
 	response, err := json.Marshal(stackLight)
