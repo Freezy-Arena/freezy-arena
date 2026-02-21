@@ -205,6 +205,35 @@ const handleArenaStatus = function (data) {
     case "SHIFT2_PERIOD":
     case "SHIFT3_PERIOD":
     case "SHIFT4_PERIOD":
+      $("#showOverlay").prop("disabled", true);
+      $("#introRadio").prop("disabled", true);
+      $("#showFinalScore").prop("disabled", true);
+      $("#scoreRadio").prop("disabled", true);
+      $("#startMatch").prop("disabled", true);
+      $("#abortMatch").prop("disabled", false);
+      $("#signalVolunteers").prop("disabled", true);
+      $("#signalReset").prop("disabled", true);
+      $("#fieldResetRadio").prop("disabled", true);
+      $("#commitResults").prop("disabled", true);
+      $("#discardResults").prop("disabled", true);
+      $("#editResults").prop("disabled", true);
+      $("#startTimeout").prop("disabled", true);
+      break;      
+    case "TELEOP_PERIOD":
+      $("#showOverlay").prop("disabled", true);
+      $("#introRadio").prop("disabled", true);
+      $("#showFinalScore").prop("disabled", true);
+      $("#scoreRadio").prop("disabled", true);
+      $("#startMatch").prop("disabled", true);
+      $("#abortMatch").prop("disabled", false);
+      $("#signalVolunteers").prop("disabled", true);
+      $("#signalReset").prop("disabled", true);
+      $("#fieldResetRadio").prop("disabled", true);
+      $("#commitResults").prop("disabled", true);
+      $("#discardResults").prop("disabled", true);
+      $("#editResults").prop("disabled", true);
+      $("#startTimeout").prop("disabled", true);
+      break;
     case "ENDGAME_PERIOD":
       $("#showOverlay").prop("disabled", true);
       $("#introRadio").prop("disabled", true);

@@ -96,16 +96,16 @@ body[data-mode=timeout] .mode#match {
   background-color: #fff;
   color: #000;
 }
-#preMatch {
+#preMatch, #inMatch {
   display: none;
 }
 #match[data-state=PRE_MATCH] #preMatch, #match[data-state=POST_MATCH] #preMatch {
   display: block;
 }
 #match[data-state=WARMUP_PERIOD] #inMatch, #match[data-state=AUTO_PERIOD] #inMatch,
-#match[data-state=TRANSITION_PERIOD],
-#match[data-state=SHIFT1_PERIOD], #match[data-state=SHIFT2_PERIOD], #match[data-state=SHIFT3_PERIOD], #match[data-state=SHIFT4_PERIOD], 
-#match[data-state=ENDGAME_PERIOD], 
+#match[data-state=TRANSITION_PERIOD] #inMatch,
+#match[data-state=SHIFT1_PERIOD] #inMatch, #match[data-state=SHIFT2_PERIOD] #inMatch, #match[data-state=SHIFT3_PERIOD] #inMatch, #match[data-state=SHIFT4_PERIOD] #inMatch, 
+#match[data-state=ENDGAME_PERIOD] #inMatch,
 #match[data-state=TIMEOUT_ACTIVE] #inMatch, #match[data-state=POST_TIMEOUT] #inMatch {
   display: block;
 }

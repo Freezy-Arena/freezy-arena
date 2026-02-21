@@ -590,7 +590,8 @@ const transitionLogoToScore = function (callback) {
   setTimeout(function () {
     playVictoryVideo(function () {
       setTimeout(function () {
-        $("#finalScore").transition({queue: false, opacity: 1}, 5000, "ease", callback);
+        //$("#finalScore").transition({queue: false, opacity: 1}, 5000, "ease", callback);
+        transitionMatchToIntro();
       }, 500); // Small delay to avoid visual glitches
     
   });
