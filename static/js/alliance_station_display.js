@@ -106,10 +106,10 @@ var handleArenaStatus = function (data) {
   // Flash driver station display when A-Stopped or solid orange when E-Stopped
   // Make sure match is not in progress to prevent flashing during match
   $("#match").removeClass("solid-orange blink-orange");
-  if (stationStatus.EStop && data.MatchState==0) {
+  if (stationStatus && stationStatus.EStop && data.MatchState==0) {
     $("#match").addClass("solid-orange"); // E-stop: solid orange
     console.log("E-Stopped")
-  } else if (stationStatus.AStop && data.MatchState==0) {
+  } else if (stationStatus && stationStatus.AStop && data.MatchState==0) {
     $("#match").addClass("blink-orange"); // A-stop: blinking orange
     console.log("A-Stopped")
   }
@@ -120,8 +120,7 @@ var handleMatchTime = function (data) {
   translateMatchTime(data, function (matchState, matchStateText, countdownSec) {
     if (station[0] === "N") {
       // Pin the state for a non-alliance display to an in-match state, so as to always show time or score.
-      // TODO: 2026
-      matchState = "TELEOP_PERIOD";
+      matchState = "AUTO_PERIOD";
     }
     var countdownString = String(countdownSec % 60);
     if (countdownString.length === 1) {

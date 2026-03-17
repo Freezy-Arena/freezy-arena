@@ -103,8 +103,7 @@ var handleMatchTime = function (data) {
   translateMatchTime(data, function (matchState, matchStateText, countdownSec) {
     if (station[0] === "N") {
       // Pin the state for a non-alliance display to an in-match state, so as to always show time or score.
-      // TODO 2026
-      matchState = "TELEOP_PERIOD";
+      matchState = "AUTO_PERIOD";
     }
     var countdownString = String(countdownSec % 60);
     if (countdownString.length === 1) {
