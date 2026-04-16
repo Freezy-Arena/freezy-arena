@@ -1110,6 +1110,7 @@ func (arena *Arena) handlePlcInputOutput() {
 	
 	// Only notify every 500ms
     if arena.lastPlcNotifyTime.IsZero() || time.Since(arena.lastPlcNotifyTime) >= 500*time.Millisecond {
+		arena.Plc.SetCoilValue(1,false)
         //arena.PlcCoilsNotifier.Notify()
         //arena.Plc.IoChangeNotifier().Notify()
         arena.lastPlcNotifyTime = time.Now()
