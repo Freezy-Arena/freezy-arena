@@ -6,6 +6,7 @@
 package game
 
 import (
+	"log"
 	"time"
 )
 
@@ -124,19 +125,28 @@ func (hub *Hub) getCurrentShift(matchStartTime, currentTime time.Time) (Shift, b
 
 	teleopStartTime := matchStartTime.Add(GetDurationToTeleopStart())
 	shiftEndTime := teleopStartTime.Add(time.Duration(MatchTiming.TransitionShiftDurationSec) * time.Second)
-	if currentTime.Before(shiftEndTime.Add(hub.getScoringGracePeriod(ShiftTransition))) {
+	if currentTime.Before(shiftEndTime.Add(gracePeriod)) {
+		log.Printf("Auto Shift Transition")
 		return ShiftTransition, true
 	}
 
 	for shift := Shift1; shift <= Shift4; shift++ {
 		shiftEndTime = shiftEndTime.Add(time.Duration(MatchTiming.ShiftDurationSec) * time.Second)
-		if currentTime.Before(shiftEndTime.Add(hub.getScoringGracePeriod(shift))) {
+		// remove gracePeriod to start count on time
+		if currentTime.Before(shiftEndTime) {
+			log.Printf("Current shift: %d", shift)
 			return shift, true
 		}
+		// add gracePeriod to end of shift to allow for late scoring (But adds to Auto shift transition)
+		if currentTime.Before(shiftEndTime.Add(gracePeriod)) {
+			log.Printf("ShiftTransition: %d", shift)
+			return ShiftTransition, true
+		}
 	}
-
+	
 	teleopEndTime := matchStartTime.Add(GetDurationToTeleopEnd())
-	if currentTime.Before(teleopEndTime) {
+	if currentTime.Before(teleopEndTime.Add(gracePeriod)) {
+		log.Printf("ShiftEndgame")
 		return ShiftEndgame, true
 	}
 	if currentTime.Before(teleopEndTime.Add(hub.getScoringGracePeriod(ShiftPostMatch))) {
