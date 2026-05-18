@@ -6,7 +6,6 @@
 package game
 
 import (
-	"log"
 	"time"
 )
 
@@ -26,7 +25,6 @@ const (
 	Shift3
 	Shift4
 	ShiftEndgame
-	ShiftPostMatch
 	ShiftCount
 )
 
@@ -105,7 +103,7 @@ func (hub *Hub) GetActiveShiftTiming(matchStartTime, currentTime time.Time) (tim
 // isShiftActive returns true if the Hub is active during the given shift.
 func (hub *Hub) isShiftActive(shift Shift) bool {
 	switch shift {
-	case ShiftAuto, ShiftTransition, ShiftEndgame, ShiftPostMatch:
+	case ShiftAuto, ShiftTransition, ShiftEndgame:
 		return true
 	case Shift1, Shift3:
 		return !hub.WonAuto
@@ -125,32 +123,20 @@ func (hub *Hub) getCurrentShift(matchStartTime, currentTime time.Time) (Shift, b
 
 	teleopStartTime := matchStartTime.Add(GetDurationToTeleopStart())
 	shiftEndTime := teleopStartTime.Add(time.Duration(MatchTiming.TransitionShiftDurationSec) * time.Second)
-	if currentTime.Before(shiftEndTime.Add(gracePeriod)) {
-		log.Printf("Auto Shift Transition")
+	if currentTime.Before(shiftEndTime.Add(hub.getScoringGracePeriod(ShiftTransition))) {
 		return ShiftTransition, true
 	}
 
 	for shift := Shift1; shift <= Shift4; shift++ {
 		shiftEndTime = shiftEndTime.Add(time.Duration(MatchTiming.ShiftDurationSec) * time.Second)
-		// remove gracePeriod to start count on time
-		if currentTime.Before(shiftEndTime) {
-			log.Printf("Current shift: %d", shift)
+		if currentTime.Before(shiftEndTime.Add(hub.getScoringGracePeriod(shift))) {
 			return shift, true
 		}
-		// add gracePeriod to end of shift to allow for late scoring (But adds to Auto shift transition)
-		if currentTime.Before(shiftEndTime.Add(gracePeriod)) {
-			log.Printf("ShiftTransition: %d", shift)
-			return ShiftTransition, true
-		}
 	}
-	
+
 	teleopEndTime := matchStartTime.Add(GetDurationToTeleopEnd())
-	if currentTime.Before(teleopEndTime.Add(gracePeriod)) {
-		log.Printf("ShiftEndgame")
+	if currentTime.Before(teleopEndTime.Add(hub.getScoringGracePeriod(ShiftEndgame))) {
 		return ShiftEndgame, true
-	}
-	if currentTime.Before(teleopEndTime.Add(hub.getScoringGracePeriod(ShiftPostMatch))) {
-		return ShiftPostMatch, true
 	}
 
 	return ShiftCount, false

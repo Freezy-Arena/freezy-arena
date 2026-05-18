@@ -18,7 +18,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Team254/cheesy-arena/model"
 )
 
 // Shows the event settings editing page.

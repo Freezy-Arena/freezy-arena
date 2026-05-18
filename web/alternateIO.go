@@ -244,7 +244,7 @@ func (web *Web) setPLCRegister(w http.ResponseWriter, r *http.Request) {
 
 	for _, item := range payload {
     	web.arena.Plc.SetRegisterValue(item.Register, item.CValue)
-		log.Printf("Set PLC register %d to value %t", item.Register, item.CValue)
+		log.Printf("Set PLC register %d to value %d", item.Register, item.CValue)
 	}
 
 	// Respond with success.

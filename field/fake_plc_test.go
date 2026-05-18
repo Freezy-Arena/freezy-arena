@@ -156,12 +156,24 @@ func (plc *FakePlc) ResetEstops(){
 }
 
 // Returns the value of all PLC coils.
-func (plc *FakePlc) GetAllCoils() [14]bool {
-    var coils [14]bool
+func (plc *FakePlc) GetAllCoils() [13]bool {
+    var coils [13]bool
     return coils
 }
 
 // Returns the state of the field stack light (red, blue, orange, green).
 func (plc *FakePlc) GetFieldStackLight() (bool, bool, bool, bool) {
 	return plc.stackLights[0], plc.stackLights[1], plc.stackLights[2], plc.stackLights[3]
+}
+
+func (plc *FakePlc) SetCoilValue(index int, value bool) {
+	// Not needed for testing, just to satisfy the interface.
+}
+
+func (plc *FakePlc) SetRegisterValue(index int, value uint16) {
+	// Not needed for testing, just to satisfy the interface.
+
+}
+func (plc *FakePlc) ResetMatchReset(){
+	// Not needed for testing, just to satisfy the interface.a
 }
