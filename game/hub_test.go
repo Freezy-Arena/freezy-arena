@@ -111,8 +111,8 @@ func TestHub_GetShiftActiveCount(t *testing.T) {
 	assert.Equal(t, 5, hub.GetShiftCount(Shift3, true))
 	assert.Equal(t, 6, hub.GetShiftCount(Shift4, false))
 	assert.Equal(t, 0, hub.GetShiftCount(Shift4, true))
-	assert.Equal(t, 7, hub.GetShiftCount(ShiftEndgame, false))
-	assert.Equal(t, 7, hub.GetShiftCount(ShiftEndgame, true))
+	assert.Equal(t, 7, hub.GetShiftCount(ShiftPostMatch, false))
+	assert.Equal(t, 7, hub.GetShiftCount(ShiftPostMatch, true))
 
 	hub.WonAuto = true
 	assert.Equal(t, 0, hub.GetShiftCount(Shift1, true))

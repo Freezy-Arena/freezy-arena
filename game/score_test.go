@@ -134,13 +134,13 @@ func TestScoreEnergizedBonusRankingPoint(t *testing.T) {
 	assert.Equal(t, false, redSummary.EnergizedBonusRankingPoint)
 	assert.Equal(t, 91, redSummary.NumFuelGoal)
 
-	redScore.Hub.ShiftCounts[ShiftEndgame] += 2
+	redScore.Hub.ShiftCounts[ShiftPostMatch] += 2
 	redSummary = redScore.Summarize(&Score{})
 	assert.Equal(t, false, redSummary.EnergizedBonusRankingPoint)
 	assert.Equal(t, 91, redSummary.NumFuelGoal)
 
 	// Meeting the threshold awards the ranking point and advances the displayed goal.
-	redScore.Hub.ShiftCounts[ShiftEndgame] += 1
+	redScore.Hub.ShiftCounts[ShiftPostMatch] += 1
 	redSummary = redScore.Summarize(&Score{})
 	assert.Equal(t, true, redSummary.EnergizedBonusRankingPoint)
 	assert.Equal(t, 351, redSummary.NumFuelGoal)
@@ -164,14 +164,14 @@ func TestScoreSuperchargedBonusRankingPoint(t *testing.T) {
 	SuperchargedBonusThreshold = 361
 
 	blueScore := TestScore2()
-	blueScore.Hub.ShiftCounts[ShiftEndgame] += 245
+	blueScore.Hub.ShiftCounts[ShiftPostMatch] += 245
 	blueSummary := blueScore.Summarize(&Score{})
 	assert.Equal(t, true, blueSummary.EnergizedBonusRankingPoint)
 	assert.Equal(t, false, blueSummary.SuperchargedBonusRankingPoint)
 	assert.Equal(t, 359, blueSummary.NumFuel)
 	assert.Equal(t, 361, blueSummary.NumFuelGoal)
 
-	blueScore.Hub.ShiftCounts[ShiftEndgame] += 2
+	blueScore.Hub.ShiftCounts[ShiftPostMatch] += 2
 	blueSummary = blueScore.Summarize(&Score{})
 	assert.Equal(t, true, blueSummary.SuperchargedBonusRankingPoint)
 	assert.Equal(t, 361, blueSummary.NumFuel)
