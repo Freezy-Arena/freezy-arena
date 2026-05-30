@@ -144,10 +144,10 @@ const handlePlaySound = function(sound) {
 // Handles a websocket message to update the match score.
 var handleRealtimeScore = function (data) {
   $("#redScore").text(
-    data.Red.ScoreSummary.Score - data.Red.ScoreSummary.BargePoints
+    data.Red.ScoreSummary.Score - data.Red.ScoreSummary.PostMatchPoints
   );
   $("#blueScore").text(
-    data.Blue.ScoreSummary.Score - data.Blue.ScoreSummary.BargePoints
+    data.Blue.ScoreSummary.Score - data.Blue.ScoreSummary.PostMatchPoints
   );
 };
 
