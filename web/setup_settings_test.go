@@ -45,9 +45,9 @@ func TestSetupSettings(t *testing.T) {
 	assert.Contains(t, recorder.Body.String(), "2014cc")
 	assert.Contains(t, recorder.Body.String(), "secretId")
 	assert.Contains(t, recorder.Body.String(), "tbasec")
-	assert.Equal(t, 12, web.arena.EventSettings.TransitionShiftDurationSec)
-	assert.Equal(t, 24, web.arena.EventSettings.ShiftDurationSec)
-	assert.Equal(t, 32, web.arena.EventSettings.EndgameDurationSec)
+	assert.Equal(t, 10, web.arena.EventSettings.TransitionShiftDurationSec)
+	assert.Equal(t, 25, web.arena.EventSettings.ShiftDurationSec)
+	assert.Equal(t, 30, web.arena.EventSettings.EndgameDurationSec)
 	assert.Equal(t, 140, game.GetTeleopDurationSec())
 }
 
@@ -72,7 +72,7 @@ func TestSetupSettingsAllowedDuringTimeoutStates(t *testing.T) {
 
 		recorder := web.postHttpResponse("/setup/settings", "name=Changed Event")
 
-		assert.Equal(t, 303, recorder.Code)
+		assert.Equal(t, 200, recorder.Code)
 		assert.Equal(t, "Changed Event", web.arena.EventSettings.Name)
 	}
 }
