@@ -112,6 +112,7 @@ class PLCMonitor:
             log.warning("WS not connected; cannot set registers")
             return
         msg = encode_ws_message("setRegisters", registers)
+        print(f"\n→ Sending setRegisters: {msg}")
         await self._ws.send(msg)
         log.debug("WS → setRegisters  count=%d", len(registers))
 
