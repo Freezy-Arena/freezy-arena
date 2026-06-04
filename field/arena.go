@@ -103,6 +103,8 @@ type Arena struct {
 	redWonAuto                        bool
 	Esp32					 		  plc.Esp32
 	lastPlcNotifyTime 				  time.Time
+	lastRedLedMode  led.Mode
+	lastBlueLedMode led.Mode
 }
 
 type AllianceStation struct {
@@ -404,13 +406,19 @@ func (arena *Arena) LoadMatch(match *model.Match) error {
 	arena.NextFoulId = 1
 	arena.redWonAuto = false
 	arena.Leds.SetMode(led.OffMode, led.OffMode)
-
+	currentRed, currentBlue := arena.Leds.GetModes()
+		if currentRed != arena.lastRedLedMode || currentBlue != arena.lastBlueLedMode {
+			arena.LedChangeNotifier.Notify()
+		}
 	// Notify any listeners about the new match.
 	arena.MatchLoadNotifier.Notify()
 	arena.RealtimeScoreNotifier.Notify()
 	arena.AllianceStationDisplayMode = "match"
 	arena.AllianceStationDisplayModeNotifier.Notify()
-	arena.ScoringStatusNotifier.Notify()
+	currentRed, currentBlue = arena.Leds.GetModes()
+		if currentRed != arena.lastRedLedMode || currentBlue != arena.lastBlueLedMode {
+			arena.LedChangeNotifier.Notify()
+		}
 
 	return nil
 }
@@ -1303,6 +1311,7 @@ func (arena *Arena) SignalVolunteers() {
 	arena.AllianceStationDisplayMode = "signalCount"
 	arena.AllianceStationDisplayModeNotifier.Notify()
 	arena.Leds.SetMode(led.PurpleMode, led.PurpleMode)
+	arena.LedChangeNotifier.Notify()
 }
 
 // Set the field lights and team signs to green, if not in a match.
@@ -1320,6 +1329,10 @@ func (arena *Arena) SignalReset() {
 	arena.AllianceStationDisplayMode = "fieldReset"
 	arena.AllianceStationDisplayModeNotifier.Notify()
 	arena.Leds.SetMode(led.GreenMode, led.GreenMode)
+	currentRed, currentBlue := arena.Leds.GetModes()
+		if currentRed != arena.lastRedLedMode || currentBlue != arena.lastBlueLedMode {
+			arena.LedChangeNotifier.Notify()
+		}
 }
 
 func (arena *Arena) handleSounds(matchTimeSec float64) {

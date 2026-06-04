@@ -150,10 +150,9 @@ func (web *Web) fieldTestingWebsocketHandler(w http.ResponseWriter, r *http.Requ
 
 			web.arena.Leds.SetMode(args.RedMode, args.BlueMode)
 
-			web.arena.LedChangeNotifier.NotifyWithMessage(map[string]interface{}{
-				"RedMode":  args.RedMode,
-				"BlueMode": args.BlueMode,
-    })
+			web.arena.LedChangeNotifier.Notify()
+	
+
 		default:
 			ws.WriteError(fmt.Sprintf("Invalid message type '%s'.", messageType))
 			continue
