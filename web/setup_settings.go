@@ -244,15 +244,24 @@ func (web *Web) restoreDbHandler(w http.ResponseWriter, r *http.Request) {
 		handleWebErr(w, err)
 		return
 	}
-	defer tempFile.Close()
 	tempFilePath := tempFile.Name()
-	defer os.Remove(tempFilePath)
+	defer func() {
+		if tempFilePath == "" {
+			return
+		}
+		if err := os.Remove(tempFilePath); err != nil {
+			log.Printf("Failed to remove temporary uploaded database file %s: %v", tempFilePath, err)
+		}
+	}()
 	_, err = io.Copy(tempFile, file)
 	if err != nil {
 		handleWebErr(w, err)
 		return
 	}
-	tempFile.Close()
+	if err = tempFile.Close(); err != nil {
+		handleWebErr(w, err)
+		return
+	}
 	tempDb, err := model.OpenDatabase(tempFilePath)
 	if err != nil {
 		web.renderSettings(
@@ -260,7 +269,10 @@ func (web *Web) restoreDbHandler(w http.ResponseWriter, r *http.Request) {
 		)
 		return
 	}
-	tempDb.Close()
+	if err = tempDb.Close(); err != nil {
+		handleWebErr(w, err)
+		return
+	}
 
 	// Back up the current database.
 	err = web.arena.Database.Backup(web.arena.EventSettings.Name, "pre_restore")
@@ -270,7 +282,10 @@ func (web *Web) restoreDbHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Replace the current database with the new one.
-	web.arena.Database.Close()
+	if err = web.arena.Database.Close(); err != nil {
+		handleWebErr(w, err)
+		return
+	}
 	err = os.Remove(web.arena.Database.Path)
 	if err != nil {
 		handleWebErr(w, err)
@@ -281,6 +296,7 @@ func (web *Web) restoreDbHandler(w http.ResponseWriter, r *http.Request) {
 		handleWebErr(w, err)
 		return
 	}
+	tempFilePath = ""
 	web.arena.Database, err = model.OpenDatabase(web.arena.Database.Path)
 	if err != nil {
 		handleWebErr(w, err)

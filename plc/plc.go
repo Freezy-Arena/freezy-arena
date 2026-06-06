@@ -391,7 +391,9 @@ func (plc *ModbusPlc) connect() error {
 
 func (plc *ModbusPlc) resetConnection() {
 	if plc.handler != nil {
-		plc.handler.Close()
+		if err := plc.handler.Close(); err != nil {
+			log.Printf("PLC error closing connection: %v", err)
+		}
 		plc.handler = nil
 	}
 }

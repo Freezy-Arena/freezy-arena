@@ -46,7 +46,10 @@ func (web *Web) rankingsCsvReportHandler(w http.ResponseWriter, r *http.Request)
 
 	// Strip out carriage returns to ensure consistent behavior across platforms.
 	cleaned := bytes.ReplaceAll(buf.Bytes(), []byte("\r"), []byte(""))
-	w.Write(cleaned)
+	if _, err := w.Write(cleaned); err != nil {
+		handleWebErr(w, err)
+		return
+	}
 }
 
 // Generates a PDF-formatted report of the qualification rankings.
@@ -211,7 +214,10 @@ func (web *Web) backupTeamsCsvReportHandler(w http.ResponseWriter, r *http.Reque
 
 	// Strip out carriage returns to ensure consistent behavior across platforms.
 	cleaned := bytes.ReplaceAll(buf.Bytes(), []byte("\r"), []byte(""))
-	w.Write(cleaned)
+	if _, err := w.Write(cleaned); err != nil {
+		handleWebErr(w, err)
+		return
+	}
 }
 
 // Generates a PDF-formatted report of the backup teams.
@@ -402,7 +408,10 @@ func (web *Web) scheduleCsvReportHandler(w http.ResponseWriter, r *http.Request)
 
 	// Strip out carriage returns to ensure consistent behavior across platforms.
 	cleaned := bytes.ReplaceAll(buf.Bytes(), []byte("\r"), []byte(""))
-	w.Write(cleaned)
+	if _, err := w.Write(cleaned); err != nil {
+		handleWebErr(w, err)
+		return
+	}
 }
 
 // Generates a PDF-formatted report of the match schedule.
@@ -573,7 +582,10 @@ func (web *Web) teamsCsvReportHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Strip out carriage returns to ensure consistent behavior across platforms.
 	cleaned := bytes.ReplaceAll(buf.Bytes(), []byte("\r"), []byte(""))
-	w.Write(cleaned)
+	if _, err := w.Write(cleaned); err != nil {
+		handleWebErr(w, err)
+		return
+	}
 }
 
 // Generates a PDF-formatted report of the team list.
@@ -822,7 +834,10 @@ func (web *Web) bracketPdfReportHandler(w http.ResponseWriter, r *http.Request) 
 
 	// Strip out carriage returns to ensure consistent behavior across platforms.
 	cleaned := bytes.ReplaceAll(buf.Bytes(), []byte("\r"), []byte(""))
-	w.Write(cleaned)
+	if _, err := w.Write(cleaned); err != nil {
+		handleWebErr(w, err)
+		return
+	}
 }
 
 // Returns the text to display if a team is a surrogate.
@@ -962,7 +977,10 @@ func (web *Web) ftaCsvReportHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Strip out carriage returns to ensure consistent behavior across platforms.
 	cleaned := bytes.ReplaceAll(buf.Bytes(), []byte("\r"), []byte(""))
-	w.Write(cleaned)
+	if _, err := w.Write(cleaned); err != nil {
+		handleWebErr(w, err)
+		return
+	}
 }
 
 // Generates a PDF-formatted report of the judging schedule.
