@@ -7,6 +7,13 @@ package field
 
 import (
 	"fmt"
+	"github.com/Team254/cheesy-arena/game"
+	"github.com/Team254/cheesy-arena/led"
+	"github.com/Team254/cheesy-arena/model"
+	"github.com/Team254/cheesy-arena/network"
+	"github.com/Team254/cheesy-arena/partner"
+	"github.com/Team254/cheesy-arena/playoff"
+	"github.com/Team254/cheesy-arena/plc"
 	"log"
 	"math"
 	"math/rand"
@@ -14,13 +21,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/Team254/cheesy-arena/game"
-	"github.com/Team254/cheesy-arena/model"
-	"github.com/Team254/cheesy-arena/network"
-	"github.com/Team254/cheesy-arena/partner"
-	"github.com/Team254/cheesy-arena/playoff"
-	"github.com/Team254/cheesy-arena/plc"
 )
 
 const (
@@ -28,6 +28,7 @@ const (
 	arenaLoopWarningMs       = 5
 	dsPacketPeriodMs         = 500
 	dsPacketWarningMs        = 550
+	teamLogPeriodMs          = 500
 	periodicTaskPeriodSec    = 15
 	matchEndScoreDwellSec    = 3
 	postTimeoutSec           = 4
@@ -66,6 +67,7 @@ type Arena struct {
 	AllianceStations map[string]*AllianceStation
 	Displays         map[string]*Display
 	TeamSigns        *TeamSigns
+	Leds             *led.Controller
 	ScoringPanelRegistry
 	ArenaNotifiers
 	MatchState
@@ -76,6 +78,7 @@ type Arena struct {
 	RedRealtimeScore                  *RealtimeScore
 	BlueRealtimeScore                 *RealtimeScore
 	lastDsPacketTime                  time.Time
+	lastTeamLogTime                   time.Time
 	lastPeriodicTaskTime              time.Time
 	EventStatus                       EventStatus
 	FieldVolunteers                   bool
@@ -96,23 +99,27 @@ type Arena struct {
 	matchAborted                      bool
 	soundsPlayed                      map[*game.MatchSound]struct{}
 	breakDescription                  string
+	breakNextMatchName                string
 	preloadedTeams                    *[6]*model.Team
 	NextFoulId                        int
 	redWonAuto                        bool
 	Esp32					 		  plc.Esp32
 	lastPlcNotifyTime 				  time.Time
+	lastRedLedMode  led.Mode
+	lastBlueLedMode led.Mode
 }
 
 type AllianceStation struct {
-	DsConn     *DriverStationConnection
-	Ethernet   bool
-	AStop      bool
-	EStop      bool
-	Bypass     bool
-	Team       *model.Team
-	WifiStatus network.TeamWifiStatus
-	aStopReset bool
-	GameData   string
+	DsConn       *DriverStationConnection
+	TeamMatchLog *TeamMatchLog
+	Ethernet     bool
+	AStop        bool
+	EStop        bool
+	Bypass       bool
+	Team         *model.Team
+	WifiStatus   network.TeamWifiStatus
+	aStopReset   bool
+	GameData     string
 }
 
 // Creates the arena and sets it to its initial state.
@@ -133,6 +140,7 @@ func NewArena(dbPath string) (*Arena, error) {
 	arena.Displays = make(map[string]*Display)
 
 	arena.TeamSigns = NewTeamSigns()
+	arena.Leds = led.NewController()
 
 	var err error
 	arena.Database, err = model.OpenDatabase(dbPath)
@@ -211,9 +219,14 @@ func (arena *Arena) LoadSettings() error {
 		sccDownCommands,
 	)
 	arena.Plc.SetAddress(settings.PlcAddress)
+	if err = arena.Leds.SetAddress(settings.LedControllerAddress); err != nil {
+		return err
+	}
 	arena.Esp32.SetScoreTableAddress(settings.ScoreTableEstopAddress)
 	arena.Esp32.SetRedAllianceStationEstopAddress(settings.RedAllianceStationEstopAddress)
 	arena.Esp32.SetBlueAllianceStationEstopAddress(settings.BlueAllianceStationEstopAddress)
+
+
 	arena.TbaClient = partner.NewTbaClient(settings.TbaEventCode, settings.TbaSecretId, settings.TbaSecret)
 	arena.NexusClient = partner.NewNexusClient(settings.TbaEventCode)
 	arena.BlackmagicClient = partner.NewBlackmagicClient(settings.BlackmagicAddresses)
@@ -395,13 +408,20 @@ func (arena *Arena) LoadMatch(match *model.Match) error {
 	arena.Plc.ResetMatch()
 	arena.NextFoulId = 1
 	arena.redWonAuto = false
-
+	arena.Leds.SetMode(led.OffMode, led.OffMode)
+	currentRed, currentBlue := arena.Leds.GetModes()
+		if currentRed != arena.lastRedLedMode || currentBlue != arena.lastBlueLedMode {
+			arena.LedChangeNotifier.Notify()
+		}
 	// Notify any listeners about the new match.
 	arena.MatchLoadNotifier.Notify()
 	arena.RealtimeScoreNotifier.Notify()
 	arena.AllianceStationDisplayMode = "match"
 	arena.AllianceStationDisplayModeNotifier.Notify()
-	arena.ScoringStatusNotifier.Notify()
+	currentRed, currentBlue = arena.Leds.GetModes()
+		if currentRed != arena.lastRedLedMode || currentBlue != arena.lastBlueLedMode {
+			arena.LedChangeNotifier.Notify()
+		}
 
 	return nil
 }
@@ -434,7 +454,9 @@ func (arena *Arena) LoadNextMatch(startScheduledBreak bool) error {
 		if scheduledBreak != nil {
 			go func() {
 				time.Sleep(time.Second * scheduledBreakDelaySec)
-				_ = arena.StartTimeout(scheduledBreak.Description, scheduledBreak.DurationSec)
+				if err := arena.StartTimeout(scheduledBreak.Description, scheduledBreak.DurationSec); err != nil {
+					log.Printf("Failed to start scheduled break timeout before match %d: %v", nextMatch.Id, err)
+				}
 			}()
 		}
 	}
@@ -506,13 +528,15 @@ func (arena *Arena) StartMatch() error {
 		}
 		arena.updateCycleTime(arena.CurrentMatch.StartedAt)
 
-		// Save the missed packet count to subtract it from the running count.
 		for _, allianceStation := range arena.AllianceStations {
-			if allianceStation.DsConn != nil {
-				err = allianceStation.DsConn.signalMatchStart(arena.CurrentMatch, &allianceStation.WifiStatus)
+			if allianceStation.Team != nil {
+				err = allianceStation.startTeamMatchLog(arena.CurrentMatch)
 				if err != nil {
 					log.Println(err)
 				}
+			}
+			if allianceStation.DsConn != nil {
+				allianceStation.DsConn.MissedPacketCount = 0
 			}
 
 			// Save the teams that have successfully connected to the field.
@@ -522,6 +546,8 @@ func (arena *Arena) StartMatch() error {
 				arena.Database.UpdateTeam(allianceStation.Team)
 			}
 		}
+
+		arena.lastTeamLogTime = time.Time{}
 
 		arena.MatchState = StartMatch
 	}
@@ -558,6 +584,7 @@ func (arena *Arena) ResetMatch() error {
 	if arena.MatchState != TimeoutActive {
 		arena.MatchState = PreMatch
 	}
+	arena.closeTeamMatchLogs()
 	arena.matchAborted = false
 	arena.AllianceStations["R1"].Bypass = false
 	arena.AllianceStations["R2"].Bypass = false
@@ -571,6 +598,22 @@ func (arena *Arena) ResetMatch() error {
 
 // Starts a timeout of the given duration.
 func (arena *Arena) StartTimeout(description string, durationSec int) error {
+	return arena.startTimeout(description, arena.currentMatchDisplayName(), durationSec)
+}
+
+// Starts an ad-hoc timeout of the given duration.
+func (arena *Arena) StartAdHocTimeout(description string, nextMatchName string, durationSec int) error {
+	return arena.startTimeout(description, nextMatchName, durationSec)
+}
+
+// Sets the text shown on timeout displays.
+func (arena *Arena) SetTimeoutDisplay(description string, nextMatchName string) {
+	arena.breakDescription = description
+	arena.breakNextMatchName = nextMatchName
+	arena.MatchLoadNotifier.Notify()
+}
+
+func (arena *Arena) startTimeout(description string, nextMatchName string, durationSec int) error {
 	if arena.MatchState != PreMatch {
 		return fmt.Errorf("cannot start timeout while there is a match still in progress or with results pending")
 	}
@@ -580,6 +623,7 @@ func (arena *Arena) StartTimeout(description string, durationSec int) error {
 	arena.soundsPlayed = make(map[*game.MatchSound]struct{})
 	arena.MatchTimingNotifier.Notify()
 	arena.breakDescription = description
+	arena.breakNextMatchName = nextMatchName
 	arena.MatchLoadNotifier.Notify()
 	arena.MatchState = TimeoutActive
 	arena.MatchStartTime = time.Now()
@@ -588,6 +632,17 @@ func (arena *Arena) StartTimeout(description string, durationSec int) error {
 	arena.AllianceStationDisplayModeNotifier.Notify()
 
 	return nil
+}
+
+func (arena *Arena) currentMatchDisplayName() string {
+	if arena.CurrentMatch == nil {
+		return ""
+	}
+	name := arena.CurrentMatch.LongName
+	if arena.CurrentMatch.NameDetail != "" {
+		name += " - " + arena.CurrentMatch.NameDetail
+	}
+	return name
 }
 
 // Updates the audience display screen.
@@ -664,14 +719,8 @@ func (arena *Arena) Update() {
 		if matchTimeSec >= game.GetDurationToAutoEnd().Seconds() {
 			auto = false
 			sendDsPacket = true
-			if game.MatchTiming.PauseDurationSec > 0 {
-				arena.MatchState = PausePeriod
-				enabled = false
-			} else {
-				arena.MatchState = TeleopPeriod
-				enabled = true
-				go arena.CompanionClient.SendEvent(partner.EventTeleopStart)
-			}
+			arena.MatchState = PausePeriod
+			enabled = false
 		}
 	case PausePeriod:
 		auto = false
@@ -759,8 +808,13 @@ func (arena *Arena) Update() {
 	arena.BlueRealtimeScore.ActiveRemainingSec = int(math.Ceil(blueActiveRemaining.Seconds()))
 	arena.BlueRealtimeScore.ActiveDurationSec = int(math.Ceil(blueActiveDuration.Seconds()))
 
+	arena.updateHubLeds(currentTime)
+
 	// Handle field sensors/lights/actuators.
 	arena.handlePlcInputOutput()
+
+	// Log after PLC input so each sample includes the latest physical DS Ethernet state.
+	arena.logTeamSnapshots()
 
 	if !oldRedScore.Equals(&arena.RedRealtimeScore.CurrentScore) ||
 		!oldBlueScore.Equals(&arena.BlueRealtimeScore.CurrentScore) ||
@@ -794,6 +848,27 @@ func (arena *Arena) checkEndgameStart(matchTimeSec float64) {
 	if matchTimeSec >= endgameStartTime && arena.LastMatchTimeSec < endgameStartTime {
 		go arena.CompanionClient.SendEvent(partner.EventEndgameStart)
 	}
+}
+
+// logTeamSnapshots records one row per station-owned team log at the configured cadence while a match is active.
+func (arena *Arena) logTeamSnapshots() {
+	matchTimeSec := arena.MatchTimeSec()
+	if matchTimeSec <= 0 {
+		return
+	}
+
+	msSinceLastTeamLog := int(time.Since(arena.lastTeamLogTime).Seconds() * 1000)
+	if arena.lastTeamLogTime.After(time.Time{}) && msSinceLastTeamLog < teamLogPeriodMs {
+		return
+	}
+
+	// Logs are owned by stations, not DS TCP connections, so disconnected stations still get outage rows.
+	for stationId, allianceStation := range arena.AllianceStations {
+		if allianceStation.TeamMatchLog != nil {
+			allianceStation.TeamMatchLog.LogStationSnapshot(matchTimeSec, allianceStation, stationId)
+		}
+	}
+	arena.lastTeamLogTime = time.Now()
 }
 
 // Loops indefinitely to track and update the arena components.
@@ -847,6 +922,40 @@ func (arena *Arena) validateTeams(teamIds ...int) error {
 	return nil
 }
 
+// startTeamMatchLog opens a fresh persisted log for the station's assigned team at match start.
+func (allianceStation *AllianceStation) startTeamMatchLog(match *model.Match) error {
+	if allianceStation.TeamMatchLog != nil {
+		// A previous log can exist after an aborted start or replay; close it before replacing the handle.
+		allianceStation.TeamMatchLog.Close()
+		allianceStation.TeamMatchLog = nil
+	}
+	if allianceStation.Team == nil {
+		return nil
+	}
+
+	teamMatchLog, err := NewTeamMatchLog(allianceStation.Team.Id, match, &allianceStation.WifiStatus)
+	if err != nil {
+		return err
+	}
+	allianceStation.TeamMatchLog = teamMatchLog
+	return nil
+}
+
+// closeTeamMatchLog closes the station-owned match log, if one is active.
+func (allianceStation *AllianceStation) closeTeamMatchLog() {
+	if allianceStation.TeamMatchLog != nil {
+		allianceStation.TeamMatchLog.Close()
+		allianceStation.TeamMatchLog = nil
+	}
+}
+
+// closeTeamMatchLogs closes all station-owned match logs when match ownership is ending.
+func (arena *Arena) closeTeamMatchLogs() {
+	for _, allianceStation := range arena.AllianceStations {
+		allianceStation.closeTeamMatchLog()
+	}
+}
+
 // Loads a team into an alliance station, cleaning up the previous team there if there is one.
 func (arena *Arena) assignTeam(teamId int, station string) error {
 	// Reject invalid station values.
@@ -867,6 +976,7 @@ func (arena *Arena) assignTeam(teamId int, station string) error {
 		arena.AllianceStations[station].Team = nil
 		arena.AllianceStations[station].DsConn = nil
 	}
+	arena.AllianceStations[station].closeTeamMatchLog()
 
 	// Leave the station empty if the team number is zero.
 	if teamId == 0 {
@@ -1198,7 +1308,48 @@ func (arena *Arena) handlePlcInputOutput() {
 		arena.MatchState == PostMatch && currentTime.Before(motorCutoff)
 	arena.Plc.SetHubMotors(motorsOn, motorsOn)
 
-	// TODO: Handle lights for 2026.
+	redHubLight, blueHubLight := arena.getHubLightStates(currentTime)
+	arena.Plc.SetHubLights(redHubLight, blueHubLight)
+}
+
+func (arena *Arena) getHubLightStates(currentTime time.Time) (bool, bool) {
+	switch arena.MatchState {
+	case AutoPeriod, PausePeriod:
+		return true, true
+	case TeleopPeriod:
+		redHub := &arena.RedRealtimeScore.CurrentScore.Hub
+		blueHub := &arena.BlueRealtimeScore.CurrentScore.Hub
+		shift, _, _, ok := redHub.GetCurrentShiftTiming(arena.MatchStartTime, currentTime)
+		if !ok {
+			return false, false
+		}
+
+		blinkOn := arena.Plc.GetCycleState(2, 0, 5)
+		if shift == game.ShiftTransition {
+			if redHub.WonAuto {
+				return blinkOn, true
+			}
+			if blueHub.WonAuto {
+				return true, blinkOn
+			}
+			return true, true
+		}
+
+		warningDuration := time.Duration(hubLightWarningSec) * time.Second
+		redActiveRemaining, _ := redHub.GetActiveShiftTiming(arena.MatchStartTime, currentTime)
+		blueActiveRemaining, _ := blueHub.GetActiveShiftTiming(arena.MatchStartTime, currentTime)
+		redLight := redActiveRemaining > 0
+		blueLight := blueActiveRemaining > 0
+		if redLight && redActiveRemaining <= warningDuration {
+			redLight = blinkOn
+		}
+		if blueLight && blueActiveRemaining <= warningDuration {
+			blueLight = blinkOn
+		}
+		return redLight, blueLight
+	default:
+		return false, false
+	}
 }
 
 func (arena *Arena) handleTeamStop(station string, eStopState, aStopState bool) {
@@ -1228,6 +1379,8 @@ func (arena *Arena) SignalVolunteers() {
 	arena.FieldReset = false
 	arena.AllianceStationDisplayMode = "signalCount"
 	arena.AllianceStationDisplayModeNotifier.Notify()
+	arena.Leds.SetMode(led.PurpleMode, led.PurpleMode)
+	arena.LedChangeNotifier.Notify()
 }
 
 // Set the field lights and team signs to green, if not in a match.
@@ -1244,6 +1397,11 @@ func (arena *Arena) SignalReset() {
 	arena.FieldReset = true
 	arena.AllianceStationDisplayMode = "fieldReset"
 	arena.AllianceStationDisplayModeNotifier.Notify()
+	arena.Leds.SetMode(led.GreenMode, led.GreenMode)
+	currentRed, currentBlue := arena.Leds.GetModes()
+		if currentRed != arena.lastRedLedMode || currentBlue != arena.lastBlueLedMode {
+			arena.LedChangeNotifier.Notify()
+		}
 }
 
 func (arena *Arena) handleSounds(matchTimeSec float64) {
@@ -1311,27 +1469,4 @@ func (arena *Arena) runPeriodicTasks() {
 	arena.updateEarlyLateMessage()
 	arena.purgeDisconnectedDisplays()
 	arena.checkForUpdatedNexusLineup()
-}
-
-// trussLightWarningSequence generates the sequence of truss light states during the "sonar ping" warning sound. It
-// returns true if the sequence is active, and an array of booleans indicating the state of each truss light.
-func trussLightWarningSequence(matchTimeSec float64) (bool, [3]bool) {
-	stepTimeSec := 0.2
-	sequence := []int{1, 2, 3, 2, 1, 2, 3, 0, 0, 1, 2, 3, 2, 1, 2, 3, 0, 0}
-	startTime := float64(
-		game.MatchTiming.AutoDurationSec + game.MatchTiming.PauseDurationSec + game.GetTeleopDurationSec() -
-			game.MatchTiming.EndgameDurationSec,
-	)
-	lights := [3]bool{false, false, false}
-
-	if matchTimeSec < startTime {
-		// The sequence is not active yet.
-		return false, lights
-	}
-
-	step := int((matchTimeSec - startTime) / stepTimeSec)
-	if step < len(sequence) && sequence[step] > 0 {
-		lights[sequence[step]-1] = true
-	}
-	return step < len(sequence), lights
 }

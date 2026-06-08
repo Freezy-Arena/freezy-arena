@@ -28,6 +28,7 @@ func TestSetupSettings(t *testing.T) {
 	assert.Contains(t, recorder.Body.String(), "transitionShiftDurationSec")
 	assert.Contains(t, recorder.Body.String(), "shiftDurationSec")
 	assert.Contains(t, recorder.Body.String(), "endgameDurationSec")
+	assert.Contains(t, recorder.Body.String(), "placeholder=\"10.0.100.60\"")
 	assert.NotContains(t, recorder.Body.String(), "tbaPublishingEnabled\"  checked")
 
 	// Change the settings and check the response.
@@ -35,9 +36,10 @@ func TestSetupSettings(t *testing.T) {
 		"/setup/settings",
 		"name=Chezy Champs&code=CC&playoffType=single&numPlayoffAlliances=16&tbaPublishingEnabled=on&"+
 			"tbaEventCode=2014cc&tbaSecretId=secretId&tbaSecret=tbasec&transitionShiftDurationSec=12&"+
-			"shiftDurationSec=24&endgameDurationSec=32",
+			"shiftDurationSec=24&endgameDurationSec=32&ledControllerAddress=10.0.100.61",
 	)
 	assert.Equal(t, 303, recorder.Code)
+	assert.Equal(t, "/setup/settings#event", recorder.Header().Get("Location"))
 	recorder = web.getHttpResponse("/setup/settings")
 	assert.Contains(t, recorder.Body.String(), "Chezy Champs")
 	assert.Contains(t, recorder.Body.String(), "16")
@@ -45,10 +47,15 @@ func TestSetupSettings(t *testing.T) {
 	assert.Contains(t, recorder.Body.String(), "2014cc")
 	assert.Contains(t, recorder.Body.String(), "secretId")
 	assert.Contains(t, recorder.Body.String(), "tbasec")
-	assert.Equal(t, 10, web.arena.EventSettings.TransitionShiftDurationSec)
-	assert.Equal(t, 25, web.arena.EventSettings.ShiftDurationSec)
-	assert.Equal(t, 30, web.arena.EventSettings.EndgameDurationSec)
+	assert.Equal(t, 12, web.arena.EventSettings.TransitionShiftDurationSec)
+	assert.Equal(t, 24, web.arena.EventSettings.ShiftDurationSec)
+	assert.Equal(t, 32, web.arena.EventSettings.EndgameDurationSec)
+	assert.Equal(t, "10.0.100.61", web.arena.EventSettings.LedControllerAddress)
 	assert.Equal(t, 140, game.GetTeleopDurationSec())
+
+	recorder = web.postHttpResponse("/setup/settings", "name=Field Tab Event&activeSettingsTab=field")
+	assert.Equal(t, 303, recorder.Code)
+	assert.Equal(t, "/setup/settings#field", recorder.Header().Get("Location"))
 }
 
 func TestSetupSettingsBlockedDuringMatch(t *testing.T) {
@@ -56,12 +63,13 @@ func TestSetupSettingsBlockedDuringMatch(t *testing.T) {
 	web.arena.EventSettings.Name = "Original Event"
 	web.arena.MatchState = field.AutoPeriod
 
-	recorder := web.postHttpResponse("/setup/settings", "name=Changed Event")
+	recorder := web.postHttpResponse("/setup/settings", "name=Changed Event&activeSettingsTab=field")
 
 	assert.Equal(t, 200, recorder.Code)
 	assert.Contains(
 		t, recorder.Body.String(), "Settings cannot be changed while a match is in progress or is uncommitted.",
 	)
+	assert.Contains(t, recorder.Body.String(), "hash = \"#field\"")
 	assert.Equal(t, "Original Event", web.arena.EventSettings.Name)
 }
 
@@ -270,28 +278,42 @@ func TestSetupSettingsBackupRestoreDb(t *testing.T) {
 func TestSetupSettingsPublishToTba(t *testing.T) {
 	web := setupTestWeb(t)
 
-	web.arena.TbaClient.BaseUrl = "fakeurl"
+	tbaServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	defer tbaServer.Close()
+
+	web.arena.TbaClient.BaseUrl = tbaServer.URL
 	web.arena.EventSettings.TbaPublishingEnabled = true
 
-	recorder := web.getHttpResponse("/setup/settings/publish_alliances")
+	recorder := web.getHttpResponse("/setup/settings/publish_teams")
+	assert.Equal(t, 303, recorder.Code)
+	assert.Equal(t, "/setup/settings#publishing", recorder.Header().Get("Location"))
+
+	web.arena.TbaClient.BaseUrl = "fakeurl"
+
+	recorder = web.getHttpResponse("/setup/settings/publish_alliances")
 	assert.Equal(t, 500, recorder.Code)
 	assert.Contains(t, recorder.Body.String(), "Failed to publish alliances")
+	assert.Contains(t, recorder.Body.String(), "hash = \"#publishing\"")
 
 	recorder = web.getHttpResponse("/setup/settings/publish_awards")
 	assert.Equal(t, 500, recorder.Code)
 	assert.Contains(t, recorder.Body.String(), "Failed to publish awards")
+	assert.Contains(t, recorder.Body.String(), "hash = \"#publishing\"")
 
 	recorder = web.getHttpResponse("/setup/settings/publish_matches")
 	assert.Equal(t, 500, recorder.Code)
 	assert.Contains(t, recorder.Body.String(), "Failed to delete published matches")
+	assert.Contains(t, recorder.Body.String(), "hash = \"#publishing\"")
 
 	recorder = web.getHttpResponse("/setup/settings/publish_rankings")
 	assert.Equal(t, 500, recorder.Code)
 	assert.Contains(t, recorder.Body.String(), "Failed to publish rankings")
+	assert.Contains(t, recorder.Body.String(), "hash = \"#publishing\"")
 
 	recorder = web.getHttpResponse("/setup/settings/publish_teams")
 	assert.Equal(t, 500, recorder.Code)
 	assert.Contains(t, recorder.Body.String(), "Failed to publish teams")
+	assert.Contains(t, recorder.Body.String(), "hash = \"#publishing\"")
 }
 
 func (web *Web) postFileHttpResponse(path string, paramName string, file *bytes.Buffer) *httptest.ResponseRecorder {

@@ -113,6 +113,14 @@ Display shown on the audience screen overlayed over the video.
       </div>
       <div id="finalScoreCentering">
         <div id="finalScore">
+          <div id="finalResultIndicators">
+            <div class="final-result-indicator-slot">
+              <div class="final-result-indicator" id="leftFinalResultIndicator"></div>
+            </div>
+            <div class="final-result-indicator-slot">
+              <div class="final-result-indicator" id="rightFinalResultIndicator"></div>
+            </div>
+          </div>
           <div class="final-score-row">
             <div class="final-score reversible-left" id="leftFinalScore"></div>
             <div class="final-score reversible-right" id="rightFinalScore"></div>
@@ -216,6 +224,7 @@ Display shown on the audience screen overlayed over the video.
             <div class="final-footer">{{.EventSettings.Name}}</div>
             <div class="final-footer" id="finalMatchName">&nbsp;</div>
           </div>
+          <div id="finalTiebreakReason"></div>
         </div>
       </div>
       <div id="bracket">

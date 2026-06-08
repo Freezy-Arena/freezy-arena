@@ -276,6 +276,24 @@ func TestCommitCards(t *testing.T) {
 	assert.Nil(t, web.commitMatchScore(match, matchResult, true))
 	assert.NotEqual(t, 0, matchResult.RedScoreSummary().Score)
 	assert.Equal(t, 0, matchResult.BlueScoreSummary().Score)
+
+	// Check that a red card in playoffs forces a loss even if both alliances score 0.
+	matchResult = model.NewMatchResult()
+	matchResult.MatchId = match.Id
+	matchResult.MatchType = match.Type
+	matchResult.RedCards = map[string]string{"1": "red"}
+	assert.Nil(t, web.commitMatchScore(match, matchResult, true))
+	match, _ = web.arena.Database.GetMatchById(match.Id)
+	assert.Equal(t, game.BlueWonMatch, match.Status)
+
+	// Check that a DQ in playoffs forces a loss even if both alliances score 0.
+	matchResult = model.NewMatchResult()
+	matchResult.MatchId = match.Id
+	matchResult.MatchType = match.Type
+	matchResult.BlueCards = map[string]string{"4": "dq"}
+	assert.Nil(t, web.commitMatchScore(match, matchResult, true))
+	match, _ = web.arena.Database.GetMatchById(match.Id)
+	assert.Equal(t, game.RedWonMatch, match.Status)
 }
 
 func TestMatchPlayWebsocketCommands(t *testing.T) {
@@ -376,6 +394,22 @@ func TestMatchPlayWebsocketCommands(t *testing.T) {
 	ws.Write("setAllianceStationDisplay", "logo")
 	readWebsocketType(t, ws, "allianceStationDisplayMode")
 	assert.Equal(t, "logo", web.arena.AllianceStationDisplayMode)
+
+	// Test changing timeout display text.
+	ws.Write("setTimeoutDisplay", map[string]string{"Description": "Lunch Break", "NextMatchName": "Practice 2"})
+	message := readWebsocketType(t, ws, "matchLoad").(map[string]any)
+	assert.Equal(t, "Lunch Break", message["BreakDescription"])
+	assert.Equal(t, "Practice 2", message["BreakNextMatchName"])
+
+	ws.Write(
+		"startTimeout",
+		map[string]any{"Description": "Repair Break", "NextMatchName": "", "DurationSec": float64(90)},
+	)
+	messages := readWebsocketTypes(t, ws, 3, "matchTiming", "matchLoad", "allianceStationDisplayMode")
+	message = messages["matchLoad"].(map[string]any)
+	assert.Equal(t, field.TimeoutActive, web.arena.MatchState)
+	assert.Equal(t, "Repair Break", message["BreakDescription"])
+	assert.Equal(t, "", message["BreakNextMatchName"])
 }
 
 func TestMatchPlayWebsocketLoadMatch(t *testing.T) {
@@ -499,7 +533,7 @@ func TestMatchPlayWebsocketNotifications(t *testing.T) {
 	web.arena.AllianceStations["B3"].Bypass = true
 	assert.Nil(t, web.arena.StartMatch())
 	web.arena.Update()
-	messages := readWebsocketMultiple(t, ws, 5)
+	messages := readWebsocketTypes(t, ws, 8, "matchTime", "audienceDisplayMode", "allianceStationDisplayMode", "eventStatus")
 	_, ok := messages["matchTime"]
 	assert.True(t, ok)
 	_, ok = messages["audienceDisplayMode"]
@@ -511,17 +545,17 @@ func TestMatchPlayWebsocketNotifications(t *testing.T) {
 	web.arena.MatchStartTime = time.Now().Add(-3 * time.Second)
 	web.arena.Update()
 	var matchTime field.MatchTimeMessage
-	err = mapstructure.Decode(readWebsocketMultiple(t, ws, 2)["matchTime"], &matchTime)
+	err = mapstructure.Decode(readWebsocketTypeEventually(t, ws, "matchTime", 4), &matchTime)
 	assert.Nil(t, err)
 	assert.Equal(t, field.AutoPeriod, matchTime.MatchState)
 	assert.Equal(t, 3, matchTime.MatchTimeSec)
 	web.arena.ScoringStatusNotifier.Notify()
-	readWebsocketType(t, ws, "scoringStatus")
+	readWebsocketTypeEventually(t, ws, "scoringStatus", 4)
 
 	// Should get a tick notification when an integer second threshold is crossed.
 	web.arena.MatchStartTime = time.Now().Add(-time.Second - 10*time.Millisecond) // Crossed
 	web.arena.Update()
-	err = mapstructure.Decode(readWebsocketMultiple(t, ws, 2)["matchTime"], &matchTime)
+	err = mapstructure.Decode(readWebsocketTypeEventually(t, ws, "matchTime", 4), &matchTime)
 	assert.Nil(t, err)
 	assert.Equal(t, field.AutoPeriod, matchTime.MatchState)
 	assert.Equal(t, 1, matchTime.MatchTimeSec)
@@ -529,7 +563,7 @@ func TestMatchPlayWebsocketNotifications(t *testing.T) {
 	web.arena.Update()
 	web.arena.MatchStartTime = time.Now().Add(-2*time.Second - 10*time.Millisecond) // Crossed
 	web.arena.Update()
-	err = mapstructure.Decode(readWebsocketMultiple(t, ws, 2)["matchTime"], &matchTime)
+	err = mapstructure.Decode(readWebsocketTypeEventually(t, ws, "matchTime", 4), &matchTime)
 	assert.Nil(t, err)
 	assert.Equal(t, field.AutoPeriod, matchTime.MatchState)
 	assert.Equal(t, 2, matchTime.MatchTimeSec)
@@ -547,7 +581,7 @@ func TestMatchPlayWebsocketNotifications(t *testing.T) {
 
 // Handles the status and matchTime messages arriving in either order.
 func readWebsocketStatusMatchTime(t *testing.T, ws *websocket.Websocket) (bool, field.MatchTimeMessage) {
-	return getStatusMatchTime(t, readWebsocketMultiple(t, ws, 3))
+	return getStatusMatchTime(t, readWebsocketTypes(t, ws, 5, "arenaStatus", "matchTime"))
 }
 
 func getStatusMatchTime(t *testing.T, messages map[string]any) (bool, field.MatchTimeMessage) {
@@ -559,4 +593,40 @@ func getStatusMatchTime(t *testing.T, messages map[string]any) (bool, field.Matc
 		assert.Nil(t, err)
 	}
 	return statusReceived, matchTime
+}
+
+func readWebsocketTypes(
+	t *testing.T,
+	ws *websocket.Websocket,
+	maxMessages int,
+	expectedMessageTypes ...string,
+) map[string]any {
+	messages := make(map[string]any)
+	expected := make(map[string]struct{})
+	for _, messageType := range expectedMessageTypes {
+		expected[messageType] = struct{}{}
+	}
+
+	for i := 0; i < maxMessages && len(expected) > 0; i++ {
+		messageType, message, err := ws.ReadWithTimeout(time.Second)
+		if !assert.Nil(t, err) {
+			break
+		}
+		messages[messageType] = message
+		delete(expected, messageType)
+	}
+
+	for messageType := range expected {
+		assert.Failf(t, "Expected websocket message not received", "message type %q", messageType)
+	}
+	return messages
+}
+
+func readWebsocketTypeEventually(
+	t *testing.T,
+	ws *websocket.Websocket,
+	expectedMessageType string,
+	maxMessages int,
+) any {
+	return readWebsocketTypes(t, ws, maxMessages, expectedMessageType)[expectedMessageType]
 }

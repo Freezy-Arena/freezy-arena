@@ -5,6 +5,7 @@ package field
 
 import (
 	"github.com/Team254/cheesy-arena/game"
+	"github.com/Team254/cheesy-arena/led"
 	"github.com/Team254/cheesy-arena/model"
 	"github.com/Team254/cheesy-arena/partner"
 	"github.com/Team254/cheesy-arena/playoff"
@@ -589,6 +590,22 @@ func TestArenaTimeout(t *testing.T) {
 	assert.Equal(t, timeoutDurationSec, game.MatchTiming.TimeoutDurationSec)
 	assert.Equal(t, TimeoutActive, arena.MatchState)
 	assert.Equal(t, "Break 1", arena.breakDescription)
+	assert.Equal(t, "Test Match", arena.breakNextMatchName)
+	arena.MatchStartTime = time.Now().Add(-time.Duration(timeoutDurationSec) * time.Second)
+	arena.Update()
+	assert.Equal(t, PostTimeout, arena.MatchState)
+	arena.MatchStartTime = time.Now().Add(-time.Duration(timeoutDurationSec+postTimeoutSec) * time.Second)
+	arena.Update()
+	assert.Equal(t, PreMatch, arena.MatchState)
+
+	// Test ad-hoc timeout display text.
+	timeoutDurationSec = 14
+	assert.Nil(t, arena.StartAdHocTimeout("Repair Break", "", timeoutDurationSec))
+	assert.Equal(t, "Repair Break", arena.breakDescription)
+	assert.Equal(t, "", arena.breakNextMatchName)
+	arena.SetTimeoutDisplay("Inspection Break", "Practice 1")
+	assert.Equal(t, "Inspection Break", arena.breakDescription)
+	assert.Equal(t, "Practice 1", arena.breakNextMatchName)
 	arena.MatchStartTime = time.Now().Add(-time.Duration(timeoutDurationSec) * time.Second)
 	arena.Update()
 	assert.Equal(t, PostTimeout, arena.MatchState)
@@ -1029,6 +1046,15 @@ func TestPlcMatchCycleGameSpecific(t *testing.T) {
 	plc.isEnabled = true
 	plc.ftaReady = true
 	arena.Plc = &plc
+	assertHubLights := func(red, blue bool) {
+		assert.Equal(t, red, plc.redHubLight)
+		assert.Equal(t, blue, plc.blueHubLight)
+	}
+	assertHubLedModes := func(red, blue led.Mode) {
+		redMode, blueMode := arena.Leds.GetModes()
+		assert.Equal(t, red, redMode)
+		assert.Equal(t, blue, blueMode)
+	}
 
 	// Hub counts should be ignored before a match has started, and motors should stay off.
 	assert.Equal(t, PreMatch, arena.MatchState)
@@ -1039,6 +1065,8 @@ func TestPlcMatchCycleGameSpecific(t *testing.T) {
 	assert.Equal(t, game.Hub{}, arena.BlueRealtimeScore.CurrentScore.Hub)
 	assert.False(t, plc.redHubMotor)
 	assert.False(t, plc.blueHubMotor)
+	assertHubLights(false, false)
+	assertHubLedModes(led.OffMode, led.OffMode)
 	plc.redHubCount = 0
 	plc.blueHubCount = 0
 
@@ -1054,6 +1082,8 @@ func TestPlcMatchCycleGameSpecific(t *testing.T) {
 	assert.Equal(t, AutoPeriod, arena.MatchState)
 	assert.True(t, plc.redHubMotor)
 	assert.True(t, plc.blueHubMotor)
+	assertHubLights(true, true)
+	assertHubLedModes(led.RedStartupMode, led.BlueStartupMode)
 
 	redHub := &arena.RedRealtimeScore.CurrentScore.Hub
 	blueHub := &arena.BlueRealtimeScore.CurrentScore.Hub
@@ -1077,12 +1107,23 @@ func TestPlcMatchCycleGameSpecific(t *testing.T) {
 	assert.Equal(t, PausePeriod, arena.MatchState)
 	assert.True(t, plc.redHubMotor)
 	assert.True(t, plc.blueHubMotor)
+	assertHubLights(true, true)
 
+	plc.cycleState = true
 	arena.MatchStartTime = time.Now().Add(-durationToTeleopStart - time.Millisecond)
 	arena.Update()
 	assert.Equal(t, TeleopPeriod, arena.MatchState)
 	assert.True(t, plc.redHubMotor)
 	assert.True(t, plc.blueHubMotor)
+	assert.True(t, redHub.WonAuto)
+	assert.False(t, blueHub.WonAuto)
+	assertHubLights(true, true)
+	assertHubLedModes(led.RedAdvantageMode, led.BlueMode)
+
+	plc.cycleState = false
+	arena.MatchStartTime = time.Now().Add(-durationToTeleopStart - time.Millisecond)
+	arena.Update()
+	assertHubLights(false, true)
 
 	arena.MatchStartTime = time.Now().Add(-durationToTeleopStart - 5*time.Second)
 	plc.redHubCount = 5
@@ -1091,6 +1132,25 @@ func TestPlcMatchCycleGameSpecific(t *testing.T) {
 	assert.Equal(t, TeleopPeriod, arena.MatchState)
 	assert.Equal(t, [game.ShiftCount]int{3, 2, 0, 0, 0, 0, 0}, redHub.ShiftCounts)
 	assert.Equal(t, [game.ShiftCount]int{1, 1, 0, 0, 0, 0, 0}, blueHub.ShiftCounts)
+	assertHubLights(false, true)
+	assertHubLedModes(led.RedAdvantageMode, led.BlueMode)
+
+	arena.MatchStartTime = time.Now().Add(
+		-(durationToTeleopStart +
+			time.Duration(game.MatchTiming.TransitionShiftDurationSec+game.MatchTiming.ShiftDurationSec)*time.Second -
+			2*time.Second),
+	)
+	arena.Update()
+	assertHubLights(false, false)
+
+	plc.cycleState = true
+	arena.MatchStartTime = time.Now().Add(
+		-(durationToTeleopStart +
+			time.Duration(game.MatchTiming.TransitionShiftDurationSec+game.MatchTiming.ShiftDurationSec)*time.Second -
+			2*time.Second),
+	)
+	arena.Update()
+	assertHubLights(false, true)
 
 	// Subsequent teleop shifts should bucket counts by the configured shift timing.
 	arena.MatchStartTime = time.Now().Add(
@@ -1103,6 +1163,8 @@ func TestPlcMatchCycleGameSpecific(t *testing.T) {
 	arena.Update()
 	assert.Equal(t, [game.ShiftCount]int{3, 2, 3, 0, 0, 0, 0}, redHub.ShiftCounts)
 	assert.Equal(t, [game.ShiftCount]int{1, 1, 2, 0, 0, 0, 0}, blueHub.ShiftCounts)
+	assertHubLights(false, true)
+	assertHubLedModes(led.OffMode, led.BlueMode)
 
 	arena.MatchStartTime = time.Now().Add(
 		-(durationToTeleopStart +
@@ -1114,10 +1176,23 @@ func TestPlcMatchCycleGameSpecific(t *testing.T) {
 	arena.Update()
 	assert.Equal(t, [game.ShiftCount]int{3, 2, 3, 1, 0, 0, 0}, redHub.ShiftCounts)
 	assert.Equal(t, [game.ShiftCount]int{1, 1, 2, 3, 0, 0, 0}, blueHub.ShiftCounts)
+	assertHubLights(true, false)
+	assertHubLedModes(led.RedMode, led.OffMode)
 
 	durationToTeleopEnd := time.Duration(
 		game.MatchTiming.AutoDurationSec+game.MatchTiming.PauseDurationSec+game.GetTeleopDurationSec(),
 	) * time.Second
+
+	plc.cycleState = false
+	arena.MatchStartTime = time.Now().Add(-durationToTeleopEnd + 2*time.Second)
+	arena.Update()
+	assert.Equal(t, TeleopPeriod, arena.MatchState)
+	assertHubLights(false, false)
+
+	plc.cycleState = true
+	arena.MatchStartTime = time.Now().Add(-durationToTeleopEnd + 2*time.Second)
+	arena.Update()
+	assertHubLights(true, true)
 
 	// Motors stay on briefly after the match to exhaust remaining Fuel.
 	arena.MatchStartTime = time.Now().Add(-durationToTeleopEnd - 1*time.Second)
@@ -1125,6 +1200,8 @@ func TestPlcMatchCycleGameSpecific(t *testing.T) {
 	assert.Equal(t, PostMatch, arena.MatchState)
 	assert.True(t, plc.redHubMotor)
 	assert.True(t, plc.blueHubMotor)
+	assertHubLights(false, false)
+	assertHubLedModes(led.WhiteMode, led.WhiteMode)
 
 	arena.MatchStartTime = time.Now().Add(
 		-durationToTeleopEnd -
@@ -1134,6 +1211,7 @@ func TestPlcMatchCycleGameSpecific(t *testing.T) {
 	arena.Update()
 	assert.True(t, plc.redHubMotor)
 	assert.True(t, plc.blueHubMotor)
+	assertHubLights(false, false)
 
 	arena.MatchStartTime = time.Now().Add(
 		-durationToTeleopEnd -
@@ -1143,18 +1221,26 @@ func TestPlcMatchCycleGameSpecific(t *testing.T) {
 	arena.Update()
 	assert.False(t, plc.redHubMotor)
 	assert.False(t, plc.blueHubMotor)
+	assertHubLights(false, false)
 }
 
 func TestSignalVolunteers(t *testing.T) {
 	arena := setupTestArena(t)
+	assertHubLedModes := func(red, blue led.Mode) {
+		redMode, blueMode := arena.Leds.GetModes()
+		assert.Equal(t, red, redMode)
+		assert.Equal(t, blue, blueMode)
+	}
 
 	// Test that SignalVolunteers only works in PreMatch and PostMatch states.
 	for _, state := range []MatchState{StartMatch, AutoPeriod, PausePeriod, TeleopPeriod, TimeoutActive, PostTimeout} {
 		arena.MatchState = state
 		arena.FieldVolunteers = false
+		arena.Leds.SetMode(led.OffMode, led.OffMode)
 		arena.SignalVolunteers()
 		assert.False(t, arena.FieldVolunteers)
 		assert.NotEqual(t, "signalCount", arena.AllianceStationDisplayMode)
+		assertHubLedModes(led.OffMode, led.OffMode)
 	}
 
 	// Test SignalVolunteers in PreMatch state.
@@ -1165,6 +1251,7 @@ func TestSignalVolunteers(t *testing.T) {
 	assert.True(t, arena.FieldVolunteers)
 	assert.False(t, arena.FieldReset)
 	assert.Equal(t, "signalCount", arena.AllianceStationDisplayMode)
+	assertHubLedModes(led.PurpleMode, led.PurpleMode)
 
 	// Test SignalVolunteers in PostMatch state.
 	arena.MatchState = PostMatch
@@ -1175,10 +1262,16 @@ func TestSignalVolunteers(t *testing.T) {
 	assert.True(t, arena.FieldVolunteers)
 	assert.False(t, arena.FieldReset)
 	assert.Equal(t, "signalCount", arena.AllianceStationDisplayMode)
+	assertHubLedModes(led.PurpleMode, led.PurpleMode)
 }
 
 func TestSignalReset(t *testing.T) {
 	arena := setupTestArena(t)
+	assertHubLedModes := func(red, blue led.Mode) {
+		redMode, blueMode := arena.Leds.GetModes()
+		assert.Equal(t, red, redMode)
+		assert.Equal(t, blue, blueMode)
+	}
 
 	// Test that SignalReset only works in PreMatch and PostMatch states.
 	for _, state := range []MatchState{StartMatch, AutoPeriod, PausePeriod, TeleopPeriod, TimeoutActive, PostTimeout} {
@@ -1186,10 +1279,12 @@ func TestSignalReset(t *testing.T) {
 		arena.FieldReset = false
 		arena.FieldVolunteers = false
 		arena.AllianceStationDisplayMode = "match"
+		arena.Leds.SetMode(led.OffMode, led.OffMode)
 		arena.SignalReset()
 		assert.False(t, arena.FieldReset)
 		assert.False(t, arena.FieldVolunteers)
 		assert.NotEqual(t, "fieldReset", arena.AllianceStationDisplayMode)
+		assertHubLedModes(led.OffMode, led.OffMode)
 	}
 
 	// Test SignalReset in PreMatch state.
@@ -1201,6 +1296,7 @@ func TestSignalReset(t *testing.T) {
 	assert.False(t, arena.FieldVolunteers)
 	assert.True(t, arena.FieldReset)
 	assert.Equal(t, "fieldReset", arena.AllianceStationDisplayMode)
+	assertHubLedModes(led.GreenMode, led.GreenMode)
 
 	// Test SignalReset in PostMatch state.
 	arena.MatchState = PostMatch
@@ -1211,4 +1307,6 @@ func TestSignalReset(t *testing.T) {
 	assert.False(t, arena.FieldVolunteers)
 	assert.True(t, arena.FieldReset)
 	assert.Equal(t, "fieldReset", arena.AllianceStationDisplayMode)
+	assertHubLedModes(led.GreenMode, led.GreenMode)
 }
+
