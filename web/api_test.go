@@ -154,6 +154,58 @@ func TestRemoteMatchResultPostApi(t *testing.T) {
 	assert.True(t, savedMatch.IsComplete())
 }
 
+func TestRemotePrimaryLoadMatchPostApiRequiresSecondaryMode(t *testing.T) {
+	web := setupTestWeb(t)
+
+	recorder := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/api/remote/primary/matches/1/load", nil)
+	web.newHandler().ServeHTTP(recorder, req)
+
+	assert.Equal(t, 400, recorder.Code)
+	assert.Contains(t, recorder.Body.String(), "Secondary arena mode is not enabled.")
+}
+
+func TestRemotePrimaryLoadMatchPostApi(t *testing.T) {
+	primaryMatch := model.Match{
+		Id:        47,
+		Type:      model.Qualification,
+		ShortName: "Q47",
+		LongName:  "Qualification 47",
+		Red1:      101,
+		Red2:      102,
+		Red3:      103,
+		Blue1:     201,
+		Blue2:     202,
+		Blue3:     203,
+	}
+	primaryServer := httptest.NewServer(
+		http.HandlerFunc(
+			func(w http.ResponseWriter, r *http.Request) {
+				assert.Equal(t, "GET", r.Method)
+				assert.Equal(t, "/api/remote/matches/47", r.URL.Path)
+				assert.Nil(t, json.NewEncoder(w).Encode(MatchWithResult{Match: primaryMatch}))
+			},
+		),
+	)
+	defer primaryServer.Close()
+
+	web := setupTestWeb(t)
+	web.arena.EventSettings.SecondaryArenaEnabled = true
+	web.arena.EventSettings.PrimaryArenaUrl = primaryServer.URL
+
+	recorder := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/api/remote/primary/matches/47/load", nil)
+	web.newHandler().ServeHTTP(recorder, req)
+
+	assert.Equal(t, 200, recorder.Code)
+	assert.Equal(t, "application/json", recorder.Header()["Content-Type"][0])
+	assert.Equal(t, primaryMatch.Id, web.arena.CurrentMatch.Id)
+	assert.Equal(t, model.Test, web.arena.CurrentMatch.Type)
+	assert.Equal(t, primaryMatch.ShortName, web.arena.CurrentMatch.ShortName)
+	assert.Equal(t, primaryMatch.Red1, web.arena.AllianceStations["R1"].Team.Id)
+	assert.Equal(t, primaryMatch.Blue3, web.arena.AllianceStations["B3"].Team.Id)
+}
+
 func TestRankingsApi(t *testing.T) {
 	web := setupTestWeb(t)
 

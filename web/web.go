@@ -140,6 +140,7 @@ func (web *Web) newHandler() http.Handler {
 	mux.HandleFunc("GET /api/arena/websocket", web.arenaWebsocketApiHandler)
 	mux.HandleFunc("GET /api/bracket/svg", web.bracketSvgApiHandler)
 	mux.HandleFunc("GET /api/matches/{type}", web.matchesApiHandler)
+	mux.HandleFunc("POST /api/remote/primary/matches/{matchId}/load", web.remotePrimaryLoadMatchPostHandler)
 	mux.HandleFunc("GET /api/remote/matches/{matchId}", web.remoteMatchApiHandler)
 	mux.HandleFunc("POST /api/remote/matches/{matchId}/result", web.remoteMatchResultPostHandler)
 	mux.HandleFunc("GET /api/rankings", web.rankingsApiHandler)

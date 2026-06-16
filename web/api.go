@@ -12,6 +12,7 @@ import (
 	"github.com/Team254/cheesy-arena/model"
 	"github.com/Team254/cheesy-arena/partner"
 	"github.com/Team254/cheesy-arena/playoff"
+	"github.com/Team254/cheesy-arena/remote"
 	"github.com/Team254/cheesy-arena/websocket"
 	"io"
 	"net/http"
@@ -142,6 +143,43 @@ func (web *Web) remoteMatchResultPostHandler(w http.ResponseWriter, r *http.Requ
 	}
 
 	web.remoteMatchApiHandler(w, r)
+}
+
+// Loads a match from the configured primary arena into this secondary arena instance.
+func (web *Web) remotePrimaryLoadMatchPostHandler(w http.ResponseWriter, r *http.Request) {
+	if !web.arena.EventSettings.SecondaryArenaEnabled {
+		http.Error(w, "Secondary arena mode is not enabled.", http.StatusBadRequest)
+		return
+	}
+	if web.arena.EventSettings.PrimaryArenaUrl == "" {
+		http.Error(w, "Primary arena URL is not configured.", http.StatusBadRequest)
+		return
+	}
+
+	matchId, err := strconv.Atoi(r.PathValue("matchId"))
+	if err != nil {
+		handleWebErr(w, err)
+		return
+	}
+	primaryClient := remote.NewPrimaryClient(web.arena.EventSettings.PrimaryArenaUrl)
+	matchWithResult, err := primaryClient.GetMatch(matchId)
+	if err != nil {
+		handleWebErr(w, err)
+		return
+	}
+
+	if err = web.arena.ResetMatch(); err != nil {
+		handleWebErr(w, err)
+		return
+	}
+	match := matchWithResult.Match
+	match.Type = model.Test
+	if err = web.arena.LoadMatch(&match); err != nil {
+		handleWebErr(w, err)
+		return
+	}
+
+	web.writeJsonApiResponse(w, MatchWithResult{Match: *web.arena.CurrentMatch})
 }
 
 func (web *Web) getRemoteMatchFromRequest(r *http.Request) (*model.Match, error) {
