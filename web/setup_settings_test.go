@@ -32,6 +32,7 @@ func TestSetupSettings(t *testing.T) {
 	assert.NotContains(t, recorder.Body.String(), "tbaPublishingEnabled\"  checked")
 	assert.NotContains(t, recorder.Body.String(), "secondaryArenaEnabled\"  checked")
 	assert.Contains(t, recorder.Body.String(), "publishing-tab")
+	assert.Contains(t, recorder.Body.String(), "href=\"/setup/teams\"")
 	assert.Contains(t, recorder.Body.String(), "placeholder=\"10.0.100.5\"")
 
 	// Change the settings and check the response.
@@ -53,6 +54,7 @@ func TestSetupSettings(t *testing.T) {
 	assert.Contains(t, recorder.Body.String(), "tbasec")
 	assert.Contains(t, recorder.Body.String(), "secondaryArenaEnabled\"  checked")
 	assert.NotContains(t, recorder.Body.String(), "publishing-tab")
+	assert.NotContains(t, recorder.Body.String(), "href=\"/setup/teams\"")
 	assert.Contains(t, recorder.Body.String(), "http://10.0.100.5:8080")
 	assert.Equal(t, 12, web.arena.EventSettings.TransitionShiftDurationSec)
 	assert.Equal(t, 24, web.arena.EventSettings.ShiftDurationSec)
