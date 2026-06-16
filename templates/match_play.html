@@ -201,6 +201,24 @@ UI for controlling match play and viewing team connection and field status.
           <div id="testMatchSettings">
             <input type="text" id="testMatchName" size="16" onblur="setTestMatchName();"/>
           </div>
+          {{if .EventSettings.SecondaryArenaEnabled}}
+          <h6 class="mt-4">Primary Arena</h6>
+          <div class="mb-1">
+            <input type="number" id="primaryMatchId" class="form-control form-control-sm d-inline-block"
+              style="width: 7rem;" min="1" placeholder="Match ID"/>
+            <button type="button" id="loadPrimaryMatch" class="btn btn-primary btn-sm"
+              onclick="loadPrimaryMatch();">
+              Load
+            </button>
+          </div>
+          <div class="mb-1">
+            <button type="button" id="submitPrimaryResult" class="btn btn-primary btn-sm"
+              onclick="submitPrimaryResult();">
+              Submit Result
+            </button>
+          </div>
+          <div id="primaryArenaStatus" class="small"></div>
+          {{end}}
         </div>
       </div>
     </div>

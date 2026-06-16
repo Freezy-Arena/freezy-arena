@@ -25,6 +25,14 @@ func TestMatchPlay(t *testing.T) {
 	recorder := web.getHttpResponse("/match_play")
 	assert.Equal(t, 200, recorder.Code)
 	assert.Contains(t, recorder.Body.String(), "Are you sure you want to discard the results for this match?")
+	assert.NotContains(t, recorder.Body.String(), "Primary Arena")
+
+	web.arena.EventSettings.SecondaryArenaEnabled = true
+	recorder = web.getHttpResponse("/match_play")
+	assert.Equal(t, 200, recorder.Code)
+	assert.Contains(t, recorder.Body.String(), "Primary Arena")
+	assert.Contains(t, recorder.Body.String(), "loadPrimaryMatch")
+	assert.Contains(t, recorder.Body.String(), "submitPrimaryResult")
 }
 
 func TestMatchPlayMatchList(t *testing.T) {

@@ -123,6 +123,45 @@ const setTestMatchName = function () {
   websocket.send("setTestMatchName", $("#testMatchName").val());
 };
 
+const setPrimaryArenaStatus = function (message, isError) {
+  $("#primaryArenaStatus")
+    .text(message)
+    .toggleClass("text-danger", isError)
+    .toggleClass("text-success", !isError && message !== "");
+};
+
+const loadPrimaryMatch = function () {
+  const matchId = $("#primaryMatchId").val();
+  if (!matchId) {
+    setPrimaryArenaStatus("Enter a match ID.", true);
+    return;
+  }
+
+  setPrimaryArenaStatus("Loading match...", false);
+  fetch(`/api/remote/primary/matches/${matchId}/load`, {method: "POST"})
+    .then(response => {
+      if (!response.ok) {
+        return response.text().then(text => Promise.reject(text));
+      }
+      return response.json();
+    })
+    .then(data => setPrimaryArenaStatus(`Loaded ${data.ShortName || data.LongName || "match"}.`, false))
+    .catch(error => setPrimaryArenaStatus(error.toString().trim(), true));
+};
+
+const submitPrimaryResult = function () {
+  setPrimaryArenaStatus("Submitting result...", false);
+  fetch("/api/remote/primary/current_match/result", {method: "POST"})
+    .then(response => {
+      if (!response.ok) {
+        return response.text().then(text => Promise.reject(text));
+      }
+      return response.json();
+    })
+    .then(data => setPrimaryArenaStatus(`Submitted ${data.ShortName || data.LongName || "result"}.`, false))
+    .catch(error => setPrimaryArenaStatus(error.toString().trim(), true));
+};
+
 // Returns the integer team number entered into the team number input box for the given station, or 0 if it is empty.
 const getTeamNumber = function (station) {
   const teamId = $(`#status${station} .team-number`).val().trim();

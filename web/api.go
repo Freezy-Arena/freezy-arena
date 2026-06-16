@@ -193,23 +193,33 @@ func (web *Web) remotePrimarySubmitCurrentResultPostHandler(w http.ResponseWrite
 		http.Error(w, "Primary arena URL is not configured.", http.StatusBadRequest)
 		return
 	}
-	if web.arena.CurrentMatch == nil || web.arena.CurrentMatch.Id == 0 {
-		http.Error(w, "No primary match is currently loaded.", http.StatusBadRequest)
-		return
-	}
-	if web.arena.MatchState != field.PostMatch {
-		http.Error(w, "Current match must be complete before submitting results.", http.StatusBadRequest)
+	matchId, matchResult, err := web.getSecondaryMatchResultForPrimarySubmission()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	primaryClient := remote.NewPrimaryClient(web.arena.EventSettings.PrimaryArenaUrl)
-	matchWithResult, err := primaryClient.PostMatchResult(web.arena.CurrentMatch.Id, web.getCurrentMatchResult())
+	matchWithResult, err := primaryClient.PostMatchResult(matchId, matchResult)
 	if err != nil {
 		handleWebErr(w, err)
 		return
 	}
 
 	web.writeJsonApiResponse(w, matchWithResult)
+}
+
+func (web *Web) getSecondaryMatchResultForPrimarySubmission() (int, *model.MatchResult, error) {
+	if web.arena.CurrentMatch != nil && web.arena.CurrentMatch.Id != 0 && web.arena.MatchState == field.PostMatch {
+		return web.arena.CurrentMatch.Id, web.getCurrentMatchResult(), nil
+	}
+	if web.arena.SavedMatch != nil && web.arena.SavedMatch.Id != 0 && web.arena.SavedMatchResult != nil {
+		return web.arena.SavedMatch.Id, web.arena.SavedMatchResult, nil
+	}
+	if web.arena.CurrentMatch != nil && web.arena.CurrentMatch.Id != 0 {
+		return 0, nil, fmt.Errorf("current match must be complete before submitting results")
+	}
+	return 0, nil, fmt.Errorf("no primary match result is available to submit")
 }
 
 func (web *Web) getRemoteMatchFromRequest(r *http.Request) (*model.Match, error) {

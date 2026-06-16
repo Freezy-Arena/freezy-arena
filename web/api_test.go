@@ -230,7 +230,7 @@ func TestRemotePrimarySubmitCurrentResultPostApiRequiresCompletedMatch(t *testin
 	web.newHandler().ServeHTTP(recorder, req)
 
 	assert.Equal(t, 400, recorder.Code)
-	assert.Contains(t, recorder.Body.String(), "Current match must be complete before submitting results.")
+	assert.Contains(t, recorder.Body.String(), "current match must be complete before submitting results")
 }
 
 func TestRemotePrimarySubmitCurrentResultPostApi(t *testing.T) {
@@ -285,6 +285,52 @@ func TestRemotePrimarySubmitCurrentResultPostApi(t *testing.T) {
 		assert.Equal(t, primaryMatch.Id, matchData.Result.MatchId)
 		assert.NotNil(t, matchData.Result.RedSummary)
 		assert.NotNil(t, matchData.Result.BlueSummary)
+	}
+}
+
+func TestRemotePrimarySubmitCurrentResultPostApiUsesPostedResult(t *testing.T) {
+	primaryMatch := model.Match{Id: 47, Type: model.Qualification, ShortName: "Q47"}
+	primaryServer := httptest.NewServer(
+		http.HandlerFunc(
+			func(w http.ResponseWriter, r *http.Request) {
+				assert.Equal(t, "POST", r.Method)
+				assert.Equal(t, "/api/remote/matches/47/result", r.URL.Path)
+
+				var postedResult model.MatchResult
+				assert.Nil(t, json.NewDecoder(r.Body).Decode(&postedResult))
+				assert.Equal(t, primaryMatch.Id, postedResult.MatchId)
+				assert.Equal(t, 3, postedResult.PlayNumber)
+				assert.Equal(t, model.Test, postedResult.MatchType)
+
+				response := MatchWithResult{Match: primaryMatch}
+				response.Result = &MatchResultWithSummary{MatchResult: postedResult}
+				response.Result.RedSummary = postedResult.RedScoreSummary()
+				response.Result.BlueSummary = postedResult.BlueScoreSummary()
+				assert.Nil(t, json.NewEncoder(w).Encode(response))
+			},
+		),
+	)
+	defer primaryServer.Close()
+
+	web := setupTestWeb(t)
+	web.arena.EventSettings.SecondaryArenaEnabled = true
+	web.arena.EventSettings.PrimaryArenaUrl = primaryServer.URL
+	web.arena.CurrentMatch = &model.Match{}
+	web.arena.MatchState = field.PreMatch
+	web.arena.SavedMatch = &model.Match{Id: primaryMatch.Id, Type: model.Test, ShortName: primaryMatch.ShortName}
+	web.arena.SavedMatchResult = model.BuildTestMatchResult(primaryMatch.Id, 3)
+	web.arena.SavedMatchResult.MatchType = model.Test
+
+	recorder := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/api/remote/primary/current_match/result", nil)
+	web.newHandler().ServeHTTP(recorder, req)
+
+	assert.Equal(t, 200, recorder.Code)
+	var matchData MatchWithResult
+	err := json.Unmarshal([]byte(recorder.Body.String()), &matchData)
+	assert.Nil(t, err)
+	if assert.NotNil(t, matchData.Result) {
+		assert.Equal(t, 3, matchData.Result.PlayNumber)
 	}
 }
 
