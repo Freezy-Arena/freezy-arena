@@ -130,12 +130,13 @@ const setPrimaryArenaStatus = function (message, isError) {
     .toggleClass("text-success", !isError && message !== "");
 };
 
-const loadPrimaryMatch = function () {
-  const matchId = $("#primaryMatchId").val();
+const loadPrimaryMatch = function (selectedMatchId) {
+  const matchId = selectedMatchId || $("#primaryMatchId").val();
   if (!matchId) {
     setPrimaryArenaStatus("Enter a match ID.", true);
     return;
   }
+  $("#primaryMatchId").val(matchId);
 
   setPrimaryArenaStatus("Loading match...", false);
   fetch(`/api/remote/primary/matches/${matchId}/load`, {method: "POST"})

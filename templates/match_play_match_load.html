@@ -1,4 +1,6 @@
-<b class="btn btn-primary" onclick="loadMatch(0);">Load Test Match</b>
+{{if not .SecondaryArenaEnabled}}
+  <b class="btn btn-primary" onclick="loadMatch(0);">Load Test Match</b>
+{{end}}
 <ul class="nav nav-tabs mt-4">
   <li>
     <a href="#Practice" class="nav-link{{if eq .CurrentMatchType practiceMatch }} active{{end}}" data-bs-toggle="tab">
@@ -34,7 +36,11 @@
           <td class="bg-{{$match.ColorClass}}">{{$match.ShortName}}</td>
           <td class="bg-{{$match.ColorClass}}">{{$match.Time}}</td>
           <td class="bg-{{$match.ColorClass}} nowrap">
+            {{if $.SecondaryArenaEnabled}}
+            <b class="btn btn-primary btn-sm" onclick="loadPrimaryMatch({{$match.Id}});">Load</b>
+            {{else}}
             <b class="btn btn-primary btn-sm" onclick="loadMatch({{$match.Id}});">Load</b>
+            {{end}}
             {{if ne $match.Status matchScheduled}}
             <b class="btn btn-primary btn-sm" onclick="showResult({{$match.Id}});">Show Result</b>
             {{end}}

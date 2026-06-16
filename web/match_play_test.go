@@ -5,6 +5,7 @@ package web
 
 import (
 	"bytes"
+	"encoding/json"
 	"github.com/Team254/cheesy-arena/field"
 	"github.com/Team254/cheesy-arena/game"
 	"github.com/Team254/cheesy-arena/model"
@@ -14,6 +15,8 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/stretchr/testify/assert"
 	"log"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 )
@@ -57,6 +60,44 @@ func TestMatchPlayMatchList(t *testing.T) {
 	assert.Contains(t, recorder.Body.String(), "Q1")
 	assert.Contains(t, recorder.Body.String(), "SF1-1")
 	assert.Contains(t, recorder.Body.String(), "SF1-2")
+}
+
+func TestMatchPlayMatchListUsesPrimaryScheduleInSecondaryMode(t *testing.T) {
+	primaryServer := httptest.NewServer(
+		http.HandlerFunc(
+			func(w http.ResponseWriter, r *http.Request) {
+				matchesByPath := map[string][]MatchWithResult{
+					"/api/matches/Practice": {
+						{Match: model.Match{Id: 1, Type: model.Practice, ShortName: "P1", Time: time.Unix(0, 0)}},
+					},
+					"/api/matches/Qualification": {
+						{Match: model.Match{Id: 2, Type: model.Qualification, ShortName: "Q1", Time: time.Unix(0, 0)}},
+					},
+					"/api/matches/Playoff": {
+						{Match: model.Match{Id: 3, Type: model.Playoff, ShortName: "M1", Time: time.Unix(0, 0)}},
+					},
+				}
+				assert.Equal(t, "GET", r.Method)
+				assert.Nil(t, json.NewEncoder(w).Encode(matchesByPath[r.URL.Path]))
+			},
+		),
+	)
+	defer primaryServer.Close()
+
+	web := setupTestWeb(t)
+	web.arena.EventSettings.SecondaryArenaEnabled = true
+	web.arena.EventSettings.PrimaryArenaUrl = primaryServer.URL
+
+	recorder := web.getHttpResponse("/match_play/match_load")
+	assert.Equal(t, 200, recorder.Code)
+	assert.Contains(t, recorder.Body.String(), "P1")
+	assert.Contains(t, recorder.Body.String(), "Q1")
+	assert.Contains(t, recorder.Body.String(), "M1")
+	assert.Contains(t, recorder.Body.String(), "loadPrimaryMatch(1)")
+	assert.Contains(t, recorder.Body.String(), "loadPrimaryMatch(2)")
+	assert.Contains(t, recorder.Body.String(), "loadPrimaryMatch(3)")
+	assert.NotContains(t, recorder.Body.String(), "Load Test Match")
+	assert.NotContains(t, recorder.Body.String(), "loadMatch(1)")
 }
 
 func TestCommitMatch(t *testing.T) {

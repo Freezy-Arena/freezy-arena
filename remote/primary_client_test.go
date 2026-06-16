@@ -46,6 +46,32 @@ func TestPrimaryClientGetMatch(t *testing.T) {
 	}
 }
 
+func TestPrimaryClientGetMatchesByType(t *testing.T) {
+	response := []MatchWithResult{
+		{Match: model.Match{Id: 1, Type: model.Practice, ShortName: "P1"}},
+		{Match: model.Match{Id: 2, Type: model.Practice, ShortName: "P2"}},
+	}
+
+	server := httptest.NewServer(
+		http.HandlerFunc(
+			func(w http.ResponseWriter, r *http.Request) {
+				assert.Equal(t, "GET", r.Method)
+				assert.Equal(t, "/api/matches/Practice", r.URL.Path)
+				assert.Nil(t, json.NewEncoder(w).Encode(response))
+			},
+		),
+	)
+	defer server.Close()
+
+	client := NewPrimaryClient(server.URL)
+	matches, err := client.GetMatchesByType(model.Practice)
+	assert.Nil(t, err)
+	if assert.Equal(t, 2, len(matches)) {
+		assert.Equal(t, "P1", matches[0].ShortName)
+		assert.Equal(t, "P2", matches[1].ShortName)
+	}
+}
+
 func TestPrimaryClientPostMatchResult(t *testing.T) {
 	match := model.Match{Id: 2, Type: model.Practice, ShortName: "P2", Red1: 102, Blue1: 202}
 	result := model.BuildTestMatchResult(match.Id, 1)

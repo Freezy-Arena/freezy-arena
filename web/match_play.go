@@ -10,6 +10,7 @@ import (
 	"github.com/Team254/cheesy-arena/field"
 	"github.com/Team254/cheesy-arena/game"
 	"github.com/Team254/cheesy-arena/model"
+	"github.com/Team254/cheesy-arena/remote"
 	"github.com/Team254/cheesy-arena/tournament"
 	"github.com/Team254/cheesy-arena/websocket"
 	"github.com/mitchellh/mapstructure"
@@ -99,11 +100,13 @@ func (web *Web) matchPlayMatchLoadHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 	data := struct {
-		MatchesByType    map[model.MatchType]MatchPlayList
-		CurrentMatchType model.MatchType
+		MatchesByType         map[model.MatchType]MatchPlayList
+		CurrentMatchType      model.MatchType
+		SecondaryArenaEnabled bool
 	}{
 		matchesByType,
 		currentMatchType,
+		web.arena.EventSettings.SecondaryArenaEnabled,
 	}
 	err = template.ExecuteTemplate(w, "match_play_match_load.html", data)
 	if err != nil {
@@ -559,6 +562,10 @@ func (list MatchPlayList) Swap(i, j int) {
 
 // Constructs the list of matches to display on the side of the match play interface.
 func (web *Web) buildMatchPlayList(matchType model.MatchType) (MatchPlayList, error) {
+	if web.arena.EventSettings.SecondaryArenaEnabled && web.arena.EventSettings.PrimaryArenaUrl != "" {
+		return web.buildPrimaryMatchPlayList(matchType)
+	}
+
 	matches, err := web.arena.Database.GetMatchesByType(matchType, false)
 	if err != nil {
 		return MatchPlayList{}, err
@@ -588,5 +595,38 @@ func (web *Web) buildMatchPlayList(matchType model.MatchType) (MatchPlayList, er
 	// Sort the list to put all completed matches at the bottom.
 	sort.Stable(matchPlayList)
 
+	return matchPlayList, nil
+}
+
+func (web *Web) buildPrimaryMatchPlayList(matchType model.MatchType) (MatchPlayList, error) {
+	primaryClient := remote.NewPrimaryClient(web.arena.EventSettings.PrimaryArenaUrl)
+	matches, err := primaryClient.GetMatchesByType(matchType)
+	if err != nil {
+		return MatchPlayList{}, err
+	}
+
+	matchPlayList := make(MatchPlayList, len(matches))
+	for i, matchWithResult := range matches {
+		match := matchWithResult.Match
+		matchPlayList[i].Id = match.Id
+		matchPlayList[i].ShortName = match.ShortName
+		matchPlayList[i].Time = match.Time.Local().Format("3:04 PM")
+		matchPlayList[i].Status = match.Status
+		switch match.Status {
+		case game.RedWonMatch:
+			matchPlayList[i].ColorClass = "red"
+		case game.BlueWonMatch:
+			matchPlayList[i].ColorClass = "blue"
+		case game.TieMatch:
+			matchPlayList[i].ColorClass = "yellow"
+		default:
+			matchPlayList[i].ColorClass = ""
+		}
+		if web.arena.CurrentMatch != nil && matchPlayList[i].Id == web.arena.CurrentMatch.Id {
+			matchPlayList[i].ColorClass = "green"
+		}
+	}
+
+	sort.Stable(matchPlayList)
 	return matchPlayList, nil
 }

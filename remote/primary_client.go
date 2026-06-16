@@ -49,6 +49,12 @@ func (client *PrimaryClient) GetMatch(matchId int) (*MatchWithResult, error) {
 	return &matchWithResult, err
 }
 
+func (client *PrimaryClient) GetMatchesByType(matchType model.MatchType) ([]MatchWithResult, error) {
+	var matches []MatchWithResult
+	err := client.doJsonRequest("GET", fmt.Sprintf("/api/matches/%s", matchType), nil, &matches)
+	return matches, err
+}
+
 func (client *PrimaryClient) PostMatchResult(matchId int, matchResult *model.MatchResult) (*MatchWithResult, error) {
 	var matchWithResult MatchWithResult
 	err := client.doJsonRequest(
