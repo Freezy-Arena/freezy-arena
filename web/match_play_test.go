@@ -29,13 +29,13 @@ func TestMatchPlay(t *testing.T) {
 	assert.Equal(t, 200, recorder.Code)
 	assert.Contains(t, recorder.Body.String(), "Are you sure you want to discard the results for this match?")
 	assert.NotContains(t, recorder.Body.String(), "Primary Arena")
+	assert.NotContains(t, recorder.Body.String(), "submitPrimaryResult")
 
 	web.arena.EventSettings.SecondaryArenaEnabled = true
 	recorder = web.getHttpResponse("/match_play")
 	assert.Equal(t, 200, recorder.Code)
-	assert.Contains(t, recorder.Body.String(), "Primary Arena")
-	assert.Contains(t, recorder.Body.String(), "loadPrimaryMatch")
 	assert.Contains(t, recorder.Body.String(), "submitPrimaryResult")
+	assert.NotContains(t, recorder.Body.String(), "primaryMatchId")
 }
 
 func TestMatchPlayMatchList(t *testing.T) {
@@ -87,6 +87,7 @@ func TestMatchPlayMatchListUsesPrimaryScheduleInSecondaryMode(t *testing.T) {
 	web := setupTestWeb(t)
 	web.arena.EventSettings.SecondaryArenaEnabled = true
 	web.arena.EventSettings.PrimaryArenaUrl = primaryServer.URL
+	web.arena.CurrentMatch = &model.Match{Id: 2, Type: model.Test}
 
 	recorder := web.getHttpResponse("/match_play/match_load")
 	assert.Equal(t, 200, recorder.Code)
@@ -96,6 +97,7 @@ func TestMatchPlayMatchListUsesPrimaryScheduleInSecondaryMode(t *testing.T) {
 	assert.Contains(t, recorder.Body.String(), "loadPrimaryMatch(1)")
 	assert.Contains(t, recorder.Body.String(), "loadPrimaryMatch(2)")
 	assert.Contains(t, recorder.Body.String(), "loadPrimaryMatch(3)")
+	assert.Contains(t, recorder.Body.String(), `href="#Qualification" class="nav-link active"`)
 	assert.NotContains(t, recorder.Body.String(), "Load Test Match")
 	assert.NotContains(t, recorder.Body.String(), "loadMatch(1)")
 }

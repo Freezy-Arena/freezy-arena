@@ -131,12 +131,11 @@ const setPrimaryArenaStatus = function (message, isError) {
 };
 
 const loadPrimaryMatch = function (selectedMatchId) {
-  const matchId = selectedMatchId || $("#primaryMatchId").val();
+  const matchId = selectedMatchId;
   if (!matchId) {
-    setPrimaryArenaStatus("Enter a match ID.", true);
+    setPrimaryArenaStatus("Select a match from the schedule.", true);
     return;
   }
-  $("#primaryMatchId").val(matchId);
 
   setPrimaryArenaStatus("Loading match...", false);
   fetch(`/api/remote/primary/matches/${matchId}/load`, {method: "POST"})

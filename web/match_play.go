@@ -93,6 +93,9 @@ func (web *Web) matchPlayMatchLoadHandler(w http.ResponseWriter, r *http.Request
 	if currentMatchType == model.Test {
 		currentMatchType = model.Practice
 	}
+	if web.arena.EventSettings.SecondaryArenaEnabled {
+		currentMatchType = currentPrimaryMatchType(matchesByType, web.arena.CurrentMatch.Id)
+	}
 
 	template, err := web.parseFiles("templates/match_play_match_load.html")
 	if err != nil {
@@ -596,6 +599,17 @@ func (web *Web) buildMatchPlayList(matchType model.MatchType) (MatchPlayList, er
 	sort.Stable(matchPlayList)
 
 	return matchPlayList, nil
+}
+
+func currentPrimaryMatchType(matchesByType map[model.MatchType]MatchPlayList, currentMatchId int) model.MatchType {
+	for _, matchType := range []model.MatchType{model.Practice, model.Qualification, model.Playoff} {
+		for _, match := range matchesByType[matchType] {
+			if match.Id == currentMatchId {
+				return matchType
+			}
+		}
+	}
+	return model.Practice
 }
 
 func (web *Web) buildPrimaryMatchPlayList(matchType model.MatchType) (MatchPlayList, error) {
