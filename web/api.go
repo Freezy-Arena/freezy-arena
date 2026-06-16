@@ -8,6 +8,7 @@ package web
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/Team254/cheesy-arena/field"
 	"github.com/Team254/cheesy-arena/game"
 	"github.com/Team254/cheesy-arena/model"
 	"github.com/Team254/cheesy-arena/partner"
@@ -180,6 +181,35 @@ func (web *Web) remotePrimaryLoadMatchPostHandler(w http.ResponseWriter, r *http
 	}
 
 	web.writeJsonApiResponse(w, MatchWithResult{Match: *web.arena.CurrentMatch})
+}
+
+// Submits the current secondary arena match result to the configured primary arena.
+func (web *Web) remotePrimarySubmitCurrentResultPostHandler(w http.ResponseWriter, r *http.Request) {
+	if !web.arena.EventSettings.SecondaryArenaEnabled {
+		http.Error(w, "Secondary arena mode is not enabled.", http.StatusBadRequest)
+		return
+	}
+	if web.arena.EventSettings.PrimaryArenaUrl == "" {
+		http.Error(w, "Primary arena URL is not configured.", http.StatusBadRequest)
+		return
+	}
+	if web.arena.CurrentMatch == nil || web.arena.CurrentMatch.Id == 0 {
+		http.Error(w, "No primary match is currently loaded.", http.StatusBadRequest)
+		return
+	}
+	if web.arena.MatchState != field.PostMatch {
+		http.Error(w, "Current match must be complete before submitting results.", http.StatusBadRequest)
+		return
+	}
+
+	primaryClient := remote.NewPrimaryClient(web.arena.EventSettings.PrimaryArenaUrl)
+	matchWithResult, err := primaryClient.PostMatchResult(web.arena.CurrentMatch.Id, web.getCurrentMatchResult())
+	if err != nil {
+		handleWebErr(w, err)
+		return
+	}
+
+	web.writeJsonApiResponse(w, matchWithResult)
 }
 
 func (web *Web) getRemoteMatchFromRequest(r *http.Request) (*model.Match, error) {

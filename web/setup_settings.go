@@ -11,7 +11,9 @@ import (
 	"github.com/Team254/cheesy-arena/model"
 	"io"
 	"log"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -113,7 +115,7 @@ func (web *Web) settingsPostHandler(w http.ResponseWriter, r *http.Request) {
 	eventSettings.SelectionRound3Order = r.PostFormValue("selectionRound3Order")
 	eventSettings.SelectionShowUnpickedTeams = r.PostFormValue("selectionShowUnpickedTeams") == "on"
 	eventSettings.SecondaryArenaEnabled = r.PostFormValue("secondaryArenaEnabled") == "on"
-	eventSettings.PrimaryArenaUrl = r.PostFormValue("primaryArenaUrl")
+	eventSettings.PrimaryArenaUrl = normalizePrimaryArenaUrl(r.PostFormValue("primaryArenaUrl"))
 	eventSettings.TbaDownloadEnabled = r.PostFormValue("tbaDownloadEnabled") == "on"
 	eventSettings.TbaPublishingEnabled = r.PostFormValue("tbaPublishingEnabled") == "on"
 	eventSettings.TbaEventCode = r.PostFormValue("tbaEventCode")
@@ -218,6 +220,25 @@ func (web *Web) settingsPostHandler(w http.ResponseWriter, r *http.Request) {
 
 func settingsSaveAllowed(matchState field.MatchState) bool {
 	return matchState == field.PreMatch || matchState == field.TimeoutActive || matchState == field.PostTimeout
+}
+
+func normalizePrimaryArenaUrl(primaryArenaUrl string) string {
+	primaryArenaUrl = strings.TrimSpace(primaryArenaUrl)
+	if primaryArenaUrl == "" {
+		return ""
+	}
+	if !strings.Contains(primaryArenaUrl, "://") {
+		primaryArenaUrl = "http://" + primaryArenaUrl
+	}
+
+	parsedUrl, err := url.Parse(primaryArenaUrl)
+	if err != nil || parsedUrl.Hostname() == "" {
+		return primaryArenaUrl
+	}
+	if parsedUrl.Port() == "" {
+		parsedUrl.Host = net.JoinHostPort(parsedUrl.Hostname(), "8080")
+	}
+	return parsedUrl.String()
 }
 
 func settingsTabFromRequest(r *http.Request) string {

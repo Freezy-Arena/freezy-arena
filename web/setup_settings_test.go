@@ -31,7 +31,7 @@ func TestSetupSettings(t *testing.T) {
 	assert.Contains(t, recorder.Body.String(), "placeholder=\"10.0.100.60\"")
 	assert.NotContains(t, recorder.Body.String(), "tbaPublishingEnabled\"  checked")
 	assert.NotContains(t, recorder.Body.String(), "secondaryArenaEnabled\"  checked")
-	assert.Contains(t, recorder.Body.String(), "placeholder=\"http://10.0.100.5:8080\"")
+	assert.Contains(t, recorder.Body.String(), "placeholder=\"10.0.100.5\"")
 
 	// Change the settings and check the response.
 	recorder = web.postHttpResponse(
@@ -39,7 +39,7 @@ func TestSetupSettings(t *testing.T) {
 		"name=Chezy Champs&code=CC&playoffType=single&numPlayoffAlliances=16&tbaPublishingEnabled=on&"+
 			"tbaEventCode=2014cc&tbaSecretId=secretId&tbaSecret=tbasec&transitionShiftDurationSec=12&"+
 			"shiftDurationSec=24&endgameDurationSec=32&ledControllerAddress=10.0.100.61&secondaryArenaEnabled=on&"+
-			"primaryArenaUrl=http://10.0.100.5:8080",
+			"primaryArenaUrl=10.0.100.5",
 	)
 	assert.Equal(t, 303, recorder.Code)
 	assert.Equal(t, "/setup/settings#event", recorder.Header().Get("Location"))
@@ -109,6 +109,24 @@ func TestSettingsSaveAllowed(t *testing.T) {
 
 	for _, testCase := range testCases {
 		assert.Equal(t, testCase.allowed, settingsSaveAllowed(testCase.matchState))
+	}
+}
+
+func TestNormalizePrimaryArenaUrl(t *testing.T) {
+	testCases := []struct {
+		input    string
+		expected string
+	}{
+		{"", ""},
+		{"10.0.100.5", "http://10.0.100.5:8080"},
+		{"primary-arena.local", "http://primary-arena.local:8080"},
+		{"http://10.0.100.5", "http://10.0.100.5:8080"},
+		{"http://10.0.100.5:9090", "http://10.0.100.5:9090"},
+		{"https://primary-arena.local", "https://primary-arena.local:8080"},
+	}
+
+	for _, testCase := range testCases {
+		assert.Equal(t, testCase.expected, normalizePrimaryArenaUrl(testCase.input))
 	}
 }
 
