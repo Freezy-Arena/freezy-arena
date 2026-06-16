@@ -140,6 +140,8 @@ func (web *Web) newHandler() http.Handler {
 	mux.HandleFunc("GET /api/arena/websocket", web.arenaWebsocketApiHandler)
 	mux.HandleFunc("GET /api/bracket/svg", web.bracketSvgApiHandler)
 	mux.HandleFunc("GET /api/matches/{type}", web.matchesApiHandler)
+	mux.HandleFunc("GET /api/remote/matches/{matchId}", web.remoteMatchApiHandler)
+	mux.HandleFunc("POST /api/remote/matches/{matchId}/result", web.remoteMatchResultPostHandler)
 	mux.HandleFunc("GET /api/rankings", web.rankingsApiHandler)
 	mux.HandleFunc("GET /api/sponsor_slides", web.sponsorSlidesApiHandler)
 	mux.HandleFunc("GET /api/teams/{teamId}/avatar", web.teamAvatarsApiHandler)
@@ -260,7 +262,7 @@ func (web *Web) newHandler() http.Handler {
 	mux.HandleFunc("GET /freezy/upload", web.uploadImagePageHandler)
 	mux.HandleFunc("POST /api/freezy/register_values", web.setPLCRegister)
 	mux.HandleFunc("GET /api/plc/websocket", web.plcWebsocketHandler)
-    
+
 	return mux
 }
 
@@ -280,4 +282,3 @@ func (web *Web) parseFiles(filenames ...string) (*template.Template, error) {
 	template := template.New("").Funcs(web.templateHelpers)
 	return template.ParseFiles(paths...)
 }
-

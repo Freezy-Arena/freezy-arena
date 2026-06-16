@@ -4,6 +4,7 @@
 package web
 
 import (
+	"bytes"
 	"encoding/json"
 	"github.com/Team254/cheesy-arena/game"
 	"github.com/Team254/cheesy-arena/model"
@@ -11,6 +12,8 @@ import (
 	"github.com/Team254/cheesy-arena/websocket"
 	gorillawebsocket "github.com/gorilla/websocket"
 	"github.com/stretchr/testify/assert"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 )
@@ -75,6 +78,80 @@ func TestMatchesApi(t *testing.T) {
 		assert.Equal(t, match2.Id, matchesData[1].Match.Id)
 		assert.Nil(t, matchesData[1].Result)
 	}
+}
+
+func TestRemoteMatchApi(t *testing.T) {
+	web := setupTestWeb(t)
+
+	match := model.Match{
+		Type:      model.Practice,
+		ShortName: "P1",
+		Time:      time.Unix(0, 0),
+		Red1:      1,
+		Red2:      2,
+		Red3:      3,
+		Blue1:     4,
+		Blue2:     5,
+		Blue3:     6,
+	}
+	assert.Nil(t, web.arena.Database.CreateMatch(&match))
+
+	recorder := web.getHttpResponse("/api/remote/matches/1")
+	assert.Equal(t, 200, recorder.Code)
+	assert.Equal(t, "application/json", recorder.Header()["Content-Type"][0])
+	var matchData MatchWithResult
+	err := json.Unmarshal([]byte(recorder.Body.String()), &matchData)
+	assert.Nil(t, err)
+	assert.Equal(t, match.Id, matchData.Match.Id)
+	assert.Equal(t, match.ShortName, matchData.Match.ShortName)
+	assert.Nil(t, matchData.Result)
+}
+
+func TestRemoteMatchResultPostApi(t *testing.T) {
+	web := setupTestWeb(t)
+
+	match := model.Match{
+		Type:      model.Practice,
+		ShortName: "P1",
+		Time:      time.Unix(0, 0),
+		Red1:      1,
+		Red2:      2,
+		Red3:      3,
+		Blue1:     4,
+		Blue2:     5,
+		Blue3:     6,
+	}
+	assert.Nil(t, web.arena.Database.CreateMatch(&match))
+	matchResult := model.BuildTestMatchResult(match.Id, 0)
+	matchResult.MatchType = match.Type
+	requestBody, err := json.Marshal(matchResult)
+	assert.Nil(t, err)
+
+	recorder := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/api/remote/matches/1/result", bytes.NewReader(requestBody))
+	web.newHandler().ServeHTTP(recorder, req)
+	assert.Equal(t, 200, recorder.Code)
+	assert.Equal(t, "application/json", recorder.Header()["Content-Type"][0])
+
+	var matchData MatchWithResult
+	err = json.Unmarshal([]byte(recorder.Body.String()), &matchData)
+	assert.Nil(t, err)
+	if assert.NotNil(t, matchData.Result) {
+		assert.Equal(t, match.Id, matchData.Result.MatchId)
+		assert.Equal(t, 1, matchData.Result.PlayNumber)
+		assert.NotNil(t, matchData.Result.RedSummary)
+		assert.NotNil(t, matchData.Result.BlueSummary)
+	}
+
+	savedResult, err := web.arena.Database.GetMatchResultForMatch(match.Id)
+	assert.Nil(t, err)
+	if assert.NotNil(t, savedResult) {
+		assert.Equal(t, 1, savedResult.PlayNumber)
+		assert.Equal(t, match.Type, savedResult.MatchType)
+	}
+	savedMatch, err := web.arena.Database.GetMatchById(match.Id)
+	assert.Nil(t, err)
+	assert.True(t, savedMatch.IsComplete())
 }
 
 func TestRankingsApi(t *testing.T) {
@@ -205,134 +282,134 @@ func TestBracketSvgApiFourAllianceDoubleElimination(t *testing.T) {
 	assert.Contains(t, recorder.Body.String(), "Finals")
 }
 func TestAllianceStatusApi_Empty(t *testing.T) {
-    web := setupTestWeb(t)
+	web := setupTestWeb(t)
 
 	model.BuildTestAlliances(web.arena.Database)
 
-    // No alliances or teams are created, so all fields should be default/empty.
-    recorder := web.getHttpResponse("/api/freezy/allianceStatus")
-    assert.Equal(t, 200, recorder.Code)
-    assert.Equal(t, "application/json", recorder.Header()["Content-Type"][0])
+	// No alliances or teams are created, so all fields should be default/empty.
+	recorder := web.getHttpResponse("/api/freezy/allianceStatus")
+	assert.Equal(t, 200, recorder.Code)
+	assert.Equal(t, "application/json", recorder.Header()["Content-Type"][0])
 
-    expected := map[string]interface{}{
-        "B1": map[string]interface{}{
-            "DsConn":   nil,
-            "Ethernet": false,
-            "AStop":    false,
-            "EStop":    false,
-            "Bypass":   false,
-            "Team":     nil,
-			"GameData": "",
-			"TeamMatchLog": interface {}(nil),
-            "WifiStatus": map[string]interface{}{
-                "TeamId":            float64(0),
-                "RadioLinked":       false,
+	expected := map[string]interface{}{
+		"B1": map[string]interface{}{
+			"DsConn":       nil,
+			"Ethernet":     false,
+			"AStop":        false,
+			"EStop":        false,
+			"Bypass":       false,
+			"Team":         nil,
+			"GameData":     "",
+			"TeamMatchLog": interface{}(nil),
+			"WifiStatus": map[string]interface{}{
+				"TeamId":            float64(0),
+				"RadioLinked":       false,
 				"ConnectionQuality": float64(0),
-                "MBits":             float64(0),
-                "RxRate":            float64(0),
-                "TxRate":            float64(0),
-                "SignalNoiseRatio":  float64(0),
-            },
-        },
-        "B2": map[string]interface{}{
-            "DsConn":   nil,
-            "Ethernet": false,
-            "AStop":    false,
-            "EStop":    false,
-            "Bypass":   false,
-            "Team":     nil,
-			"GameData": "",
-			"TeamMatchLog": interface {}(nil),
-            "WifiStatus": map[string]interface{}{
-                "TeamId":            float64(0),
-                "RadioLinked":       false,
+				"MBits":             float64(0),
+				"RxRate":            float64(0),
+				"TxRate":            float64(0),
+				"SignalNoiseRatio":  float64(0),
+			},
+		},
+		"B2": map[string]interface{}{
+			"DsConn":       nil,
+			"Ethernet":     false,
+			"AStop":        false,
+			"EStop":        false,
+			"Bypass":       false,
+			"Team":         nil,
+			"GameData":     "",
+			"TeamMatchLog": interface{}(nil),
+			"WifiStatus": map[string]interface{}{
+				"TeamId":            float64(0),
+				"RadioLinked":       false,
 				"ConnectionQuality": float64(0),
-                "MBits":             float64(0),
-                "RxRate":            float64(0),
-                "TxRate":            float64(0),
-                "SignalNoiseRatio":  float64(0),
-            },
-        },
-        "B3": map[string]interface{}{
-            "DsConn":   nil,
-            "Ethernet": false,
-            "AStop":    false,
-            "EStop":    false,
-            "Bypass":   false,
-            "Team":     nil,
-			"GameData": "",
-			"TeamMatchLog": interface {}(nil),
-            "WifiStatus": map[string]interface{}{
-                "TeamId":            float64(0),
-                "RadioLinked":       false,
+				"MBits":             float64(0),
+				"RxRate":            float64(0),
+				"TxRate":            float64(0),
+				"SignalNoiseRatio":  float64(0),
+			},
+		},
+		"B3": map[string]interface{}{
+			"DsConn":       nil,
+			"Ethernet":     false,
+			"AStop":        false,
+			"EStop":        false,
+			"Bypass":       false,
+			"Team":         nil,
+			"GameData":     "",
+			"TeamMatchLog": interface{}(nil),
+			"WifiStatus": map[string]interface{}{
+				"TeamId":            float64(0),
+				"RadioLinked":       false,
 				"ConnectionQuality": float64(0),
-                "MBits":             float64(0),
-                "RxRate":            float64(0),
-                "TxRate":            float64(0),
-                "SignalNoiseRatio":  float64(0),
-            },
-        },
-        "R1": map[string]interface{}{
-            "DsConn":   nil,
-            "Ethernet": false,
-            "AStop":    false,
-            "EStop":    false,
-            "Bypass":   false,
-            "Team":     nil,
-			"GameData": "",
-			"TeamMatchLog": interface {}(nil),
-            "WifiStatus": map[string]interface{}{
-                "TeamId":            float64(0),
-                "RadioLinked":       false,
+				"MBits":             float64(0),
+				"RxRate":            float64(0),
+				"TxRate":            float64(0),
+				"SignalNoiseRatio":  float64(0),
+			},
+		},
+		"R1": map[string]interface{}{
+			"DsConn":       nil,
+			"Ethernet":     false,
+			"AStop":        false,
+			"EStop":        false,
+			"Bypass":       false,
+			"Team":         nil,
+			"GameData":     "",
+			"TeamMatchLog": interface{}(nil),
+			"WifiStatus": map[string]interface{}{
+				"TeamId":            float64(0),
+				"RadioLinked":       false,
 				"ConnectionQuality": float64(0),
-                "MBits":             float64(0),
-                "RxRate":            float64(0),
-                "TxRate":            float64(0),
-                "SignalNoiseRatio":  float64(0),
-            },
-        },
-        "R2": map[string]interface{}{
-            "DsConn":   nil,
-            "Ethernet": false,
-            "AStop":    false,
-            "EStop":    false,
-            "Bypass":   false,
-            "Team":     nil,
-			"GameData": "",
-			"TeamMatchLog": interface {}(nil),
-            "WifiStatus": map[string]interface{}{
-                "TeamId":            float64(0),
-                "RadioLinked":       false,
+				"MBits":             float64(0),
+				"RxRate":            float64(0),
+				"TxRate":            float64(0),
+				"SignalNoiseRatio":  float64(0),
+			},
+		},
+		"R2": map[string]interface{}{
+			"DsConn":       nil,
+			"Ethernet":     false,
+			"AStop":        false,
+			"EStop":        false,
+			"Bypass":       false,
+			"Team":         nil,
+			"GameData":     "",
+			"TeamMatchLog": interface{}(nil),
+			"WifiStatus": map[string]interface{}{
+				"TeamId":            float64(0),
+				"RadioLinked":       false,
 				"ConnectionQuality": float64(0),
-                "MBits":             float64(0),
-                "RxRate":            float64(0),
-                "TxRate":            float64(0),
-                "SignalNoiseRatio":  float64(0),
-            },
-        },
-        "R3": map[string]interface{}{
-            "DsConn":   nil,
-            "Ethernet": false,
-            "AStop":    false,
-            "EStop":    false,
-            "Bypass":   false,
-            "Team":     nil,
-			"GameData": "",
-			"TeamMatchLog": interface {}(nil),
-            "WifiStatus": map[string]interface{}{
-                "TeamId":            float64(0),
-                "RadioLinked":       false,
+				"MBits":             float64(0),
+				"RxRate":            float64(0),
+				"TxRate":            float64(0),
+				"SignalNoiseRatio":  float64(0),
+			},
+		},
+		"R3": map[string]interface{}{
+			"DsConn":       nil,
+			"Ethernet":     false,
+			"AStop":        false,
+			"EStop":        false,
+			"Bypass":       false,
+			"Team":         nil,
+			"GameData":     "",
+			"TeamMatchLog": interface{}(nil),
+			"WifiStatus": map[string]interface{}{
+				"TeamId":            float64(0),
+				"RadioLinked":       false,
 				"ConnectionQuality": float64(0),
-                "MBits":             float64(0),
-                "RxRate":            float64(0),
-                "TxRate":            float64(0),
-                "SignalNoiseRatio":  float64(0),
-            },
-        },
-    }
+				"MBits":             float64(0),
+				"RxRate":            float64(0),
+				"TxRate":            float64(0),
+				"SignalNoiseRatio":  float64(0),
+			},
+		},
+	}
 
-    var actual map[string]interface{}
-    err := json.Unmarshal([]byte(recorder.Body.String()), &actual)
-    assert.Nil(t, err)
-    assert.Equal(t, expected, actual)
+	var actual map[string]interface{}
+	err := json.Unmarshal([]byte(recorder.Body.String()), &actual)
+	assert.Nil(t, err)
+	assert.Equal(t, expected, actual)
 }

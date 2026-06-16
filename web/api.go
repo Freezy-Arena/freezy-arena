@@ -93,6 +93,88 @@ func (web *Web) matchesApiHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Generates a JSON dump of one match and its latest result for use by secondary field instances.
+func (web *Web) remoteMatchApiHandler(w http.ResponseWriter, r *http.Request) {
+	match, err := web.getRemoteMatchFromRequest(r)
+	if err != nil {
+		handleWebErr(w, err)
+		return
+	}
+
+	matchResult, err := web.arena.Database.GetMatchResultForMatch(match.Id)
+	if err != nil {
+		handleWebErr(w, err)
+		return
+	}
+
+	response := MatchWithResult{Match: *match}
+	if matchResult != nil {
+		response.Result = &MatchResultWithSummary{MatchResult: *matchResult}
+		response.Result.RedSummary = matchResult.RedScoreSummary()
+		response.Result.BlueSummary = matchResult.BlueScoreSummary()
+	}
+	web.writeJsonApiResponse(w, response)
+}
+
+// Accepts a match result from a secondary field instance and commits it on the primary instance.
+func (web *Web) remoteMatchResultPostHandler(w http.ResponseWriter, r *http.Request) {
+	match, err := web.getRemoteMatchFromRequest(r)
+	if err != nil {
+		handleWebErr(w, err)
+		return
+	}
+
+	var matchResult model.MatchResult
+	if err = json.NewDecoder(r.Body).Decode(&matchResult); err != nil {
+		handleWebErr(w, err)
+		return
+	}
+	if matchResult.MatchId != match.Id {
+		handleWebErr(w, fmt.Errorf("Error: match ID %d from result does not match expected", matchResult.MatchId))
+		return
+	}
+	normalizeMatchResult(&matchResult)
+	matchResult.MatchType = match.Type
+
+	if err = web.commitMatchScore(match, &matchResult, false); err != nil {
+		handleWebErr(w, err)
+		return
+	}
+
+	web.remoteMatchApiHandler(w, r)
+}
+
+func (web *Web) getRemoteMatchFromRequest(r *http.Request) (*model.Match, error) {
+	matchId, err := strconv.Atoi(r.PathValue("matchId"))
+	if err != nil {
+		return nil, err
+	}
+	match, err := web.arena.Database.GetMatchById(matchId)
+	if err != nil {
+		return nil, err
+	}
+	if match == nil {
+		return nil, fmt.Errorf("Error: No such match: %d", matchId)
+	}
+	return match, nil
+}
+
+func (web *Web) writeJsonApiResponse(w http.ResponseWriter, response any) {
+	jsonData, err := json.MarshalIndent(response, "", "  ")
+	if err != nil {
+		handleWebErr(w, err)
+		return
+	}
+
+	w.Header().Add("Content-Type", "application/json")
+	w.Header().Add("Access-Control-Allow-Origin", "*")
+	_, err = w.Write(jsonData)
+	if err != nil {
+		handleWebErr(w, err)
+		return
+	}
+}
+
 // Generates a JSON dump of the sponsor slides for use by the audience display.
 func (web *Web) sponsorSlidesApiHandler(w http.ResponseWriter, r *http.Request) {
 	sponsors, err := web.arena.Database.GetAllSponsorSlides()
@@ -324,8 +406,8 @@ func (web *Web) allianceStatusApiHandler(w http.ResponseWriter, r *http.Request)
 	// Preload the JSON as a string
 	var allianceStations = web.arena.AllianceStations
 
-   	// Iterate through the slice of AllianceStation structs
-   	for i := range allianceStations {
+	// Iterate through the slice of AllianceStation structs
+	for i := range allianceStations {
 		// If the struct has a Team field, remove or clear it
 		allianceStations[i].Team = nil // Remove Team information
 	}
