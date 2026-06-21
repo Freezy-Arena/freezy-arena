@@ -229,7 +229,6 @@ func (zone *zone) updateRainbowMode(counter int) {
 		}
 	}
 }
-
 func (zone *zone) updateSideTestMode(sideToTest int, color Color) {
 	zone.updateSingleColorMode(Black)
 	startIndex := (sideToTest - 1) * fixturesPerSide * pixelsPerFixture

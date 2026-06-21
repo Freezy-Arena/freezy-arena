@@ -104,6 +104,22 @@ func (web *Web) fieldTestingWebsocketHandler(w http.ResponseWriter, r *http.Requ
 		}
 	}()
 
+	// Stream the LED status to the client periodically.
+	go func() {
+		ticker := time.NewTicker(100 * time.Millisecond)
+		defer ticker.Stop()
+		for range ticker.C {
+			redPixels, bluePixels := web.arena.Leds.GetPixels()
+			err := ws.Write("ledStatus", map[string]interface{}{
+				"Red":  redPixels,
+				"Blue": bluePixels,
+			})
+			if err != nil {
+				return
+			}
+		}
+	}()
+
 	// Loop, waiting for commands and responding to them, until the client closes the connection.
 	for {
 		messageType, data, err := ws.Read()
