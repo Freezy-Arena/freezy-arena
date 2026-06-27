@@ -8,6 +8,7 @@ cheesy-arena
 _obj
 _test
 .idea
+.agents/
 
 # Architecture specific extensions/prefixes
 *.[568vq]
