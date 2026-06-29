@@ -108,7 +108,7 @@ func newFiveAllianceDoubleEliminationBracket() (*Matchup, []breakSpec, error) {
 		NumWinsToAdvance:   1,
 		redAllianceSource:  allianceSelectionSource{2},
 		blueAllianceSource: allianceSelectionSource{3},
-		matchSpecs:         newDoubleEliminationMatch(2, "Round 1 Upper", 540),
+		matchSpecs:         newDoubleEliminationMatch(2, "Round 1 Upper", 300),
 	}
 	m3 := Matchup{
 		id:                 "M3",
@@ -138,7 +138,7 @@ func newFiveAllianceDoubleEliminationBracket() (*Matchup, []breakSpec, error) {
 		NumWinsToAdvance:   1,
 		redAllianceSource:  matchupSource{matchup: &m3, useWinner: false},
 		blueAllianceSource: matchupSource{matchup: &m4, useWinner: true},
-		matchSpecs:         newDoubleEliminationMatch(6, "Round 3 Lower", 540),
+		matchSpecs:         newDoubleEliminationMatch(6, "Round 3 Lower", 300),
 	}
 	m7 := Matchup{
 		id:                 "M7",
@@ -159,7 +159,7 @@ func newFiveAllianceDoubleEliminationBracket() (*Matchup, []breakSpec, error) {
 
 	// Define scheduled breaks.
 	breakSpecs := []breakSpec{
-		{5, 360, "Field Break"},
+		{3, 360, "Filed Break"},
 		{7, 900, "Awards Break"},
 		{8, 900, "Awards Break"},
 		{9, 900, "Awards Break"},
