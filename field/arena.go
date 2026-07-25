@@ -1330,6 +1330,7 @@ func (arena *Arena) handlePlcInputOutput() {
 	case PreMatch:
 		if arena.lastMatchState != PreMatch {
 			arena.Plc.SetFieldResetLight(true)
+			arena.Leds.SetMode(led.GreenMode, led.GreenMode)
 		}
 		fallthrough
 	case TimeoutActive:
@@ -1346,6 +1347,7 @@ func (arena *Arena) handlePlcInputOutput() {
 			arena.FieldVolunteers = false
 			arena.FieldReset = false
 			arena.Plc.SetFieldResetLight(false)
+			arena.Leds.SetMode(led.OffMode, led.OffMode)
 			if arena.CurrentMatch.FieldReadyAt.IsZero() {
 				arena.CurrentMatch.FieldReadyAt = time.Now()
 			}
@@ -1572,7 +1574,10 @@ func (arena *Arena) AutomateAudienceDisplay(postedMatch *model.Match) {
 
 	if arena.CurrentMatch.Type == model.Playoff {
 		time.Sleep(10 * time.Second)
-		isFinals := strings.Contains(postedMatch.LongName, "Final") || strings.Contains(postedMatch.LongName, "Overtime")
+		isFinals := strings.Contains(postedMatch.LongName, "Final") || strings.Contains(
+			postedMatch.LongName,
+			"Overtime",
+		)
 		if !isFinals {
 			arena.SetAudienceDisplayMode("bracket")
 			time.Sleep(20 * time.Second)
