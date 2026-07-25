@@ -106,6 +106,7 @@ func (arena *Arena) generateArenaStatusMessage() any {
 		BlueSCCStatus         string
 		PlcIsHealthy          bool
 		FieldEStop            bool
+		IsFtaReady            bool
 		PlcArmorBlockStatuses map[string]bool
 		ScoreTableIOEnabled   bool
 		RedEstopsEnabled      bool
@@ -124,6 +125,7 @@ func (arena *Arena) generateArenaStatusMessage() any {
 		arena.blueSCC.Status,
 		arena.Plc.IsHealthy(),
 		arena.Plc.GetFieldEStop(),
+		arena.Plc.IsFtaReady(),
 		arena.Plc.GetArmorBlockStatuses(),
 		arena.Esp32.IsScoreTableIOEnabled(),
 		arena.Esp32.IsRedEstopsEnabled(),

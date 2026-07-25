@@ -316,6 +316,7 @@ const handleArenaStatus = function (data) {
     $("#blueEstopsIO").text("Blue Estops Disabled");
     $("#blueEstopsIO").attr("data-ready", 0);
   }
+  $("#ftaReady").attr("data-ready", data.IsFtaReady);
 };
 
 // Handles a websocket message to update the teams for the current match.
