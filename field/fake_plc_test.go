@@ -134,12 +134,19 @@ func (plc *FakePlc) ClearCoilOverride(index int) {
 	// Not needed for testing, just to satisfy the interface.
 }
 
-func (plc *FakePlc) SetAlternateIOStopState(input int, state bool){
+// Freezy Arena
+
+func (plc *FakePlc) SetFtaReady(state bool) {
+	plc.ftaReady = state
+}
+
+func (plc *FakePlc) SetAlternateIOStopState(input int, state bool) {
 	//plc.inputs[input] = state
 }
+
 // used for Alternate IO stops
-func (plc *FakePlc) ResetEstops(){
-	plc.fieldEStop    = true
+func (plc *FakePlc) ResetEstops() {
+	plc.fieldEStop = true
 	plc.redEStops[0] = true
 	plc.redEStops[1] = true
 	plc.redEStops[2] = true
@@ -152,13 +159,13 @@ func (plc *FakePlc) ResetEstops(){
 	plc.blueAStops[0] = true
 	plc.blueAStops[1] = true
 	plc.blueAStops[2] = true
-	
+
 }
 
 // Returns the value of all PLC coils.
 func (plc *FakePlc) GetAllCoils() [13]bool {
-    var coils [13]bool
-    return coils
+	var coils [13]bool
+	return coils
 }
 
 // Returns the state of the field stack light (red, blue, orange, green).
@@ -174,6 +181,6 @@ func (plc *FakePlc) SetRegisterValue(index int, value uint16) {
 	// Not needed for testing, just to satisfy the interface.
 
 }
-func (plc *FakePlc) ResetMatchReset(){
+func (plc *FakePlc) ResetMatchReset() {
 	// Not needed for testing, just to satisfy the interface.a
 }

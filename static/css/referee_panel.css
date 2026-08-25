@@ -212,6 +212,12 @@ h3 {
 #volunteerButton {
   background-color: #90c;
 }
+#ftaReadyButton {
+  background-color: #933;
+}
+#ftaReadyButton[data-ready=true] {
+  background-color: #093;
+}
 #resetButton {
   background-color: #093;
 }

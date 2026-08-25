@@ -122,7 +122,7 @@ var handleMatchLoad = function (data) {
 // Handles a websocket message to update the match status.
 const handleMatchTime = function (data) {
   isPostMatch = matchStates[data.MatchState] === "POST_MATCH";
-  $(".control-button").attr("data-enabled", isPostMatch);
+  $(".control-button:not(#ftaReadyButton)").attr("data-enabled", isPostMatch);
 
   let title = "Red/Yellow Cards";
   if(!isPostMatch) {
@@ -204,6 +204,8 @@ const handleArenaStatus = function (data) {
   setTeamBypassedStatus("blue1", data.AllianceStations["B1"]?.Bypass);
   setTeamBypassedStatus("blue2", data.AllianceStations["B2"]?.Bypass);
   setTeamBypassedStatus("blue3", data.AllianceStations["B3"]?.Bypass);
+  $("#ftaReadyButton").attr("data-ready", data.IsFtaReady);
+  $("#ftaReadyButton").text(data.IsFtaReady ? "FTA Ready" : "FTA Not Ready");
 };
 
 const setTeamBypassedStatus = function (station, bypassed) {
@@ -268,3 +270,10 @@ $(function () {
     },
   });
 });
+
+// Freezy Arena
+
+// Toggles the simulated FTA ready PLC input.
+var toggleFtaReady = function () {
+  websocket.send("toggleFtaReady");
+};

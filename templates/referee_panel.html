@@ -42,6 +42,8 @@ UI for entering and tracking fouls and red/yellow cards.
 </div>
 <p>Note: Team and rule assignment are optional.</p>
 <div id="controlButtons" class="headRef-dependent">
+  {{/* Freezy Arena */}}
+  <div class="control-button" id="ftaReadyButton" data-enabled="true" data-ready="false" onclick="toggleFtaReady();">FTA Not Ready</div>
   <div class="control-button" id="volunteerButton" onclick="signalVolunteers();">Signal Count</div>
   <div class="control-button" id="resetButton" onclick="signalReset();">Signal Reset</div>
   <div class="control-button" id="commitButton" onclick="confirmCommit();">Commit & Post</div>
