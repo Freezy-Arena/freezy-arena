@@ -212,6 +212,9 @@ func (web *Web) refereePanelWebsocketHandler(w http.ResponseWriter, r *http.Requ
 			web.arena.SignalVolunteers()
 		case "signalReset":
 			web.arena.SignalReset()
+		case "toggleFtaReady":
+			web.arena.Plc.SetFtaReady(!web.arena.Plc.IsFtaReady())
+			web.arena.ArenaStatusNotifier.Notify()
 		case "commitAndPost":
 			if web.arena.MatchState != field.PostMatch {
 				// Don't allow committing the fouls until the match is over.

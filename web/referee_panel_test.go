@@ -21,9 +21,36 @@ func TestRefereePanel(t *testing.T) {
 	assert.Contains(t, recorder.Body.String(), "Referee Panel - Untitled Event - Cheesy Arena")
 	assert.Contains(t, recorder.Body.String(), "Auto Tower")
 	assert.Contains(t, recorder.Body.String(), "Endgame Tower")
+	assert.Contains(t, recorder.Body.String(), "id=\"ftaReadyButton\"")
 	assert.NotContains(t, recorder.Body.String(), "Leave")
 	assert.NotContains(t, recorder.Body.String(), "Coral")
 	assert.NotContains(t, recorder.Body.String(), "Algae")
+}
+
+func TestRefereePanelFtaReadyToggle(t *testing.T) {
+	web := setupTestWeb(t)
+
+	server, wsUrl := web.startTestServer()
+	defer server.Close()
+	conn, _, err := gorillawebsocket.DefaultDialer.Dial(wsUrl+"/panels/referee/websocket", nil)
+	assert.Nil(t, err)
+	defer conn.Close()
+	ws := websocket.NewTestWebsocket(conn)
+
+	readWebsocketType(t, ws, "matchLoad")
+	readWebsocketType(t, ws, "matchTime")
+	readWebsocketType(t, ws, "realtimeScore")
+	readWebsocketType(t, ws, "scoringStatus")
+	readWebsocketType(t, ws, "arenaStatus")
+
+	assert.False(t, web.arena.Plc.IsFtaReady())
+	ws.Write("toggleFtaReady", nil)
+	readWebsocketType(t, ws, "arenaStatus")
+	assert.True(t, web.arena.Plc.IsFtaReady())
+
+	ws.Write("toggleFtaReady", nil)
+	readWebsocketType(t, ws, "arenaStatus")
+	assert.False(t, web.arena.Plc.IsFtaReady())
 }
 
 func TestRefereePanelWebsocket(t *testing.T) {

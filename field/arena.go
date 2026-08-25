@@ -107,10 +107,10 @@ type Arena struct {
 	NextFoulId                        int
 	DriverStationUdpSocket            *net.UDPConn
 	redWonAuto                        bool
-	Esp32					 		  plc.Esp32
-	lastPlcNotifyTime 				  time.Time
-	lastRedLedMode  				  led.Mode
-	lastBlueLedMode 				  led.Mode
+	Esp32                             plc.Esp32
+	lastPlcNotifyTime                 time.Time
+	lastRedLedMode                    led.Mode
+	lastBlueLedMode                   led.Mode
 }
 
 type AllianceStation struct {
@@ -408,13 +408,15 @@ func (arena *Arena) LoadMatch(match *model.Match) error {
 	arena.BlueRealtimeScore = NewRealtimeScore()
 	arena.ScoringPanelRegistry.resetScoreCommitted()
 	arena.Plc.ResetMatch()
+	// Freezy Arena
+	arena.Plc.SetFtaReady(false)
 	arena.NextFoulId = 1
 	arena.redWonAuto = false
 	arena.Leds.SetMode(led.OffMode, led.OffMode)
 	currentRed, currentBlue := arena.Leds.GetModes()
-		if currentRed != arena.lastRedLedMode || currentBlue != arena.lastBlueLedMode {
-			arena.LedChangeNotifier.Notify()
-		}
+	if currentRed != arena.lastRedLedMode || currentBlue != arena.lastBlueLedMode {
+		arena.LedChangeNotifier.Notify()
+	}
 
 	// Notify any listeners about the new match.
 	arena.MatchLoadNotifier.Notify()
@@ -423,9 +425,9 @@ func (arena *Arena) LoadMatch(match *model.Match) error {
 	arena.AllianceStationDisplayModeNotifier.Notify()
 	arena.ScoringStatusNotifier.Notify()
 	currentRed, currentBlue = arena.Leds.GetModes()
-		if currentRed != arena.lastRedLedMode || currentBlue != arena.lastBlueLedMode {
-			arena.LedChangeNotifier.Notify()
-		}
+	if currentRed != arena.lastRedLedMode || currentBlue != arena.lastBlueLedMode {
+		arena.LedChangeNotifier.Notify()
+	}
 
 	return nil
 }
@@ -1289,14 +1291,14 @@ func (arena *Arena) handlePlcInputOutput() {
 	arena.handleTeamStop("B1", blueEStops[0], blueAStops[0])
 	arena.handleTeamStop("B2", blueEStops[1], blueAStops[1])
 	arena.handleTeamStop("B3", blueEStops[2], blueAStops[2])
-	
+
 	// Only notify every 500ms
-    if arena.lastPlcNotifyTime.IsZero() || time.Since(arena.lastPlcNotifyTime) >= 500*time.Millisecond {
+	if arena.lastPlcNotifyTime.IsZero() || time.Since(arena.lastPlcNotifyTime) >= 500*time.Millisecond {
 		//arena.Plc.SetCoilValue(1,false)
-        //arena.PlcCoilsNotifier.Notify()
-        //arena.Plc.IoChangeNotifier().Notify()
-        arena.lastPlcNotifyTime = time.Now()
-    }
+		//arena.PlcCoilsNotifier.Notify()
+		//arena.Plc.IoChangeNotifier().Notify()
+		arena.lastPlcNotifyTime = time.Now()
+	}
 
 	// If the PLC is not enabled, or alternate I/O is not enabled, do not process any further PLC inputs.
 	if !arena.Plc.IsEnabled() && !arena.EventSettings.AlternateIOEnabled { // && not alternateIO Enabled
@@ -1471,9 +1473,9 @@ func (arena *Arena) SignalVolunteers() {
 	arena.AllianceStationDisplayModeNotifier.Notify()
 	arena.Leds.SetMode(led.PurpleMode, led.PurpleMode)
 	currentRed, currentBlue := arena.Leds.GetModes()
-		if currentRed != arena.lastRedLedMode || currentBlue != arena.lastBlueLedMode {
-			arena.LedChangeNotifier.Notify()
-		}
+	if currentRed != arena.lastRedLedMode || currentBlue != arena.lastBlueLedMode {
+		arena.LedChangeNotifier.Notify()
+	}
 }
 
 // Set the field lights and team signs to green, if not in a match.
@@ -1492,9 +1494,9 @@ func (arena *Arena) SignalReset() {
 	arena.AllianceStationDisplayModeNotifier.Notify()
 	arena.Leds.SetMode(led.GreenMode, led.GreenMode)
 	currentRed, currentBlue := arena.Leds.GetModes()
-		if currentRed != arena.lastRedLedMode || currentBlue != arena.lastBlueLedMode {
-			arena.LedChangeNotifier.Notify()
-		}
+	if currentRed != arena.lastRedLedMode || currentBlue != arena.lastBlueLedMode {
+		arena.LedChangeNotifier.Notify()
+	}
 }
 
 func (arena *Arena) handleSounds(matchTimeSec float64) {

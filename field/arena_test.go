@@ -149,7 +149,7 @@ func TestArenaMatchFlow(t *testing.T) {
 	arena.AllianceStations["B1"].Bypass = true
 	arena.AllianceStations["B2"].Bypass = true
 	arena.AllianceStations["B3"].DsConn.RobotLinked = true
-	
+
 	assert.Nil(t, arena.StartMatch())
 	assert.Equal(t, StartMatch, arena.MatchState)
 	arena.Update()
@@ -336,6 +336,16 @@ func TestArenaStateEnforcement(t *testing.T) {
 	assert.Nil(t, err)
 	err = arena.LoadMatch(new(model.Match))
 	assert.Nil(t, err)
+}
+
+func TestLoadMatchClearsFtaReady(t *testing.T) {
+	arena := setupTestArena(t)
+	arena.Plc.SetFtaReady(true)
+	assert.True(t, arena.Plc.IsFtaReady())
+
+	err := arena.LoadMatch(new(model.Match))
+	assert.Nil(t, err)
+	assert.False(t, arena.Plc.IsFtaReady())
 }
 
 func TestMatchStartRobotLinkEnforcement(t *testing.T) {
@@ -654,7 +664,7 @@ func TestArenaTimeout(t *testing.T) {
 	arena.MatchStartTime = time.Now().Add(-time.Duration(timeoutDurationSec+postTimeoutSec) * time.Second)
 	arena.Update()
 	assert.Equal(t, PreMatch, arena.MatchState)
-	
+
 	// Test that timeout can't be started during a match.
 	arena.AllianceStations["R1"].EStop = false
 	arena.AllianceStations["R2"].EStop = false
@@ -958,7 +968,7 @@ func TestPlcEStopAStopWithPlcDisabled(t *testing.T) {
 	assert.Equal(t, true, arena.AllianceStations["R1"].DsConn.Enabled)
 	//assert.Equal(t, false, arena.AllianceStations["R2"].AStop) // A-stop are always monitored in Freezy Arena
 	assert.Equal(t, true, arena.AllianceStations["R2"].AStop) // A-stop are always monitored in Freezy Arena
-	assert.Equal(t, false, arena.AllianceStations["R2"].EStop) 
+	assert.Equal(t, false, arena.AllianceStations["R2"].EStop)
 	assert.Equal(t, true, arena.AllianceStations["R2"].DsConn.Enabled)
 }
 

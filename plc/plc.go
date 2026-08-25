@@ -40,10 +40,11 @@ type Plc interface {
 	GetCoilNames() []string
 	SetCoilOverride(index int, state bool)
 	ClearCoilOverride(index int)
-	//Freezy Arena
+	// Freezy Arena
+	SetFtaReady(state bool)
 	SetAlternateIOStopState(input int, state bool)
 	ResetEstops()
-	GetAllCoils() ([coilCount]bool)
+	GetAllCoils() [coilCount]bool
 	GetFieldStackLight() (bool, bool, bool, bool)
 	SetRegisterValue(index int, value uint16)
 	SetCoilValue(index int, value bool)
@@ -410,7 +411,7 @@ func (plc *ModbusPlc) update() {
 		}
 		plc.isHealthy = isHealthy
 	}
-	
+
 	plc.cycleCounter++
 	if plc.cycleCounter == cycleCounterMax {
 		plc.cycleCounter = 0
@@ -557,12 +558,19 @@ func boolToByte(bools []bool) []byte {
 	return bytes
 }
 
+// Freezy Arena
+
+// SetFtaReady sets the simulated state of the FTA ready input.
+func (plc *ModbusPlc) SetFtaReady(state bool) {
+	plc.inputs[ftaReady] = state
+}
+
 // used for Alternate IO stops
-func (plc *ModbusPlc) SetAlternateIOStopState(input int, state bool){
+func (plc *ModbusPlc) SetAlternateIOStopState(input int, state bool) {
 	plc.inputs[input] = state
 }
 
-func (plc *ModbusPlc) ResetEstops(){
+func (plc *ModbusPlc) ResetEstops() {
 	plc.inputs[fieldEStop] = true
 	plc.inputs[red1EStop] = true
 	plc.inputs[red2EStop] = true
@@ -580,7 +588,7 @@ func (plc *ModbusPlc) ResetEstops(){
 
 // Returns the value of all PLC coils.
 func (plc *ModbusPlc) GetAllCoils() [coilCount]bool {
-    return plc.coils
+	return plc.coils
 }
 
 // Returns the state of the field stack light (red, blue, orange, green).
