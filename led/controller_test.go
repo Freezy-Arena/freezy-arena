@@ -4,15 +4,16 @@
 package led
 
 import (
+	"errors"
+	"github.com/stretchr/testify/assert"
 	"net"
 	"testing"
 	"time"
-
-	"github.com/stretchr/testify/assert"
 )
 
 type fakeConn struct {
 	writes [][]byte
+	err    error
 }
 
 func (conn *fakeConn) Read(_ []byte) (int, error)         { return 0, nil }
@@ -27,6 +28,9 @@ func (conn *fakeConn) Write(packet []byte) (int, error) {
 	packetCopy := make([]byte, len(packet))
 	copy(packetCopy, packet)
 	conn.writes = append(conn.writes, packetCopy)
+	if conn.err != nil {
+		return 0, conn.err
+	}
 	return len(packet), nil
 }
 
@@ -80,6 +84,28 @@ func TestControllerUpdateSendsOnChangeAndHeartbeat(t *testing.T) {
 	assert.Len(t, conn.writes, 3)
 }
 
+func TestControllerUpdateThrottlesAfterWriteError(t *testing.T) {
+	writeErr := errors.New("broken pipe")
+	conn := &fakeConn{err: writeErr}
+	controller := NewController()
+	controller.conn = conn
+	controller.SetMode(RedMode, BlueMode)
+
+	assert.Equal(t, writeErr, controller.Update())
+	assert.Len(t, conn.writes, 1)
+
+	assert.Nil(t, controller.Update())
+	assert.Len(t, conn.writes, 1)
+
+	controller.universes[1].lastPacketTime = time.Now().Add(-heartbeatInterval)
+	assert.Equal(t, writeErr, controller.Update())
+	assert.Len(t, conn.writes, 2)
+
+	controller.SetMode(OffMode, BlueMode)
+	assert.Equal(t, writeErr, controller.Update())
+	assert.Len(t, conn.writes, 3)
+}
+
 func TestControllerUpdateSupportsMultipleUniverses(t *testing.T) {
 	conn := &fakeConn{}
 	controller := NewController()
@@ -109,7 +135,7 @@ func TestStartupModeFillsSidesInFmsOrder(t *testing.T) {
 	controller.SetMode(RedStartupMode, OffMode)
 
 	controller.redZone.counter = 50
-	controller.redZone.updatePixels()
+	controller.redZone.updatePixels(Red)
 
 	assert.Equal(t, Red, controller.redZone.pixels[3])
 	assert.Equal(t, Red, controller.redZone.pixels[4])
@@ -123,7 +149,7 @@ func TestAdvantageModeSweepsInOppositeDirectionsBySide(t *testing.T) {
 	controller.SetMode(RedAdvantageMode, OffMode)
 
 	controller.redZone.counter = advantageStepCycle
-	controller.redZone.updatePixels()
+	controller.redZone.updatePixels(Red)
 
 	assert.Equal(t, White, controller.redZone.pixels[0])
 	assert.Equal(t, White, controller.redZone.pixels[31])
@@ -133,11 +159,11 @@ func TestPulseModeScalesAllianceColor(t *testing.T) {
 	controller := NewController()
 	controller.SetMode(RedPulseMode, OffMode)
 
-	controller.redZone.updatePixels()
+	controller.redZone.updatePixels(Red)
 	assert.Equal(t, Black, controller.redZone.pixels[0])
 
 	controller.redZone.counter = pulseHalfPeriod
-	controller.redZone.updatePixels()
+	controller.redZone.updatePixels(Red)
 	assert.Equal(t, Red, controller.redZone.pixels[0])
 }
 

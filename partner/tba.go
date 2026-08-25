@@ -99,17 +99,17 @@ type tbaHub struct {
 }
 
 type TbaRanking struct {
-	TeamKey  string `json:"team_key"`
-	Rank     int    `json:"rank"`
-	RP       float32
-	Match    float32
-	AutoFuel float32
-	Tower    float32
-	Wins     int `json:"wins"`
-	Losses   int `json:"losses"`
-	Ties     int `json:"ties"`
-	Dqs      int `json:"dqs"`
-	Played   int `json:"played"`
+	TeamKey  string  `json:"team_key"`
+	Rank     int     `json:"rank"`
+	RP       float32 `json:"RP"`
+	Match    float32 `json:"Match"`
+	AutoFuel float32 `json:"Auto Fuel"`
+	Tower    float32 `json:"Tower"`
+	Wins     int     `json:"wins"`
+	Losses   int     `json:"losses"`
+	Ties     int     `json:"ties"`
+	Dqs      int     `json:"dqs"`
+	Played   int     `json:"played"`
 }
 
 type TbaRankings struct {
@@ -650,20 +650,20 @@ func createTbaScoringBreakdown(
 	breakdown.AutoTowerRobot2 = towerStatusMapping[score.AutoTowerStatuses[1]]
 	breakdown.AutoTowerRobot3 = towerStatusMapping[score.AutoTowerStatuses[2]]
 	breakdown.AutoTowerPoints = scoreSummary.AutoTowerPoints
-	breakdown.HubScore.AutoCount = score.Hub.GetShiftCount(game.ShiftAuto, false)
+	breakdown.HubScore.AutoCount = score.Hub.GetShiftCount(game.ShiftAuto, true)
 	breakdown.HubScore.AutoPoints = score.Hub.GetShiftCount(game.ShiftAuto, true)
-	breakdown.HubScore.TransitionCount = score.Hub.GetShiftCount(game.ShiftTransition, false)
+	breakdown.HubScore.TransitionCount = score.Hub.GetShiftCount(game.ShiftTransition, true)
 	breakdown.HubScore.TransitionPoints = score.Hub.GetShiftCount(game.ShiftTransition, true)
-	breakdown.HubScore.Shift1Count = score.Hub.GetShiftCount(game.Shift1, false)
+	breakdown.HubScore.Shift1Count = score.Hub.GetShiftCount(game.Shift1, true)
 	breakdown.HubScore.Shift1Points = score.Hub.GetShiftCount(game.Shift1, true)
-	breakdown.HubScore.Shift2Count = score.Hub.GetShiftCount(game.Shift2, false)
+	breakdown.HubScore.Shift2Count = score.Hub.GetShiftCount(game.Shift2, true)
 	breakdown.HubScore.Shift2Points = score.Hub.GetShiftCount(game.Shift2, true)
-	breakdown.HubScore.Shift3Count = score.Hub.GetShiftCount(game.Shift3, false)
+	breakdown.HubScore.Shift3Count = score.Hub.GetShiftCount(game.Shift3, true)
 	breakdown.HubScore.Shift3Points = score.Hub.GetShiftCount(game.Shift3, true)
-	breakdown.HubScore.Shift4Count = score.Hub.GetShiftCount(game.Shift4, false)
+	breakdown.HubScore.Shift4Count = score.Hub.GetShiftCount(game.Shift4, true)
 	breakdown.HubScore.Shift4Points = score.Hub.GetShiftCount(game.Shift4, true)
-	breakdown.HubScore.EndgameCount = score.Hub.GetShiftCount(game.ShiftEndgame, false) +
-		score.Hub.GetShiftCount(game.ShiftPostMatch, false)
+	breakdown.HubScore.EndgameCount = score.Hub.GetShiftCount(game.ShiftEndgame, true) +
+		score.Hub.GetShiftCount(game.ShiftPostMatch, true)
 	breakdown.HubScore.EndgamePoints = score.Hub.GetShiftCount(game.ShiftEndgame, true) +
 		score.Hub.GetShiftCount(game.ShiftPostMatch, true)
 	breakdown.HubScore.TeleopCount = breakdown.HubScore.TransitionCount + breakdown.HubScore.Shift1Count +

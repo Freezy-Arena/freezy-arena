@@ -16,6 +16,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"time"
 )
 
 const (
@@ -77,6 +78,56 @@ func (web *Web) fieldTestingWebsocketHandler(w http.ResponseWriter, r *http.Requ
 
 	// Subscribe the websocket to the notifiers whose messages will be passed on to the client, in a separate goroutine.
 	go ws.HandleNotifiers(web.arena.Plc.IoChangeNotifier(), web.arena.ArenaStatusNotifier, web.arena.LedChangeNotifier)
+
+	// Stream the LED status to the client periodically.
+	go func() {
+		ticker := time.NewTicker(100 * time.Millisecond)
+		defer ticker.Stop()
+		for range ticker.C {
+			redPixels, bluePixels := web.arena.Leds.GetPixels()
+			redMode, blueMode := web.arena.Leds.GetModes()
+			type ledStatusPayload struct {
+				Red      [64]led.Color
+				Blue     [64]led.Color
+				RedMode  led.Mode
+				BlueMode led.Mode
+			}
+			err := ws.Write("ledStatus", ledStatusPayload{
+				Red:      redPixels,
+				Blue:     bluePixels,
+				RedMode:  redMode,
+				BlueMode: blueMode,
+			})
+			if err != nil {
+				return
+			}
+		}
+	}()
+
+	// Stream the LED status to the client periodically.
+	go func() {
+		ticker := time.NewTicker(100 * time.Millisecond)
+		defer ticker.Stop()
+		for range ticker.C {
+			redPixels, bluePixels := web.arena.Leds.GetPixels()
+			redMode, blueMode := web.arena.Leds.GetModes()
+			type ledStatusPayload struct {
+				Red      [64]led.Color
+				Blue     [64]led.Color
+				RedMode  led.Mode
+				BlueMode led.Mode
+			}
+			err := ws.Write("ledStatus", ledStatusPayload{
+				Red:      redPixels,
+				Blue:     bluePixels,
+				RedMode:  redMode,
+				BlueMode: blueMode,
+			})
+			if err != nil {
+				return
+			}
+		}
+	}()
 
 	// Loop, waiting for commands and responding to them, until the client closes the connection.
 	for {

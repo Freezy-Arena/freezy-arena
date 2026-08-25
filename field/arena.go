@@ -19,6 +19,7 @@ import (
 	"math/rand"
 	"net"
 	"reflect"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -98,6 +99,7 @@ type Arena struct {
 	ShowLowerThird                    bool
 	MuteMatchSounds                   bool
 	matchAborted                      bool
+	matchStopTime                     time.Time
 	soundsPlayed                      map[*game.MatchSound]struct{}
 	breakDescription                  string
 	breakNextMatchName                string
@@ -228,7 +230,7 @@ func (arena *Arena) LoadSettings() error {
 	arena.Esp32.SetRedAllianceStationEstopAddress(settings.RedAllianceStationEstopAddress)
 	arena.Esp32.SetBlueAllianceStationEstopAddress(settings.BlueAllianceStationEstopAddress)
 	arena.TbaClient = partner.NewTbaClient(settings.TbaEventCode, settings.TbaSecretId, settings.TbaSecret)
-	arena.NexusClient = partner.NewNexusClient(settings.TbaEventCode)
+	arena.NexusClient = partner.NewNexusClient(settings.TbaEventCode, settings.NexusAutoQueueKey)
 	arena.BlackmagicClient = partner.NewBlackmagicClient(settings.BlackmagicAddresses)
 
 	// Initialize Companion client with event configurations
@@ -552,6 +554,10 @@ func (arena *Arena) StartMatch() error {
 		arena.lastTeamLogTime = time.Time{}
 
 		arena.MatchState = StartMatch
+
+		if arena.EventSettings.NexusAutoQueueEnabled && arena.CurrentMatch.Type != model.Test {
+			go arena.NexusClient.MatchStarted(arena.CurrentMatch.LongName, arena.CurrentMatch.TypeOrder)
+		}
 	}
 	return err
 }
@@ -571,6 +577,7 @@ func (arena *Arena) AbortMatch() error {
 	arena.PlaySound("abort")
 	arena.MatchState = PostMatch
 	arena.matchAborted = true
+	arena.matchStopTime = time.Now()
 	arena.SetAudienceDisplayMode("blank")
 	go arena.BlackmagicClient.StopRecording()
 	go arena.CompanionClient.SendEvent(partner.EventMatchAbort)
@@ -631,6 +638,10 @@ func (arena *Arena) startTimeout(description string, nextMatchName string, durat
 	arena.LastMatchTimeSec = -1
 	arena.AllianceStationDisplayMode = "timeout"
 	arena.AllianceStationDisplayModeNotifier.Notify()
+
+	if arena.EventSettings.NexusAutoQueueEnabled {
+		go arena.NexusClient.BreakStarted(durationSec)
+	}
 
 	return nil
 }
@@ -756,6 +767,11 @@ func (arena *Arena) Update() {
 	case TimeoutActive:
 		if matchTimeSec >= float64(game.MatchTiming.TimeoutDurationSec) {
 			arena.MatchState = PostTimeout
+
+			if arena.EventSettings.NexusAutoQueueEnabled {
+				go arena.NexusClient.BreakEnded()
+			}
+
 			go func() {
 				// Leave the timer on the screen briefly at the end of the timeout period.
 				time.Sleep(time.Second * matchEndScoreDwellSec)
@@ -804,10 +820,12 @@ func (arena *Arena) Update() {
 	arena.BlueRealtimeScore.ActiveRemainingSec = int(math.Ceil(blueActiveRemaining.Seconds()))
 	arena.BlueRealtimeScore.ActiveDurationSec = int(math.Ceil(blueActiveDuration.Seconds()))
 
-	arena.updateHubLeds(currentTime)
-
 	// Handle field sensors/lights/actuators.
 	arena.handlePlcInputOutput()
+
+	// Update the hub LEDs after PLC input so that a field e-stop abort is reflected in the same cycle, before
+	// lastMatchState is updated (otherwise the end-of-match lighting transition would be missed).
+	arena.updateHubLeds(currentTime)
 
 	// Log after PLC input so each sample includes the latest physical DS Ethernet state.
 	arena.logTeamSnapshots()
@@ -1103,52 +1121,107 @@ func (arena *Arena) setupNetwork(teams [6]*model.Team, isPreload bool) {
 
 // Returns nil if the match can be started, and an error otherwise.
 func (arena *Arena) checkCanStartMatch() error {
-	if arena.MatchState != PreMatch {
-		return fmt.Errorf("cannot start match while there is a match still in progress or with results pending")
+	conditions := arena.getStartMatchConditions()
+	if len(conditions) > 0 {
+		return fmt.Errorf("cannot start match: %s", strings.Join(conditions, "; "))
 	}
-
-	err := arena.checkAllianceStationsReady("R1", "R2", "R3", "B1", "B2", "B3")
-	if err != nil {
-		return err
-	}
-
-	if arena.Plc.IsEnabled() {
-		if !arena.Plc.IsHealthy() {
-			return fmt.Errorf("cannot start match while PLC is not healthy")
-		}
-		if arena.Plc.GetFieldEStop() {
-			return fmt.Errorf("cannot start match while field emergency stop is active")
-		}
-		if !arena.Plc.IsFtaReady() {
-			return fmt.Errorf("cannot start match until FTA ready switch is active")
-		}
-		for name, status := range arena.Plc.GetArmorBlockStatuses() {
-			if !status {
-				return fmt.Errorf("cannot start match while PLC ArmorBlock %q is not connected", name)
-			}
-		}
-	}
-
 	return nil
 }
 
+// Returns descriptions of all conditions preventing the match from being started.
+func (arena *Arena) getStartMatchConditions() []string {
+	var conditions []string
+	if arena.MatchState != PreMatch {
+		conditions = append(
+			conditions,
+			"a match is still in progress or has results pending",
+		)
+	}
+
+	conditions = append(
+		conditions,
+		arena.getAllianceStationStartConditions("R1", "R2", "R3", "B1", "B2", "B3")...,
+	)
+
+	if arena.Plc.IsEnabled() {
+		if !arena.Plc.IsHealthy() {
+			conditions = append(conditions, "PLC is not healthy")
+		}
+		if arena.Plc.GetFieldEStop() {
+			conditions = append(conditions, "field emergency stop is active")
+		}
+		if !arena.Plc.IsFtaReady() {
+			conditions = append(conditions, "FTA ready switch is not active")
+		}
+		var disconnectedArmorBlocks []string
+		for name, status := range arena.Plc.GetArmorBlockStatuses() {
+			if !status {
+				disconnectedArmorBlocks = append(disconnectedArmorBlocks, name)
+			}
+		}
+		sort.Strings(disconnectedArmorBlocks)
+		for _, name := range disconnectedArmorBlocks {
+			conditions = append(
+				conditions,
+				fmt.Sprintf("PLC ArmorBlock %q is not connected", name),
+			)
+		}
+	}
+
+	return conditions
+}
+
 func (arena *Arena) checkAllianceStationsReady(stations ...string) error {
+	conditions := arena.getAllianceStationStartConditions(stations...)
+	if len(conditions) > 0 {
+		return fmt.Errorf("cannot start match: %s", strings.Join(conditions, "; "))
+	}
+	return nil
+}
+
+func (arena *Arena) getAllianceStationStartConditions(stations ...string) []string {
+	var eStoppedStations, aStopNotResetStations, disconnectedStations []string
 	for _, station := range stations {
 		allianceStation := arena.AllianceStations[station]
 		if allianceStation.EStop {
-			return fmt.Errorf("cannot start match while an emergency stop is active")
+			eStoppedStations = append(eStoppedStations, station)
 		}
 		if !allianceStation.aStopReset {
-			return fmt.Errorf("cannot start match if an autonomous stop has not been reset since the previous match")
+			aStopNotResetStations = append(aStopNotResetStations, station)
 		}
 		if !allianceStation.Bypass {
 			if allianceStation.DsConn == nil || !allianceStation.DsConn.RobotLinked {
-				return fmt.Errorf("cannot start match until all robots are connected or bypassed")
+				disconnectedStations = append(disconnectedStations, station)
 			}
 		}
 	}
 
-	return nil
+	var conditions []string
+	if len(eStoppedStations) > 0 {
+		conditions = append(
+			conditions,
+			fmt.Sprintf("an emergency stop is active (%s)", strings.Join(eStoppedStations, ", ")),
+		)
+	}
+	if len(aStopNotResetStations) > 0 {
+		conditions = append(
+			conditions,
+			fmt.Sprintf(
+				"an autonomous stop has not been reset since the previous match (%s)",
+				strings.Join(aStopNotResetStations, ", "),
+			),
+		)
+	}
+	if len(disconnectedStations) > 0 {
+		conditions = append(
+			conditions,
+			fmt.Sprintf(
+				"not all robots are connected or bypassed (%s)",
+				strings.Join(disconnectedStations, ", "),
+			),
+		)
+	}
+	return conditions
 }
 
 func (arena *Arena) sendDsPacket(auto bool, enabled bool) {
@@ -1257,6 +1330,7 @@ func (arena *Arena) handlePlcInputOutput() {
 	case PreMatch:
 		if arena.lastMatchState != PreMatch {
 			arena.Plc.SetFieldResetLight(true)
+			arena.Leds.SetMode(led.GreenMode, led.GreenMode)
 		}
 		fallthrough
 	case TimeoutActive:
@@ -1273,6 +1347,7 @@ func (arena *Arena) handlePlcInputOutput() {
 			arena.FieldVolunteers = false
 			arena.FieldReset = false
 			arena.Plc.SetFieldResetLight(false)
+			arena.Leds.SetMode(led.OffMode, led.OffMode)
 			if arena.CurrentMatch.FieldReadyAt.IsZero() {
 				arena.CurrentMatch.FieldReadyAt = time.Now()
 			}
@@ -1299,12 +1374,19 @@ func (arena *Arena) handlePlcInputOutput() {
 		arena.RealtimeScoreNotifier.Notify()
 	}
 
-	// Run the hub motors for extra time after counting stops to help exhaust balls.
-	motorCutoff := matchStartTime.Add(
-		game.GetDurationToTeleopEnd() + (game.ScoringGracePeriodSec+game.MotorsOnExtraPeriodSec)*time.Second,
-	)
-	motorsOn := arena.MatchState == AutoPeriod || arena.MatchState == PausePeriod || arena.MatchState == TeleopPeriod ||
-		arena.MatchState == PostMatch && currentTime.Before(motorCutoff)
+	// Run the hub motors for extra time after the match ends or is aborted to help exhaust balls, but stop them
+	// immediately while the field e-stop is pressed.
+	motorGracePeriod := (game.ScoringGracePeriodSec + game.MotorsOnExtraPeriodSec) * time.Second
+	var motorCutoff time.Time
+	if arena.matchAborted {
+		motorCutoff = arena.matchStopTime.Add(motorGracePeriod)
+	} else {
+		motorCutoff = matchStartTime.Add(game.GetDurationToTeleopEnd() + motorGracePeriod)
+	}
+	motorsOn := (arena.MatchState == AutoPeriod || arena.MatchState == PausePeriod ||
+		arena.MatchState == TeleopPeriod ||
+		arena.MatchState == PostMatch && currentTime.Before(motorCutoff)) &&
+		!arena.Plc.GetFieldEStop()
 	arena.Plc.SetHubMotors(motorsOn, motorsOn)
 
 	redHubLight, blueHubLight := arena.getHubLightStates(currentTime)
@@ -1492,7 +1574,10 @@ func (arena *Arena) AutomateAudienceDisplay(postedMatch *model.Match) {
 
 	if arena.CurrentMatch.Type == model.Playoff {
 		time.Sleep(10 * time.Second)
-		isFinals := strings.Contains(postedMatch.LongName, "Final") || strings.Contains(postedMatch.LongName, "Overtime")
+		isFinals := strings.Contains(postedMatch.LongName, "Final") || strings.Contains(
+			postedMatch.LongName,
+			"Overtime",
+		)
 		if !isFinals {
 			arena.SetAudienceDisplayMode("bracket")
 			time.Sleep(20 * time.Second)

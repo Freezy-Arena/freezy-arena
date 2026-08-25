@@ -81,6 +81,11 @@ func (controller *Controller) GetModes() (Mode, Mode) {
 	return controller.redZone.currentMode, controller.blueZone.currentMode
 }
 
+// GetPixels returns the current RGB color arrays for the red and blue zones.
+func (controller *Controller) GetPixels() ([64]Color, [64]Color) {
+	return controller.redZone.pixels, controller.blueZone.pixels
+}
+
 // Update advances the pixel values through the current sequence and sends a packet if necessary. Should be called from
 // a timed loop.
 func (controller *Controller) Update() error {
@@ -89,8 +94,8 @@ func (controller *Controller) Update() error {
 		return nil
 	}
 
-	controller.redZone.updatePixels()
-	controller.blueZone.updatePixels()
+	controller.redZone.updatePixels(Red)
+	controller.blueZone.updatePixels(Blue)
 
 	// Create the template packet if it doesn't already exist.
 	if len(controller.packet) == 0 {
@@ -148,7 +153,7 @@ func (controller *Controller) populateFixtureData(zone *zone, fixtures []fixture
 	return nil
 }
 
-// shouldSendPacket returns true if the universe data has changed or it has been too long since the last packet was sent.
+// shouldSendPacket returns true if the universe data has changed or it has been too long since the last packet attempt.
 func (universe *universe) shouldSendPacket() bool {
 	if universe.lastPacketTime.IsZero() || time.Since(universe.lastPacketTime) >= heartbeatInterval {
 		return true
@@ -279,10 +284,10 @@ func (controller *Controller) sendPacket(dmxUniverse int, universe *universe) er
 	copy(controller.packet[pixelDataOffset:], universe.currentData[:])
 
 	_, err := controller.conn.Write(controller.packet)
+	universe.markSent()
 	if err != nil {
 		return err
 	}
 
-	universe.markSent()
 	return nil
 }
