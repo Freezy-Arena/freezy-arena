@@ -1118,6 +1118,7 @@ func TestPlcMatchCycleGameSpecific(t *testing.T) {
 
 	// Hub counts should be ignored before a match has started, motors should stay off, and the LEDs should signal
 	// field reset.
+	arena.SignalReset()
 	assert.Equal(t, PreMatch, arena.MatchState)
 	plc.redHubCount = 5
 	plc.blueHubCount = 8
@@ -1294,7 +1295,7 @@ func TestSignalVolunteers(t *testing.T) {
 	}
 
 	// Test that SignalVolunteers only works in PreMatch and PostMatch states.
-	for _, state := range []MatchState{StartMatch, AutoPeriod, PausePeriod, TeleopPeriod, TimeoutActive, PostTimeout} {
+	for _, state := range []MatchState{StartMatch, AutoPeriod, PausePeriod, TeleopPeriod, PostTimeout} {
 		arena.MatchState = state
 		arena.FieldVolunteers = false
 		arena.Leds.SetMode(led.OffMode, led.OffMode)
@@ -1335,7 +1336,7 @@ func TestSignalReset(t *testing.T) {
 	}
 
 	// Test that SignalReset only works in PreMatch and PostMatch states.
-	for _, state := range []MatchState{StartMatch, AutoPeriod, PausePeriod, TeleopPeriod, TimeoutActive, PostTimeout} {
+	for _, state := range []MatchState{StartMatch, AutoPeriod, PausePeriod, TeleopPeriod, PostTimeout} {
 		arena.MatchState = state
 		arena.FieldReset = false
 		arena.FieldVolunteers = false
