@@ -1,0 +1,385 @@
+/*
+  Copyright 2026 Team 254. All Rights Reserved.
+*/
+
+html {
+  height: 100%;
+  overflow: hidden;
+}
+body {
+  height: 100%;
+  font-family: Arial, sans-serif;
+  color: #333;
+  background-color: #f4f5f7; /* Light grey background */
+  display: flex;
+  flex-direction: column;
+}
+.center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#matchStatusRow {
+  flex: 0 0 4%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #f4f5f7;
+  font-size: 1vw;
+  font-weight: bold;
+  text-transform: uppercase;
+  color: #333;
+}
+#matchStatusRow[data-ds="true"][data-preMatch="false"],
+#eventStatusRow[data-ds="true"] {
+  display: none;
+}
+#eventStatusRow {
+  flex: 0 0 5%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1vw;
+  background-color: #f4f5f7;
+  font-size: 1.2vw;
+  font-weight: bold;
+  text-transform: uppercase;
+  color: #333;
+}
+
+
+.left-score, .right-score {
+  font-size: 1.0vw;
+}
+
+.fta-dependent[data-fta="false"] {
+  display: none;
+}
+
+.left-score[data-reversed=false], .right-score[data-reversed=true] {
+  color: #d32f2f;
+}
+.left-score[data-reversed=true], .right-score[data-reversed=false] {
+  color: #1976d2;
+}
+
+.fms-row[data-ds="true"] .right-column,
+.fms-team-notes[data-ds="true"] {
+  display: none;
+}
+.fms-row[data-ds="true"] .left-column {
+  width: 100%;
+}
+
+.fms-row {
+  flex-grow: 1;
+  min-height: 0;
+  display: flex;
+  width: 100%;
+  padding: 0 0.5vw 0.5vw 0.5vw;
+  box-sizing: border-box;
+}
+
+.fms-column {
+  width: 50%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 0.25vw;
+  box-sizing: border-box;
+  border-radius: 5px;
+  background-color: #fff;
+  margin: 0.25vw;
+  min-height: 0;
+}
+
+/* Colored borders for the columns */
+.left-column[data-reversed="false"], .right-column[data-reversed="true"] {
+  border: 3px solid #d32f2f; /* Red */
+}
+.left-column[data-reversed="true"], .right-column[data-reversed="false"] {
+  border: 3px solid #1976d2; /* Blue */
+}
+
+/* On very small screens or vertical screens, make it a single column and scale up fonts. */
+@media (max-width: 800px), (orientation: portrait) {
+  .fms-row {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  .fms-column {
+    width: 100%;
+    margin-bottom: 1vw;
+  }
+  
+  .fms-team-id { font-size: 4vw; width: 13vw; margin-right: 2vw; }
+  .fms-station-badge, .fms-new-key-badge, .fms-status-pill { font-size: 1.6vw; padding: 0.4vw 1vw; }
+  .fms-station-badge { margin-right: 1vw; }
+  .fms-status-block { padding: 0.6vw 4vw; }
+  .fms-status-block i { font-size: 4vw; margin-bottom: 0.2vw; }
+  .fms-status-text { font-size: 1.6vw; }
+  .fms-stat-value { font-size: 2vw; margin-bottom: 0.2vw; }
+  .fms-stat-label { font-size: 1.2vw; }
+  .fms-stat-sub { font-size: 1.2vw; }
+  .fms-team-notes { font-size: 1.6vw; }
+  
+  #matchStatusRow { font-size: 2vw; }
+  #eventStatusRow { font-size: 2.4vw; }
+  .left-score, .right-score { font-size: 2.0vw; }
+}
+
+.fms-team {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  background-color: #fff;
+  border-radius: 5px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  margin-bottom: 0.3vw;
+  padding: 0.3vw;
+  box-sizing: border-box;
+  min-height: 0;
+}
+.fms-team:last-child {
+  margin-bottom: 0;
+}
+
+.fms-team-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex: 15 15 0;
+  min-height: 0;
+}
+
+.fms-team-header-left {
+  display: flex;
+  align-items: center;
+}
+
+.fms-team-id {
+  font-size: 2vw;
+  font-weight: bold;
+  margin-right: 1vw;
+  width: 6.5vw;
+}
+
+.fms-station-badge {
+  color: white;
+  padding: 0.2vw 0.5vw;
+  border-radius: 4px;
+  font-size: 0.8vw;
+  font-weight: bold;
+  margin-right: 0.5vw;
+}
+.badge-left[data-reversed="false"], .badge-right[data-reversed="true"] {
+  background-color: #d32f2f;
+}
+.badge-left[data-reversed="true"], .badge-right[data-reversed="false"] {
+  background-color: #1976d2;
+}
+
+
+.fms-new-key-badge {
+  background-color: #666;
+  color: white;
+  padding: 0.2vw 0.5vw;
+  border-radius: 4px;
+  font-size: 0.8vw;
+  font-weight: bold;
+}
+
+.fms-team-header-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-grow: 1;
+}
+
+.fms-status-pill {
+  background-color: #2a2a2a;
+  color: white;
+  padding: 0.3vw 2vw;
+  border-radius: 15px;
+  font-size: 0.9vw;
+  font-weight: bold;
+  text-align: center;
+  border: 1px solid transparent;
+  box-sizing: border-box;
+}
+
+.fms-status-pill[data-robot-state="estop"] {
+  background-color: #2a2a2a;
+  color: white;
+}
+.fms-status-pill[data-robot-state="astop"],
+.fms-status-pill[data-robot-state="auto-disabled"],
+.fms-status-pill[data-robot-state="teleop-disabled"] {
+  background-color: #fdd835;
+  color: #000;
+}
+.fms-status-pill[data-robot-state="auto"],
+.fms-status-pill[data-robot-state="teleop"] {
+  background-color: #fff;
+  color: #000;
+  border: 1px solid #000;
+}
+.fms-status-pill[data-robot-state="bypassed"] {
+  background-color: #e0e0e0;
+  color: #000;
+  border: 1px solid #000;
+}
+.fms-status-pill[data-robot-state="not-ready"],
+.fms-status-pill[data-robot-state="no-team"] {
+  background-color: #2a2a2a;
+  color: white;
+}
+.fms-status-pill[data-robot-state="ready"] {
+  background-color: #4caf50;
+  color: white;
+}
+
+.fms-team-status {
+  display: flex;
+  justify-content: space-between;
+  flex: 50 50 0;
+  margin-top: 0.2vw;
+  margin-bottom: 0.2vw;
+  min-height: 0;
+}
+
+.fms-status-block {
+  width: 32%;
+  background-color: #2a2a2a;
+  border-radius: 5px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.fms-status-block i {
+  font-size: 3vw;
+  margin-bottom: 0.2vw;
+}
+
+.fms-status-text {
+  font-size: 1.2vw;
+  font-weight: bold;
+}
+
+.fms-status-block[data-status-ok="true"] {
+  background-color: #4caf50;
+  color: #000;
+}
+
+.fms-status-block[data-status-warning="true"] {
+  background-color: #fdd835;
+  color: #000;
+}
+
+.fms-status-block .bi-laptop {
+  position: relative;
+  display: inline-block;
+}
+.fms-status-block .bi-laptop::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to bottom right, transparent 46%, currentColor 46%, currentColor 54%, transparent 54%);
+}
+
+/* Stats Footer */
+.fms-team-stats {
+  display: flex;
+  justify-content: space-between;
+  flex: 20 20 0;
+  align-items: flex-end;
+  padding-bottom: 0.2vw;
+}
+
+.fms-stat-item {
+  display: flex;
+  flex-direction: column;
+  width: 24%;
+}
+
+.fms-stat-value {
+  font-size: 1vw;
+  font-weight: bold;
+  margin-bottom: 0.2vw;
+}
+
+.fms-stat-sub {
+  font-size: 0.6vw;
+  color: #888;
+  font-weight: normal;
+}
+
+.fms-stat-label {
+  font-size: 0.6vw;
+  color: #555;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.fms-stat-item[data-status-ok="false"] {
+  border-radius: 4px;
+}
+
+.fms-stat-item[data-status-ok="false"] .fms-stat-sub,
+.fms-stat-item[data-status-ok="false"] .fms-stat-label {
+  color: #fff;
+}
+
+.fms-team-notes[data-fta="true"] {
+  flex: 15 15 0;
+  min-height: 0;
+  display: flex;
+  justify-content: flex-start;
+  padding: 0.2vw 0.5vw;
+  font-size: 0.8vw;
+  background-color: #eee;
+  color: #333;
+  margin-top: 0.2vw;
+  border-radius: 4px;
+}
+.fms-team-notes[data-fta="false"] {
+  display: none;
+}
+.fms-team-notes div {
+  width: 90%;
+  height: 100%;
+  white-space: pre;
+  margin-left: 0.5vw;
+}
+textarea {
+  width: 90%;
+  height: 100%;
+  background-color: #fff;
+  color: #000;
+  border: 1px solid #ccc;
+}
+
+/* Bypassed State Overrides */
+.fms-team[data-bypassed="true"] .fms-status-pill {
+  background-color: #d3d3d3;
+  color: #000;
+  border: 1px solid #333;
+}
+.fms-team[data-bypassed="true"] .fms-status-block {
+  background-color: #9e9e9e;
+}
+.fms-team[data-bypassed="true"] .fms-stat-value {
+  color: #9e9e9e;
+}
+.fms-team[data-bypassed="true"] .fms-stat-label,
+.fms-team[data-bypassed="true"] .fms-stat-sub {
+  color: #b0b0b0;
+}

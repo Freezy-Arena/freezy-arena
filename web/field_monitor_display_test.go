@@ -1,15 +1,14 @@
-// Copyright 2018 Team 254. All Rights Reserved.
+// Copyright 2026 Team 254. All Rights Reserved.
 // Author: pat@patfairbank.com (Patrick Fairbank)
 
 package web
 
 import (
-	"testing"
-
 	"github.com/Team254/cheesy-arena/model"
 	"github.com/Team254/cheesy-arena/websocket"
 	gorillawebsocket "github.com/gorilla/websocket"
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 func TestFieldMonitorDisplay(t *testing.T) {
@@ -23,6 +22,14 @@ func TestFieldMonitorDisplay(t *testing.T) {
 	assert.Contains(t, recorder.Body.String(), "fuelNumeratorAllianceStation")
 	assert.Contains(t, recorder.Body.String(), "fuelDenominatorAllianceStation")
 	assert.Contains(t, recorder.Body.String(), "autoWinnerAllianceStation")
+}
+
+func TestFmsFieldMonitorDisplay(t *testing.T) {
+	web := setupTestWeb(t)
+
+	recorder := web.getHttpResponse("/displays/fms_field_monitor?displayId=1&ds=false&fta=true&reversed=false")
+	assert.Equal(t, 200, recorder.Code)
+	assert.Contains(t, recorder.Body.String(), "Field Monitor - Untitled Event - Cheesy Arena")
 }
 
 func TestFieldMonitorDisplayWebsocket(t *testing.T) {

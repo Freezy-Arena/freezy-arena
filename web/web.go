@@ -7,17 +7,15 @@ package web
 
 import (
 	"fmt"
+	"github.com/Team254/cheesy-arena/field"
+	"github.com/Team254/cheesy-arena/game"
+	"github.com/Team254/cheesy-arena/model"
 	"log"
 	"net/http"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"text/template"
-
-	"github.com/Team254/cheesy-arena/game"
-
-	"github.com/Team254/cheesy-arena/field"
-	"github.com/Team254/cheesy-arena/model"
 )
 
 const (
@@ -157,6 +155,8 @@ func (web *Web) newHandler() http.Handler {
 	mux.HandleFunc("GET /displays/bracket/websocket", web.bracketDisplayWebsocketHandler)
 	mux.HandleFunc("GET /displays/field_monitor", web.fieldMonitorDisplayHandler)
 	mux.HandleFunc("GET /displays/field_monitor/websocket", web.fieldMonitorDisplayWebsocketHandler)
+	mux.HandleFunc("GET /displays/fms_field_monitor", web.fmsFieldMonitorDisplayHandler)
+	mux.HandleFunc("GET /displays/fms_field_monitor/websocket", web.fieldMonitorDisplayWebsocketHandler)
 	mux.HandleFunc("GET /displays/logo", web.logoDisplayHandler)
 	mux.HandleFunc("GET /displays/logo/websocket", web.logoDisplayWebsocketHandler)
 	mux.HandleFunc("GET /displays/queueing", web.queueingDisplayHandler)
@@ -166,6 +166,8 @@ func (web *Web) newHandler() http.Handler {
 	mux.HandleFunc("GET /displays/rankings/websocket", web.rankingsDisplayWebsocketHandler)
 	mux.HandleFunc("GET /displays/twitch", web.twitchDisplayHandler)
 	mux.HandleFunc("GET /displays/twitch/websocket", web.twitchDisplayWebsocketHandler)
+	mux.HandleFunc("GET /displays/unpicked", web.unpickedDisplayHandler)
+	mux.HandleFunc("GET /displays/unpicked/websocket", web.unpickedDisplayWebsocketHandler)
 	mux.HandleFunc("GET /displays/wall", web.wallDisplayHandler)
 	mux.HandleFunc("GET /displays/wall/websocket", web.wallDisplayWebsocketHandler)
 	mux.HandleFunc("GET /displays/webpage", web.webpageDisplayHandler)
@@ -260,7 +262,7 @@ func (web *Web) newHandler() http.Handler {
 	mux.HandleFunc("GET /freezy/upload", web.uploadImagePageHandler)
 	mux.HandleFunc("POST /api/freezy/register_values", web.setPLCRegister)
 	mux.HandleFunc("GET /api/plc/websocket", web.plcWebsocketHandler)
-    
+
 	return mux
 }
 
@@ -280,4 +282,3 @@ func (web *Web) parseFiles(filenames ...string) (*template.Template, error) {
 	template := template.New("").Funcs(web.templateHelpers)
 	return template.ParseFiles(paths...)
 }
-
