@@ -467,6 +467,15 @@ UI for configuring event settings.
                     value="{{.LedControllerAddress}}" placeholder="10.0.100.60">
                 </div>
               </div>
+              <div class="row mb-3">
+                <label class="col-lg-6 control-label">Universe Mode</label>
+                <div class="col-lg-6">
+                  <select class="form-select" name="ledUniverseMode">
+                    <option value="single" {{if ne .LedUniverseMode "two"}}selected{{end}}>Single Universe</option>
+                    <option value="two" {{if eq .LedUniverseMode "two"}}selected{{end}}>Two Universes</option>
+                  </select>
+                </div>
+              </div>
             </fieldset>
             <fieldset class="mb-4">
               <legend>Driver Station Lite Mode</legend>

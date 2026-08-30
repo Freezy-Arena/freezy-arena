@@ -20,7 +20,7 @@ func TestEventSettingsReadWrite(t *testing.T) {
 		EventSettings{
 			Id:                         1,
 			Name:                       "Untitled Event",
-			LogoSuffix: 				 "",
+			LogoSuffix:                 "",
 			PlayoffType:                DoubleEliminationPlayoff,
 			NumPlayoffAlliances:        8,
 			SelectionRound2Order:       "L",
@@ -31,6 +31,7 @@ func TestEventSettingsReadWrite(t *testing.T) {
 			SCCUpCommands:              "configure terminal\ninterface range gigabitEthernet 1/2-4\nno shutdown\nexit\nexit\nexit",
 			SCCDownCommands:            "configure terminal\ninterface range gigabitEthernet 1/2-4\nshutdown\nexit\nexit\nexit",
 			LedControllerAddress:       "",
+			LedUniverseMode:            "single",
 			AutoDurationSec:            20,
 			PauseDurationSec:           3,
 			TransitionShiftDurationSec: 10,

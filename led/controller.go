@@ -41,8 +41,17 @@ func NewController() *Controller {
 	return &Controller{
 		redZone:   zone{currentMode: OffMode},
 		blueZone:  zone{currentMode: OffMode},
-		fixtures:  defaultFixtureLayout,
+		fixtures:  singleUniverseFixtureLayout,
 		universes: map[int]*universe{},
+	}
+}
+
+// SetUniverseMode configures the LED controller for single or dual universe operation.
+func (controller *Controller) SetUniverseMode(mode string) {
+	if mode == "two" {
+		controller.fixtures = twoUniverseFixtureLayout
+	} else {
+		controller.fixtures = singleUniverseFixtureLayout
 	}
 }
 

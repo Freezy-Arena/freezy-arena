@@ -37,21 +37,20 @@ type fixtureLayout struct {
 	blue []fixture
 }
 
-// defaultFixtureLayout maps each 8-pixel fixture to a DMX universe and 1-based DMX start address.
-// To split the field across multiple universes, change the universe values below; the controller will
-// automatically assemble and send one packet per universe.
-var defaultFixtureLayout = fixtureLayout{
+// singleUniverseFixtureLayout maps each 8-pixel fixture to a DMX universe and 1-based DMX start address.
+// This is the default configuration for a single universe setup.
+var singleUniverseFixtureLayout = fixtureLayout{
 	red: []fixture{
 		// Facing Driver Station.
 		{redGoalSide1Bot, 1, 1},
 		{redGoalSide1Top, 1, 25},
-		// Facing Audience.
+		// Facing Scoring Table.
 		{redGoalSide2Bot, 1, 49},
 		{redGoalSide2Top, 1, 73},
 		// Facing Center.
 		{redGoalSide3Bot, 1, 97},
 		{redGoalSide3Top, 1, 121},
-		// Facing Scoring Table.
+		// Facing Audience.
 		{redGoalSide4Bot, 1, 145},
 		{redGoalSide4Top, 1, 169},
 	},
@@ -68,5 +67,23 @@ var defaultFixtureLayout = fixtureLayout{
 		// Facing Scoring Table.
 		{blueGoalSide4Bot, 1, 337},
 		{blueGoalSide4Top, 1, 361},
+	},
+}
+
+var twoUniverseFixtureLayout = fixtureLayout{
+	red: singleUniverseFixtureLayout.red, // Red remains on Universe 1
+	blue: []fixture{
+		// Facing Driver Station.
+		{blueGoalSide1Bot, 2, 1},
+		{blueGoalSide1Top, 2, 25},
+		// Facing Audience.
+		{blueGoalSide2Bot, 2, 49},
+		{blueGoalSide2Top, 2, 73},
+		// Facing Center.
+		{blueGoalSide3Bot, 2, 97},
+		{blueGoalSide3Top, 2, 121},
+		// Facing Scoring Table.
+		{blueGoalSide4Bot, 2, 145},
+		{blueGoalSide4Top, 2, 169},
 	},
 }
