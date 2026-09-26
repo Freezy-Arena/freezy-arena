@@ -4,6 +4,8 @@
 package websocket
 
 import (
+	"bytes"
+
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"log"
@@ -18,7 +20,7 @@ func TestNotifier(t *testing.T) {
 	notifier.NotifyWithMessage(12345)
 	notifier.NotifyWithMessage(struct{}{})
 
-	listener := notifier.listen()
+	listener := notifier.listen("192.0.2.1:12345")
 	notifier.Notify()
 	message := <-listener
 	assert.Equal(t, "testMessageType", message.messageType)
@@ -58,7 +60,7 @@ func TestNotifyMultipleListeners(t *testing.T) {
 	notifier := NewNotifier("testMessageType2", nil)
 	listeners := [50]chan messageEnvelope{}
 	for i := 0; i < len(listeners); i++ {
-		listeners[i] = notifier.listen()
+		listeners[i] = notifier.listen("192.0.2.1:12345")
 	}
 
 	notifier.Notify()
@@ -87,4 +89,22 @@ func TestNotifyMultipleListeners(t *testing.T) {
 
 func generateTestMessage() any {
 	return "test message"
+}
+
+func TestBlockedListenerLogsClientAddress(t *testing.T) {
+	var output bytes.Buffer
+	previousOutput := log.Writer()
+	log.SetOutput(&output)
+	defer log.SetOutput(previousOutput)
+	notifier := NewNotifier("arenaStatus", nil)
+	listener := notifier.listen("192.0.2.42:54321")
+	for i := 0; i <= notifyBufferSize; i++ {
+		notifier.Notify()
+	}
+	assert.Contains(t, output.String(), "blocked listener at 192.0.2.42:54321 (channel 0x")
+	output.Reset()
+	close(listener)
+	notifier.Notify()
+	assert.Empty(t, notifier.listeners)
+	assert.Empty(t, output.String())
 }

@@ -16,7 +16,7 @@ const notifyBufferSize = 5
 type Notifier struct {
 	messageType     string
 	messageProducer func() any
-	listeners       map[chan messageEnvelope]struct{} // The map is essentially a set; the value is ignored.
+	listeners       map[chan messageEnvelope]string // Client address for each listener.
 	mutex           sync.Mutex
 }
 
@@ -27,7 +27,7 @@ type messageEnvelope struct {
 
 func NewNotifier(messageType string, messageProducer func() any) *Notifier {
 	notifier := &Notifier{messageType: messageType, messageProducer: messageProducer}
-	notifier.listeners = make(map[chan messageEnvelope]struct{})
+	notifier.listeners = make(map[chan messageEnvelope]string)
 	return notifier
 }
 
@@ -67,19 +67,19 @@ func (notifier *Notifier) notifyListener(listener chan messageEnvelope, message 
 			return
 		}
 		// only log blocked‐listener warnings for non‐stationTrip topics
-		log.Printf("Failed to send a '%s' notification due to blocked listener at %s.",
-			notifier.messageType, notifier.listeners[listener])
+		log.Printf("Failed to send a '%s' notification due to blocked listener at %s (channel %p).",
+			notifier.messageType, notifier.listeners[listener], listener)
 	}
 }
 
 // Registers and returns a channel that can be read from to receive notification messages. The caller is
 // responsible for closing the channel, which will cause it to be reaped from the list of listeners.
-func (notifier *Notifier) listen() chan messageEnvelope {
+func (notifier *Notifier) listen(clientAddress string) chan messageEnvelope {
 	notifier.mutex.Lock()
 	defer notifier.mutex.Unlock()
 
 	listener := make(chan messageEnvelope, notifyBufferSize)
-	notifier.listeners[listener] = struct{}{}
+	notifier.listeners[listener] = clientAddress
 	return listener
 }
 
