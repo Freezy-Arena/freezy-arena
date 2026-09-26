@@ -55,7 +55,7 @@ func (zone *zone) updatePixels(baseColor Color) {
 	case BlueAdvantageMode:
 		zone.updateAdvantageMode(Blue, zone.counter)
 	case RainbowMode:
-		zone.updateRainbowMode(zone.counter)
+		zone.updateRainbowMode(zone.counter, baseColor)
 	case Side1TestMode, Side2TestMode, Side3TestMode, Side4TestMode:
 		zone.updateSideTestMode(int(zone.currentMode-Side1TestMode)+1, baseColor)
 	default:
@@ -187,12 +187,18 @@ func (zone *zone) sweepFixture(start, counter int, direction fillDirection) {
 	}
 }
 
-// updateRainbowMode renders a rotating rainbow pattern counter-clockwise.
-func (zone *zone) updateRainbowMode(counter int) {
+// updateRainbowMode renders a rotating rainbow pattern.
+func (zone *zone) updateRainbowMode(counter int, baseColor Color) {
 	logicalPixels := numSides * pixelsPerFixture
 
 	for i := 0; i < logicalPixels; i++ {
-		pos := (i - (counter / 2)) % logicalPixels
+		offset := counter / 2
+		if baseColor == Blue {
+			// Rotate counter-clockwise for the blue hub.
+			offset = -offset
+		}
+
+		pos := (i - offset) % logicalPixels
 		if pos < 0 {
 			pos += logicalPixels
 		}
@@ -222,6 +228,12 @@ func (zone *zone) updateRainbowMode(counter int) {
 
 		side := i/pixelsPerFixture + 1
 		pixel := i % pixelsPerFixture
+
+		// Sides 2 and 4 are physically upside down, their data flows Right-to-Left natively.
+		// Reverse the pixel mapping for the standard sides (1 and 3) so they match.
+		if side == 1 || side == 3 {
+			pixel = pixelsPerFixture - 1 - pixel
+		}
 
 		for fixture := 0; fixture < fixturesPerSide; fixture++ {
 			start := ((side-1)*fixturesPerSide + fixture) * pixelsPerFixture

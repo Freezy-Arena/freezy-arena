@@ -1,0 +1,39 @@
+{{/*
+Copyright 2026 Team 254. All Rights Reserved.
+
+Display showing only the unpicked teams during alliance selection.
+*/}}
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Unpicked Teams - {{.Name}} - Cheesy Arena</title>
+    <link rel="shortcut icon" href="/static/img/favicon.ico">
+    <link rel="stylesheet" href="/static/css/lib/bootstrap.min.css"/>
+    <link rel="stylesheet" href="/static/css/cheesy-arena.css"/>
+    <link rel="stylesheet" href="/static/css/unpicked_display.css"/>
+  </head>
+  <body>
+    <div id="unpickedTeamsContainer">
+      <div id="unpickedTeams"></div>
+    </div>
+    <div id="gameLogoContainer">
+      <img src="/static/img/game-logo.png" alt="Game Logo" />
+    </div>
+    
+    <script id="unpickedTeamsTemplate" type="text/x-handlebars-template">
+      {{"{{#each this}}"}}
+      <div class="unpicked">
+        <div class="unpicked-rank">{{"{{Rank}}"}}.</div>
+        <div class="unpicked-team">{{"{{TeamId}}"}}</div>
+      </div>
+      {{"{{/each}}"}}
+    </script>
+
+    <script src="/static/js/lib/jquery.min.js"></script>
+    <script src="/static/js/lib/jquery.json-2.4.min.js"></script>
+    <script src="/static/js/lib/jquery.websocket-0.0.1.js"></script>
+    <script src="/static/js/lib/handlebars-1.3.0.js"></script>
+    <script src="/static/js/cheesy-websocket.js"></script>
+    <script src="/static/js/unpicked_display.js"></script>
+  </body>
+</html>

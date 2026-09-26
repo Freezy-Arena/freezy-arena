@@ -1,0 +1,124 @@
+{{/*
+Copyright 2026 Team 254. All Rights Reserved.
+
+Display showing robot connection status in the style of FMS Field Monitor.
+*/}}
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <title>Field Monitor - {{.EventSettings.Name}} - Cheesy Arena</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="viewport" content="width=device-width, maximum-scale=1.0, user-scalable=no"/>
+    <link rel="shortcut icon" href="/static/img/favicon.ico">
+    <link rel="stylesheet" href="/static/css/lib/bootstrap.min.css"/>
+    <link rel="stylesheet" href="/static/css/lib/bootstrap-icons.min.css"/>
+    <link rel="stylesheet" href="/static/css/cheesy-arena.css"/>
+    <link rel="stylesheet" href="/static/css/fms_field_monitor_display.css"/>
+  </head>
+
+  <body>
+    <div id="matchStatusRow" class="ds-dependent">
+      {{if .EventSettings.NetworkSecurityEnabled}}
+      <div id="matchName" class="text-start" style="width: 20%; padding-left: 1%;"></div>
+      <div id="fieldConnection" style="width: 25%; padding-left: 1%;">
+        <span class="badge badge-status" id="accessPointStatus"><i class="bi bi-wifi"></i> Access Point
+        </span>
+        <span class="badge badge-status" id="switchStatus"> <i class="bi bi-hdd-network"></i> Switch</span>
+      </div>
+      {{end}}
+      {{if not .EventSettings.NetworkSecurityEnabled}}
+      <div id="matchName" class="text-start" style="width: 45%; padding-left: 1%;"></div>
+      {{end}}
+      <div id="matchTime" class="text-center" style="width: 10%;"></div>
+      <div id="matchState" class="text-end" style="width: 45%; padding-right: 1%;"></div>
+    </div>
+    
+    <div class="fms-row ds-dependent reversible-container">
+      <div class="fms-column left-column reversible-left">
+        {{template "team" dict "side" "left" "position" "1" "station" "1"}}
+        {{template "team" dict "side" "left" "position" "2" "station" "2"}}
+        {{template "team" dict "side" "left" "position" "3" "station" "3"}}
+      </div>
+      <!-- Right side (Red by default, Blue if reversed) -->
+      <div id="rightTeams" class="fms-column right-column reversible-right">
+        {{template "team" dict "side" "right" "position" "3" "station" "3"}}
+        {{template "team" dict "side" "right" "position" "2" "station" "2"}}
+        {{template "team" dict "side" "right" "position" "1" "station" "1"}}
+      </div>
+    </div>
+
+    <div id="eventStatusRow" class="ds-dependent">
+      <div id="leftScore" class="fta-dependent ds-dependent left-score text-start reversible-left"
+        style="width:8%; vertical-align:middle;"></div>
+      <div id="cycleTimeMessage" class="text-center ds-dependent" style="width: 46%;"></div>
+      <div id="earlyLateMessage" class="text-center ds-dependent" style="width: 38%;"></div>
+      <div id="rightScore" class="right-score ds-dependent text-end fta-dependent reversible-right "
+        style="width: 8%;"></div>
+    </div>
+  </body>
+  <script src="/static/js/lib/jquery.min.js"></script>
+  <script src="/static/js/lib/jquery.json-2.4.min.js"></script>
+  <script src="/static/js/lib/jquery.websocket-0.0.1.js"></script>
+  <script src="/static/js/cheesy-websocket.js"></script>
+  <script src="/static/js/lib/jquery.transit.min.js"></script>
+  <script src="/static/js/lib/bootstrap.bundle.min.js"></script>
+  <script src="/static/js/match_timing.js"></script>
+  <script src="/static/js/fms_field_monitor_display.js"></script>
+
+</html>
+
+{{define "team"}}
+<div id="{{.side}}Team{{.position}}" class="fms-team fms-team-{{.side}} ds-dependent">
+  <div class="fms-team-header">
+    <div class="fms-team-header-left">
+      <div id="{{.side}}Team{{.position}}Id" class="fms-team-id"></div>
+      <div class="fms-station-badge badge-{{.side}} reversible-{{.side}}"><span class="station-text-{{.side}} reversible-{{.side}}">STATION</span> {{.station}}</div>
+      <div class="fms-new-key-badge">New Key <i class="bi bi-key"></i></div>
+    </div>
+    <div class="fms-team-header-right">
+      <div id="{{.side}}Team{{.position}}Robot" class="fms-status-pill">NOT READY</div>
+    </div>
+  </div>
+  
+  <div class="fms-team-status">
+    <div id="{{.side}}Team{{.position}}Ds" class="fms-status-block">
+      <i class="bi bi-controller"></i>
+      <div class="fms-status-text">x DS</div>
+    </div>
+    <div id="{{.side}}Team{{.position}}Radio" class="fms-status-block">
+      <i class="bi bi-wifi-off"></i>
+      <div class="fms-status-text">x RADIO</div>
+    </div>
+    <div id="{{.side}}Team{{.position}}Rio" class="fms-status-block">
+      <i class="bi bi-cpu"></i>
+      <div class="fms-status-text">x RIO</div>
+    </div>
+  </div>
+  
+  <div class="fms-team-stats" id="{{.side}}Team{{.position}}Stats">
+    <div class="fms-stat-item">
+      <div class="fms-stat-value" id="{{.side}}Team{{.position}}Battery">0.0V <span class="fms-stat-sub">Min 0.0</span></div>
+      <div class="fms-stat-label"><i class="bi bi-battery-half"></i> BATTERY</div>
+    </div>
+    <div class="fms-stat-item">
+      <div class="fms-stat-value" id="{{.side}}Team{{.position}}Bandwidth">-</div>
+      <div class="fms-stat-label"><i class="bi bi-arrow-down-up"></i> BWU</div>
+    </div>
+    <div class="fms-stat-item">
+      <div class="fms-stat-value" id="{{.side}}Team{{.position}}TripTime">-</div>
+      <div class="fms-stat-label"><i class="bi bi-pin-map"></i> TRIP <span class="fms-stat-sub">0 ms ago</span></div>
+    </div>
+    <div class="fms-stat-item">
+      <div class="fms-stat-value" id="{{.side}}Team{{.position}}MissedPackets">-</div>
+      <div class="fms-stat-label"><i class="bi bi-x"></i> PACKET LOSS</div>
+    </div>
+  </div>
+
+  <div id="{{.side}}Team{{.position}}Notes" class="fms-team-notes fta-dependent" title="FTA Notes">
+    <i class="bi-chat-left-fill"></i>
+    <div onclick="editFtaNotes(this);"></div>
+  </div>
+</div>
+{{end}}

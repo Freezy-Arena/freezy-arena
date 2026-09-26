@@ -229,6 +229,7 @@ func (arena *Arena) LoadSettings() error {
 	arena.Esp32.SetScoreTableAddress(settings.ScoreTableEstopAddress)
 	arena.Esp32.SetRedAllianceStationEstopAddress(settings.RedAllianceStationEstopAddress)
 	arena.Esp32.SetBlueAllianceStationEstopAddress(settings.BlueAllianceStationEstopAddress)
+	arena.Leds.SetUniverseMode(settings.LedUniverseMode)
 	arena.TbaClient = partner.NewTbaClient(settings.TbaEventCode, settings.TbaSecretId, settings.TbaSecret)
 	arena.NexusClient = partner.NewNexusClient(settings.TbaEventCode, settings.NexusAutoQueueKey)
 	arena.BlackmagicClient = partner.NewBlackmagicClient(settings.BlackmagicAddresses)
@@ -412,11 +413,6 @@ func (arena *Arena) LoadMatch(match *model.Match) error {
 	arena.Plc.SetFtaReady(false)
 	arena.NextFoulId = 1
 	arena.redWonAuto = false
-	arena.Leds.SetMode(led.OffMode, led.OffMode)
-	currentRed, currentBlue := arena.Leds.GetModes()
-	if currentRed != arena.lastRedLedMode || currentBlue != arena.lastBlueLedMode {
-		arena.LedChangeNotifier.Notify()
-	}
 
 	// Notify any listeners about the new match.
 	arena.MatchLoadNotifier.Notify()
@@ -424,7 +420,7 @@ func (arena *Arena) LoadMatch(match *model.Match) error {
 	arena.AllianceStationDisplayMode = "match"
 	arena.AllianceStationDisplayModeNotifier.Notify()
 	arena.ScoringStatusNotifier.Notify()
-	currentRed, currentBlue = arena.Leds.GetModes()
+	currentRed, currentBlue := arena.Leds.GetModes()
 	if currentRed != arena.lastRedLedMode || currentBlue != arena.lastBlueLedMode {
 		arena.LedChangeNotifier.Notify()
 	}
@@ -682,6 +678,10 @@ func (arena *Arena) SetAllianceStationDisplayMode(mode string) {
 	if arena.AllianceStationDisplayMode != mode {
 		arena.AllianceStationDisplayMode = mode
 		arena.AllianceStationDisplayModeNotifier.Notify()
+
+		if mode == "logo" {
+			arena.Leds.SetMode(led.RedMode, led.BlueMode)
+		}
 	}
 }
 
@@ -1330,10 +1330,6 @@ func (arena *Arena) handlePlcInputOutput() {
 	// Handle the evergreen PLC functions: stack lights, stack buzzer, and field reset light.
 	switch arena.MatchState {
 	case PreMatch:
-		if arena.lastMatchState != PreMatch {
-			arena.Plc.SetFieldResetLight(true)
-			arena.Leds.SetMode(led.GreenMode, led.GreenMode)
-		}
 		fallthrough
 	case TimeoutActive:
 		fallthrough
@@ -1463,7 +1459,7 @@ func (arena *Arena) handleTeamStop(station string, eStopState, aStopState bool) 
 
 // Set the field lights and team signs to purple, if not in a match.
 func (arena *Arena) SignalVolunteers() {
-	if arena.MatchState != PostMatch && arena.MatchState != PreMatch {
+	if arena.MatchState != PostMatch && arena.MatchState != PreMatch && arena.MatchState != TimeoutActive {
 		// Don't signal volunteers during matches.
 		return
 	}
@@ -1471,6 +1467,7 @@ func (arena *Arena) SignalVolunteers() {
 	arena.FieldReset = false
 	arena.AllianceStationDisplayMode = "signalCount"
 	arena.AllianceStationDisplayModeNotifier.Notify()
+	arena.Plc.SetFieldResetLight(false)
 	arena.Leds.SetMode(led.PurpleMode, led.PurpleMode)
 	currentRed, currentBlue := arena.Leds.GetModes()
 	if currentRed != arena.lastRedLedMode || currentBlue != arena.lastBlueLedMode {
@@ -1480,7 +1477,7 @@ func (arena *Arena) SignalVolunteers() {
 
 // Set the field lights and team signs to green, if not in a match.
 func (arena *Arena) SignalReset() {
-	if arena.MatchState != PostMatch && arena.MatchState != PreMatch {
+	if arena.MatchState != PostMatch && arena.MatchState != PreMatch && arena.MatchState != TimeoutActive {
 		// Don't signal reset during matches.
 		return
 	}
@@ -1492,6 +1489,7 @@ func (arena *Arena) SignalReset() {
 	arena.FieldReset = true
 	arena.AllianceStationDisplayMode = "fieldReset"
 	arena.AllianceStationDisplayModeNotifier.Notify()
+	arena.Plc.SetFieldResetLight(true)
 	arena.Leds.SetMode(led.GreenMode, led.GreenMode)
 	currentRed, currentBlue := arena.Leds.GetModes()
 	if currentRed != arena.lastRedLedMode || currentBlue != arena.lastBlueLedMode {

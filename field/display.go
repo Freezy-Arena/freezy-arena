@@ -38,6 +38,8 @@ const (
 	TwitchStreamDisplay
 	WallDisplay
 	WebpageDisplay
+	FmsFieldMonitorDisplay
+	UnpickedDisplay
 )
 
 var DisplayTypeNames = map[DisplayType]string{
@@ -53,6 +55,8 @@ var DisplayTypeNames = map[DisplayType]string{
 	TwitchStreamDisplay:    "Twitch Stream",
 	WallDisplay:            "Wall",
 	WebpageDisplay:         "Web Page",
+	FmsFieldMonitorDisplay: "FMS Field Monitor",
+	UnpickedDisplay:        "Unpicked Teams",
 }
 
 var displayTypePaths = map[DisplayType]string{
@@ -68,6 +72,8 @@ var displayTypePaths = map[DisplayType]string{
 	TwitchStreamDisplay:    "/displays/twitch",
 	WallDisplay:            "/displays/wall",
 	WebpageDisplay:         "/displays/webpage",
+	FmsFieldMonitorDisplay: "/displays/fms_field_monitor",
+	UnpickedDisplay:        "/displays/unpicked",
 }
 
 var displayRegistryMutex sync.Mutex

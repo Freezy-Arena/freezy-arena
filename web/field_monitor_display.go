@@ -1,4 +1,4 @@
-// Copyright 2018 Team 254. All Rights Reserved.
+// Copyright 2026 Team 254. All Rights Reserved.
 // Author: pat@patfairbank.com (Patrick Fairbank)
 //
 // Web handlers for the field monitor display showing robot connection status.
@@ -35,6 +35,31 @@ func (web *Web) fieldMonitorDisplayHandler(w http.ResponseWriter, r *http.Reques
 		MatchSounds []*game.MatchSound
 	}{web.arena.EventSettings, game.MatchSounds}
 	err = template.ExecuteTemplate(w, "field_monitor_display.html", data)
+	if err != nil {
+		handleWebErr(w, err)
+		return
+	}
+}
+
+// Renders the FMS-style field monitor display.
+func (web *Web) fmsFieldMonitorDisplayHandler(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Query().Get("fta") == "true" && !web.userIsAdmin(w, r) {
+		return
+	}
+
+	if !web.enforceDisplayConfiguration(w, r, map[string]string{"ds": "false", "fta": "false", "reversed": "false"}) {
+		return
+	}
+
+	template, err := web.parseFiles("templates/fms_field_monitor_display.html")
+	if err != nil {
+		handleWebErr(w, err)
+		return
+	}
+	data := struct {
+		*model.EventSettings
+	}{web.arena.EventSettings}
+	err = template.ExecuteTemplate(w, "fms_field_monitor_display.html", data)
 	if err != nil {
 		handleWebErr(w, err)
 		return

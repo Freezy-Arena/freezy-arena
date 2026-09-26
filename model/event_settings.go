@@ -41,7 +41,7 @@ var (
 type EventSettings struct {
 	Id                               int `db:"id"`
 	Name                             string
-	LogoSuffix                  	 string
+	LogoSuffix                       string
 	PlayoffType                      PlayoffType
 	NumPlayoffAlliances              int
 	SelectionRound2Order             string
@@ -71,10 +71,11 @@ type EventSettings struct {
 	SCCDownCommands                  string
 	PlcAddress                       string
 	LedControllerAddress             string
-	AlternateIOEnabled          	 bool
-	ScoreTableEstopAddress  		 string
+	AlternateIOEnabled               bool
+	ScoreTableEstopAddress           string
 	RedAllianceStationEstopAddress   string
 	BlueAllianceStationEstopAddress  string
+	LedUniverseMode                  string
 	AdminPassword                    string
 	TeamSignRed1Id                   int
 	TeamSignRed2Id                   int
@@ -123,7 +124,7 @@ type EventSettings struct {
 	EnergizedBonusThreshold          int
 	SuperchargedBonusThreshold       int
 	TraversalBonusThreshold          int
-	FlashDSEnabled                  bool
+	FlashDSEnabled                   bool
 }
 
 func (database *Database) GetEventSettings() (*EventSettings, error) {
@@ -139,7 +140,7 @@ func (database *Database) GetEventSettings() (*EventSettings, error) {
 	// Database record doesn't exist yet; create it now.
 	eventSettings := EventSettings{
 		Name:                       "Untitled Event",
-		LogoSuffix:                  "",
+		LogoSuffix:                 "",
 		PlayoffType:                DoubleEliminationPlayoff,
 		NumPlayoffAlliances:        8,
 		SelectionRound2Order:       "L",
@@ -150,6 +151,7 @@ func (database *Database) GetEventSettings() (*EventSettings, error) {
 		AlternateIOEnabled:         false,
 		SCCUpCommands:              strings.Join(sccDefaultUpCommands, "\n"),
 		SCCDownCommands:            strings.Join(sccDefaultDownCommands, "\n"),
+		LedUniverseMode:            "single",
 		CompanionAddress:           "",
 		AutoDurationSec:            game.MatchTiming.AutoDurationSec,
 		PauseDurationSec:           game.MatchTiming.PauseDurationSec,

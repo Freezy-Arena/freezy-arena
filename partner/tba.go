@@ -1,4 +1,4 @@
-// Copyright 2014 Team 254. All Rights Reserved.
+// Copyright 2026 Team 254. All Rights Reserved.
 // Author: pat@patfairbank.com (Patrick Fairbank)
 //
 // Methods for publishing data to and retrieving data from The Blue Alliance.
@@ -19,6 +19,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 )
 
 const (
@@ -36,14 +37,16 @@ type TbaClient struct {
 }
 
 type TbaMatch struct {
-	CompLevel      string                    `json:"comp_level"`
-	SetNumber      int                       `json:"set_number"`
-	MatchNumber    int                       `json:"match_number"`
-	Alliances      map[string]*TbaAlliance   `json:"alliances"`
-	ScoreBreakdown map[string]map[string]any `json:"score_breakdown"`
-	TimeString     string                    `json:"time_string"`
-	TimeUtc        string                    `json:"time_utc"`
-	DisplayName    string                    `json:"display_name"`
+	CompLevel          string                    `json:"comp_level"`
+	SetNumber          int                       `json:"set_number"`
+	MatchNumber        int                       `json:"match_number"`
+	Alliances          map[string]*TbaAlliance   `json:"alliances"`
+	ScoreBreakdown     map[string]map[string]any `json:"score_breakdown"`
+	TimeString         string                    `json:"time_string"`
+	TimeUtc            string                    `json:"time_utc"`
+	ActualStartTimeUtc string                    `json:"actual_start_time_utc,omitempty"`
+	PostResultsTimeUtc string                    `json:"post_results_time_utc,omitempty"`
+	DisplayName        string                    `json:"display_name"`
 }
 
 type TbaAlliance struct {
@@ -149,9 +152,14 @@ type TbaMediaItem struct {
 }
 
 type TbaPublishedAward struct {
-	Name    string `json:"name_str"`
-	TeamKey string `json:"team_key"`
-	Awardee string `json:"awardee"`
+	Name    string  `json:"name_str"`
+	TeamKey *string `json:"team_key"`
+	Awardee *string `json:"awardee"`
+}
+
+// Helper to get a pointer to a string.
+func stringPtr(s string) *string {
+	return &s
 }
 
 var leaveMapping = map[bool]string{false: "No", true: "Yes"}
@@ -376,14 +384,25 @@ func (client *TbaClient) PublishMatches(database *model.Database) error {
 			blueCards,
 		)
 
+		var actualStartTimeUtc string
+		if !match.StartedAt.IsZero() {
+			actualStartTimeUtc = match.StartedAt.UTC().Format("2006-01-02T15:04:05")
+		}
+		var postResultsTimeUtc string
+		if !match.ScoreCommittedAt.IsZero() {
+			postResultsTimeUtc = match.ScoreCommittedAt.UTC().Format("2006-01-02T15:04:05")
+		}
+
 		tbaMatches[i] = TbaMatch{
-			CompLevel:      match.TbaMatchKey.CompLevel,
-			SetNumber:      match.TbaMatchKey.SetNumber,
-			MatchNumber:    match.TbaMatchKey.MatchNumber,
-			Alliances:      alliances,
-			ScoreBreakdown: scoreBreakdown,
-			TimeString:     match.Time.Local().Format("3:04 PM"),
-			TimeUtc:        match.Time.UTC().Format("2006-01-02T15:04:05"),
+			CompLevel:          match.TbaMatchKey.CompLevel,
+			SetNumber:          match.TbaMatchKey.SetNumber,
+			MatchNumber:        match.TbaMatchKey.MatchNumber,
+			Alliances:          alliances,
+			ScoreBreakdown:     scoreBreakdown,
+			TimeString:         match.Time.Local().Format("3:04 PM"),
+			TimeUtc:            match.Time.UTC().Format("2006-01-02T15:04:05"),
+			ActualStartTimeUtc: actualStartTimeUtc,
+			PostResultsTimeUtc: postResultsTimeUtc,
 		}
 	}
 	jsonBody, err := json.Marshal(tbaMatches)
@@ -489,8 +508,12 @@ func (client *TbaClient) PublishAwards(database *model.Database) error {
 	tbaAwards := make([]TbaPublishedAward, len(awards))
 	for i, award := range awards {
 		tbaAwards[i].Name = award.AwardName
-		tbaAwards[i].TeamKey = getTbaTeam(award.TeamId)
-		tbaAwards[i].Awardee = award.PersonName
+		if award.TeamId > 0 {
+			tbaAwards[i].TeamKey = stringPtr(getTbaTeam(award.TeamId))
+		}
+		if trimmed := strings.TrimSpace(award.PersonName); trimmed != "" {
+			tbaAwards[i].Awardee = stringPtr(trimmed)
+		}
 	}
 	jsonBody, err := json.Marshal(tbaAwards)
 	if err != nil {

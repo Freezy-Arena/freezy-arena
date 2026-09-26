@@ -31,8 +31,8 @@ type ArenaNotifiers struct {
 	ScorePostedNotifier                *websocket.Notifier
 	ScoringStatusNotifier              *websocket.Notifier
 	PlcCoilsNotifier                   *websocket.Notifier
-	MatchListNotifier 				   *websocket.Notifier
-	LedChangeNotifier 				   *websocket.Notifier
+	MatchListNotifier                  *websocket.Notifier
+	LedChangeNotifier                  *websocket.Notifier
 }
 
 type MatchTimeMessage struct {
@@ -261,16 +261,16 @@ func (arena *Arena) generateMatchTimingMessage() any {
 
 func (arena *Arena) generatePlcCoilsMessage() any {
 	// Get the current state of all PLC coils.
-    coilsArray := arena.Plc.GetAllCoils()
-    coilsArrayNames := arena.Plc.GetCoilNames()
+	coilsArray := arena.Plc.GetAllCoils()
+	coilsArrayNames := arena.Plc.GetCoilNames()
 
 	// Build a map pairing coil names with their values.
-    coilsMap := make(map[string]bool)
-    for i, name := range coilsArrayNames {
-        if i < len(coilsArray) {
-            coilsMap[name] = coilsArray[i]
-        }
-    }
+	coilsMap := make(map[string]bool)
+	for i, name := range coilsArrayNames {
+		if i < len(coilsArray) {
+			coilsMap[name] = coilsArray[i]
+		}
+	}
 	return coilsMap
 }
 
@@ -301,9 +301,9 @@ func (arena *Arena) GenerateScorePostedMessage() any {
 	blueRankingPoints := blueScoreSummary.BonusRankingPoints
 	switch arena.SavedMatch.Status {
 	case game.RedWonMatch:
-		redRankingPoints += 3
+		redRankingPoints += game.GetWinRankingPoints()
 	case game.BlueWonMatch:
-		blueRankingPoints += 3
+		blueRankingPoints += game.GetWinRankingPoints()
 	case game.TieMatch:
 		redRankingPoints++
 		blueRankingPoints++
@@ -346,29 +346,31 @@ func (arena *Arena) GenerateScorePostedMessage() any {
 	}
 
 	return &struct {
-		Match               *model.Match
-		RedScoreSummary     *game.ScoreSummary
-		BlueScoreSummary    *game.ScoreSummary
-		RedRankingPoints    int
-		BlueRankingPoints   int
-		RedFouls            []game.Foul
-		BlueFouls           []game.Foul
-		RulesViolated       map[int]*game.Rule
-		RedCards            map[string]string
-		BlueCards           map[string]string
-		RedRankings         map[int]*game.Ranking
-		BlueRankings        map[int]*game.Ranking
-		RedOffFieldTeamIds  []int
-		BlueOffFieldTeamIds []int
-		RedWon              bool
-		BlueWon             bool
-		TiebreakReason      string
-		RedWins             int
-		BlueWins            int
-		RedDestination      string
-		BlueDestination     string
+		Match                 *model.Match
+		TraversalBonusEnabled bool
+		RedScoreSummary       *game.ScoreSummary
+		BlueScoreSummary      *game.ScoreSummary
+		RedRankingPoints      int
+		BlueRankingPoints     int
+		RedFouls              []game.Foul
+		BlueFouls             []game.Foul
+		RulesViolated         map[int]*game.Rule
+		RedCards              map[string]string
+		BlueCards             map[string]string
+		RedRankings           map[int]*game.Ranking
+		BlueRankings          map[int]*game.Ranking
+		RedOffFieldTeamIds    []int
+		BlueOffFieldTeamIds   []int
+		RedWon                bool
+		BlueWon               bool
+		TiebreakReason        string
+		RedWins               int
+		BlueWins              int
+		RedDestination        string
+		BlueDestination       string
 	}{
 		arena.SavedMatch,
+		arena.EventSettings.TraversalBonusThreshold != 0,
 		redScoreSummary,
 		blueScoreSummary,
 		redRankingPoints,
@@ -419,22 +421,22 @@ func (arena *Arena) generateScoringStatusMessage() any {
 }
 
 func (arena *Arena) generateLedModeMessage() interface{} {
-    redMode, blueMode := arena.Leds.GetModes()
+	redMode, blueMode := arena.Leds.GetModes()
 
 	log.Printf("Generating LED mode message with RedMode=%d and BlueMode=%d", redMode, blueMode)
 
-    // Only notify if mode has actually changed
-    if redMode == arena.lastRedLedMode && blueMode == arena.lastBlueLedMode {
-       // return nil      // Return nil to suppress the notification
-    }
+	// Only notify if mode has actually changed
+	if redMode == arena.lastRedLedMode && blueMode == arena.lastBlueLedMode {
+		// return nil      // Return nil to suppress the notification
+	}
 
-    arena.lastRedLedMode  = redMode
-    arena.lastBlueLedMode = blueMode
+	arena.lastRedLedMode = redMode
+	arena.lastBlueLedMode = blueMode
 
-    return map[string]interface{}{
-        "RedMode":  redMode,
-        "BlueMode": blueMode,
-    }
+	return map[string]interface{}{
+		"RedMode":  redMode,
+		"BlueMode": blueMode,
+	}
 }
 
 // Constructs the data object for one alliance sent to the audience display for the realtime scoring overlay.

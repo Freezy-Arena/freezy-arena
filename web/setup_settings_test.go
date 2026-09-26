@@ -36,7 +36,7 @@ func TestSetupSettings(t *testing.T) {
 		"/setup/settings",
 		"name=Chezy Champs&code=CC&playoffType=single&numPlayoffAlliances=16&tbaPublishingEnabled=on&"+
 			"tbaEventCode=2014cc&tbaSecretId=secretId&tbaSecret=tbasec&transitionShiftDurationSec=12&"+
-			"shiftDurationSec=24&endgameDurationSec=32&ledControllerAddress=10.0.100.61",
+			"shiftDurationSec=24&endgameDurationSec=32&ledControllerAddress=10.0.100.61&ledUniverseMode=two",
 	)
 	assert.Equal(t, 303, recorder.Code)
 	assert.Equal(t, "/setup/settings#event", recorder.Header().Get("Location"))
@@ -51,6 +51,7 @@ func TestSetupSettings(t *testing.T) {
 	assert.Equal(t, 24, web.arena.EventSettings.ShiftDurationSec)
 	assert.Equal(t, 32, web.arena.EventSettings.EndgameDurationSec)
 	assert.Equal(t, "10.0.100.61", web.arena.EventSettings.LedControllerAddress)
+	assert.Equal(t, "two", web.arena.EventSettings.LedUniverseMode)
 	assert.Equal(t, 140, game.GetTeleopDurationSec())
 
 	recorder = web.postHttpResponse("/setup/settings", "name=Field Tab Event&activeSettingsTab=field")

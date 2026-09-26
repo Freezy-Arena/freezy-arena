@@ -1,4 +1,4 @@
-// Copyright 2014 Team 254. All Rights Reserved.
+// Copyright 2026 Team 254. All Rights Reserved.
 // Author: pat@patfairbank.com (Patrick Fairbank)
 
 package partner
@@ -47,17 +47,19 @@ func TestPublishMatches(t *testing.T) {
 	database := setupTestDb(t)
 
 	match1 := model.Match{
-		Type:        model.Qualification,
-		ShortName:   "Q2",
-		Time:        time.Unix(600, 0),
-		Red1:        7,
-		Red2:        8,
-		Red3:        9,
-		Blue1:       10,
-		Blue2:       11,
-		Blue3:       12,
-		Status:      game.RedWonMatch,
-		TbaMatchKey: model.TbaMatchKey{"qm", 0, 2},
+		Type:             model.Qualification,
+		ShortName:        "Q2",
+		Time:             time.Unix(600, 0),
+		StartedAt:        time.Unix(620, 0),
+		ScoreCommittedAt: time.Unix(780, 0),
+		Red1:             7,
+		Red2:             8,
+		Red3:             9,
+		Blue1:            10,
+		Blue2:            11,
+		Blue3:            12,
+		Status:           game.RedWonMatch,
+		TbaMatchKey:      model.TbaMatchKey{"qm", 0, 2},
 	}
 	match2 := model.Match{Type: model.Playoff, ShortName: "SF2-2", TbaMatchKey: model.TbaMatchKey{"omg", 5, 29}}
 	database.CreateMatch(&match1)
@@ -76,9 +78,13 @@ func TestPublishMatches(t *testing.T) {
 				assert.Equal(t, "qm", matches[0].CompLevel)
 				assert.Equal(t, 0, matches[0].SetNumber)
 				assert.Equal(t, 2, matches[0].MatchNumber)
+				assert.Equal(t, time.Unix(620, 0).UTC().Format("2006-01-02T15:04:05"), matches[0].ActualStartTimeUtc)
+				assert.Equal(t, time.Unix(780, 0).UTC().Format("2006-01-02T15:04:05"), matches[0].PostResultsTimeUtc)
 				assert.Equal(t, "omg", matches[1].CompLevel)
 				assert.Equal(t, 5, matches[1].SetNumber)
 				assert.Equal(t, 29, matches[1].MatchNumber)
+				assert.Equal(t, "", matches[1].ActualStartTimeUtc)
+				assert.Equal(t, "", matches[1].PostResultsTimeUtc)
 			},
 		),
 	)
@@ -194,12 +200,15 @@ func TestPublishAwards(t *testing.T) {
 				assert.Contains(t, r.URL.String(), "event/my_event_code")
 				var reader bytes.Buffer
 				reader.ReadFrom(r.Body)
-				assert.Equal(
-					t,
-					"[{\"name_str\":\"Saftey Award\",\"team_key\":\"frc254\",\"awardee\":\"\"},"+
-						"{\"name_str\":\"Spirt Award\",\"team_key\":\"frc0\",\"awardee\":\"Bob Dorough\"}]",
-					reader.String(),
-				)
+				var actual []TbaPublishedAward
+				err := json.Unmarshal(reader.Bytes(), &actual)
+				assert.Nil(t, err)
+
+				expected := []TbaPublishedAward{
+					{Name: "Saftey Award", TeamKey: stringPtr("frc254"), Awardee: nil},
+					{Name: "Spirt Award", TeamKey: nil, Awardee: stringPtr("Bob Dorough")},
+				}
+				assert.Equal(t, expected, actual)
 			},
 		),
 	)

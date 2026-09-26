@@ -7,6 +7,7 @@ package websocket
 
 import (
 	"fmt"
+	"github.com/gorilla/websocket"
 	"io"
 	"log"
 	"net/http"
@@ -15,8 +16,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/gorilla/websocket"
 )
 
 const pingInterval = time.Second * 10
@@ -116,7 +115,7 @@ func (ws *Websocket) HandleNotifiers(notifiers ...*Notifier) {
 	// Use reflection to dynamically build a select/case structure for all the notifiers.
 	listeners := make([]reflect.SelectCase, len(notifiers))
 	for i, notifier := range notifiers {
-		listener := notifier.listen()
+		listener := notifier.listen(ws.conn.RemoteAddr().String())
 		defer close(listener)
 		listeners[i] = reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(listener)}
 
