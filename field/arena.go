@@ -1202,6 +1202,10 @@ func (arena *Arena) getAllianceStationStartConditions(stations ...string) []stri
 	var eStoppedStations, aStopNotResetStations, disconnectedStations []string
 	for _, station := range stations {
 		allianceStation := arena.AllianceStations[station]
+		// Vacant practice stations have no robot to connect or reset; they do not block readiness.
+		if arena.CurrentMatch != nil && arena.CurrentMatch.Type == model.Practice && allianceStation.Team == nil {
+			continue
+		}
 		if allianceStation.EStop {
 			eStoppedStations = append(eStoppedStations, station)
 		}

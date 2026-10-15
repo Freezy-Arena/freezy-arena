@@ -1409,3 +1409,23 @@ func TestSignalReset(t *testing.T) {
 	assert.Equal(t, "fieldReset", arena.AllianceStationDisplayMode)
 	assertHubLedModes(led.GreenMode, led.GreenMode)
 }
+
+func TestVacantPracticeStationsDoNotBlockStart(t *testing.T) {
+	arena := setupTestArena(t)
+	assert.Nil(t, arena.Database.CreateTeam(&model.Team{Id: 4728}))
+	assert.Nil(t, arena.Database.CreateTeam(&model.Team{Id: 254}))
+	match := &model.Match{Type: model.Practice, Red1: 4728, Blue3: 254}
+	assert.Nil(t, arena.LoadMatch(match))
+	// Two assigned teams still need a connection or a bypass.
+	err := arena.checkCanStartMatch()
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "not all robots are connected or bypassed")
+		assert.Contains(t, err.Error(), "R1")
+		assert.Contains(t, err.Error(), "B3")
+		assert.NotContains(t, err.Error(), "R2")
+		assert.NotContains(t, err.Error(), "B1")
+	}
+	arena.AllianceStations["R1"].Bypass = true
+	arena.AllianceStations["B3"].Bypass = true
+	assert.NoError(t, arena.checkCanStartMatch())
+}
