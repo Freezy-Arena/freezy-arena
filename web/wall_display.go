@@ -21,6 +21,7 @@ func (web *Web) wallDisplayHandler(w http.ResponseWriter, r *http.Request) {
 			"background":   "#000",
 			"message":      "",
 			"reversed":     "false",
+			"overlayLocation": "bottom",
 			"topSpacingPx": "0",
 			"zoomFactor":   "1",
 		},
@@ -70,5 +71,6 @@ func (web *Web) wallDisplayWebsocketHandler(w http.ResponseWriter, r *http.Reque
 		web.arena.MatchTimeNotifier,
 		web.arena.RealtimeScoreNotifier,
 		web.arena.ReloadDisplaysNotifier,
+		web.arena.ScorePostedNotifier,
 	)
 }

@@ -13,6 +13,7 @@ Display that can be shown on a screen supplemental to one with the audience disp
     <link rel="stylesheet" href="/static/css/lib/bootstrap-icons.min.css">
     <link rel="stylesheet" href="/static/css/cheesy-arena.css"/>
     <link rel="stylesheet" href="/static/css/wall_display.css"/>
+    <link rel="stylesheet" href="/static/css/audience_information.css"/>
   </head>
   <body>
     <div id="overlayCentering">
@@ -103,6 +104,18 @@ Display that can be shown on a screen supplemental to one with the audience disp
       </div>
       <div id="message"></div>
     </div>
+    <!-- These overlays are independent of the scaled wall scoreboard. -->
+    <section id="audienceInformation" aria-label="Wall standings and bracket" style="display: none;">
+      <div id="audienceInformationHeading">
+        <span id="audienceInformationTitle"></span>
+        <span id="audienceInformationEvent">{{.EventSettings.Name}}</span>
+      </div>
+      <div id="audienceInformationContent"></div>
+      <div id="audienceInformationFooter"></div>
+    </section>
+    <div id="wallBracket" aria-label="Playoff bracket" style="display: none;">
+      <img id="wallBracketSvg" alt="Current playoff bracket" src=""/>
+    </div>
     <script src="/static/js/lib/jquery.min.js"></script>
     <script src="/static/js/lib/jquery.json-2.4.min.js"></script>
     <script src="/static/js/lib/jquery.websocket-0.0.1.js"></script>
@@ -111,6 +124,7 @@ Display that can be shown on a screen supplemental to one with the audience disp
     <script src="/static/js/lib/bootstrap.bundle.min.js"></script>
     <script src="/static/js/cheesy-websocket.js"></script>
     <script src="/static/js/match_timing.js"></script>
+    <script src="/static/js/audience_information.js"></script>
     <script src="/static/js/wall_display.js"></script>
   </body>
 </html>

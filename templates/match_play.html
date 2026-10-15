@@ -6,6 +6,7 @@ UI for controlling match play and viewing team connection and field status.
 */}}
 {{define "title"}}Match Play{{end}}
 {{define "body"}}
+
 <div class="row">
   <div class="col-lg-4" id="matchListColumn"></div>
   <div class="col-lg-8">
@@ -93,7 +94,7 @@ UI for controlling match play and viewing team connection and field status.
     </div>
     <div class="card card-body bg-body-tertiary mt-3">
       <div class="row">
-        <div class="col-lg-3">
+        <div class="col-lg-2">
           <h6>Scoring</h6>
           <p><span class="badge badge-scoring" id="refereeScoreStatus">Referee</span><br/>
             <span class="badge badge-scoring" id="redScoreStatus"></span><br/>
@@ -134,48 +135,52 @@ UI for controlling match play and viewing team connection and field status.
           </p>
         {{end}}
         </div>
-        <div class="col-lg-3">
+        <div class="col-lg-4">
           <h6>Audience Display</h6>
           {{template "audience_display_radio_buttons"}}
         </div>
         <div class="col-lg-3">
           <h6>Alliance Station Display</h6>
-          <div>
-            <div>
-              <label>
-                <input type="radio" name="allianceStationDisplay" value="blank"
-                  onclick="setAllianceStationDisplay();"> Blank
-              </label>
+          <div class="audience-modes" role="group" aria-label="Alliance station display mode">
+            <div class="audience-mode-section">
+              <div class="audience-mode-heading">Match</div>
+              <div class="audience-mode-grid">
+                <label class="audience-mode-option">
+                  <input type="radio" name="allianceStationDisplay" value="blank"
+                    onclick="setAllianceStationDisplay();">
+                  <span>Blank</span>
+                </label>
+                <label class="audience-mode-option">
+                  <input type="radio" name="allianceStationDisplay" value="match"
+                    onclick="setAllianceStationDisplay();">
+                  <span>Match</span>
+                </label>
+                <label class="audience-mode-option">
+                  <input type="radio" name="allianceStationDisplay" value="logo"
+                    onclick="setAllianceStationDisplay();">
+                  <span>Logo/Awards</span>
+                </label>
+                <label class="audience-mode-option">
+                  <input type="radio" name="allianceStationDisplay" value="timeout"
+                    onclick="setAllianceStationDisplay();">
+                  <span>Timeout</span>
+                </label>
+              </div>
             </div>
-            <div>
-              <label>
-                <input type="radio" name="allianceStationDisplay" value="match"
-                  onclick="setAllianceStationDisplay();"> Match
-              </label>
-            </div>
-            <div>
-              <label>
-                <input type="radio" name="allianceStationDisplay" value="logo"
-                  onclick="setAllianceStationDisplay();"> Logo/Awards
-              </label>
-            </div>
-            <div>
-              <label>
-                <input type="radio" name="allianceStationDisplay" value="timeout"
-                  onclick="setAllianceStationDisplay();"> Timeout
-              </label>
-            </div>
-            <div>
-              <label>
-                <input type="radio" name="allianceStationDisplay" value="fieldReset"
-                  onclick="setAllianceStationDisplay();" id="fieldResetRadio"> Field Reset
-              </label>
-            </div>
-            <div>
-              <label>
-                <input type="radio" name="allianceStationDisplay" value="signalCount"
-                  onclick="setAllianceStationDisplay();" id="fieldResetRadio"> Signal Count
-              </label>
+            <div class="audience-mode-section">
+              <div class="audience-mode-heading">Field Operations</div>
+              <div class="audience-mode-grid">
+                <label class="audience-mode-option">
+                  <input type="radio" name="allianceStationDisplay" value="signalCount"
+                    onclick="setAllianceStationDisplay();" id="signalCountRadio">
+                  <span>Signal Count</span>
+                </label>
+                <label class="audience-mode-option">
+                  <input type="radio" name="allianceStationDisplay" value="fieldReset"
+                    onclick="setAllianceStationDisplay();" id="fieldResetRadio">
+                  <span>Field Reset</span>
+                </label>
+              </div>
             </div>
           </div>
           <h6 class="mt-4">Shown Match Result</h6>

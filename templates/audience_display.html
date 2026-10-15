@@ -12,10 +12,11 @@ Display shown on the audience screen overlayed over the video.
     <link rel="stylesheet" href="/static/css/lib/bootstrap.min.css"/>
     <link rel="stylesheet" href="/static/css/cheesy-arena.css"/>
     <link rel="stylesheet" href="/static/css/audience_display.css"/>
+    <link rel="stylesheet" href="/static/css/audience_information.css"/>
   </head>
   <body>
     <div id="videoOverlay">
-      <video id="transitionVideo"></video>
+      <video id="transitionVideo" preload="auto" playsinline></video>
     </div>
     <div id="overlayCentering">
       <div id="matchOverlayContainer">
@@ -242,6 +243,14 @@ Display shown on the audience screen overlayed over the video.
       style="display: none;">
       <div id="allianceRankings"></div>
     </div>
+    <section id="audienceInformation" aria-label="Audience standings and bracket" style="display: none;">
+      <div id="audienceInformationHeading">
+        <span id="audienceInformationTitle"></span>
+        <span id="audienceInformationEvent">{{.EventSettings.Name}}</span>
+      </div>
+      <div id="audienceInformationContent"></div>
+      <div id="audienceInformationFooter"></div>
+    </section>
     <div id="lowerThird">
       <img id="lowerThirdLogo" src="/static/img/lower-third-logo.png" alt="logo"/>
       <div id="lowerThirdTop"></div>
@@ -289,6 +298,7 @@ Display shown on the audience screen overlayed over the video.
     <script src="/static/js/lib/bootstrap.bundle.min.js"></script>
     <script src="/static/js/cheesy-websocket.js"></script>
     <script src="/static/js/match_timing.js"></script>
+    <script src="/static/js/audience_information.js"></script>
     <script src="/static/js/audience_display.js"></script>
     <script>
     document.addEventListener("dblclick", () => {

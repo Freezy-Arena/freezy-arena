@@ -25,6 +25,30 @@ func TestMatchPlay(t *testing.T) {
 	recorder := web.getHttpResponse("/match_play")
 	assert.Equal(t, 200, recorder.Code)
 	assert.Contains(t, recorder.Body.String(), "Are you sure you want to discard the results for this match?")
+	assert.NotContains(t, recorder.Body.String(), "Configure Options")
+	assert.NotContains(t, recorder.Body.String(), "audienceDisplayOptionsModal")
+  assert.Contains(t, recorder.Body.String(), "audience-mode-grid")
+  assert.Contains(t, recorder.Body.String(), "Other Displays")
+  assert.NotContains(t, recorder.Body.String(), "audienceOtherModes")
+  assert.NotContains(t, recorder.Body.String(), "<details")
+  assert.Contains(t, recorder.Body.String(), "Field Operations")
+  assert.Contains(t, recorder.Body.String(), "id=\"fieldResetRadio\"")
+  assert.Contains(t, recorder.Body.String(), "id=\"signalCountRadio\"")
+  for _, mode := range []string{
+    "blank", "intro", "match", "score", "rankingsFull", "rankingsBar",
+    "bracket", "bracketBar", "logo", "logoLuma", "sponsor", "allianceSelection", "timeout",
+  } {
+    assert.Contains(t, recorder.Body.String(), "name=\"audienceDisplay\" value=\""+mode+"\"")
+  }
+  for _, mode := range []string{
+    "blank", "match", "logo", "timeout", "fieldReset", "signalCount",
+  } {
+    assert.Contains(t, recorder.Body.String(), "name=\"allianceStationDisplay\" value=\""+mode+"\"")
+  }
+  assert.Contains(t, recorder.Body.String(), "value=\"rankingsBar\"")
+  assert.Contains(t, recorder.Body.String(), "value=\"bracketBar\"")
+  assert.Contains(t, recorder.Body.String(), "id=\"introRadio\"")
+  assert.Contains(t, recorder.Body.String(), "id=\"scoreRadio\"")
 }
 
 func TestMatchPlayMatchList(t *testing.T) {

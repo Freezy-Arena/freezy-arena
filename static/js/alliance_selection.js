@@ -5,10 +5,21 @@
 
 var websocket;
 
+// Keep the highlighted duration preset in sync with the editable timer.
+const syncTimerPreset = function (value) {
+  const seconds = parseInt(value, 10);
+  const presets = $("input[type=radio][name=timeLimitSec]");
+  presets.prop("checked", false);
+  if (!Number.isNaN(seconds) && String(seconds) === String(value)) {
+    presets.filter('[value="' + seconds + '"]').prop("checked", true);
+  }
+};
+
 // Sends a websocket message to set the timer to the given time limit.
 const setTimer = function (timeLimitInput) {
   document.getElementById("timeLimitSecInput").value = timeLimitInput.value;
-  websocket.send("setTimer", parseInt(timeLimitInput.value));
+  syncTimerPreset(timeLimitInput.value);
+  websocket.send("setTimer", parseInt(timeLimitInput.value, 10));
 }
 
 // Sends a websocket message to start and show the timer.
@@ -48,6 +59,7 @@ const setAudienceDisplay = function () {
 };
 
 $(function () {
+  syncTimerPreset($("#timeLimitSecInput").val());
   // Activate playoff tournament datetime picker.
   const startTime = moment(new Date()).hour(13).minute(0).second(0);
   newDateTimePicker("startTimePicker", startTime.toDate());

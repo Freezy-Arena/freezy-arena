@@ -547,14 +547,99 @@ UI for configuring event settings.
           </div>
           <div class="tab-pane" id="automation" role="tabpanel">
             <fieldset class="mb-4">
-              <legend>Audience display</legend>
-              <p>Automatically advance audience display to the next match preview after scores are posted.</p>
-              <div class="row mb-3">
-                <label class="col-lg-8 control-label" for="autoAudienceDisplayEnabled">Enabled automated audience display</label>
-                <div class="col-lg-1 checkbox">
-                  <input type="checkbox" name="autoAudienceDisplayEnabled" {{if .AutoAudienceDisplayEnabled}} checked{{end}}>
+              <legend>Audience Display Automation</legend>
+              <p class="text-body-secondary">Automatically advance the Audience and Wall displays after a score is posted.
+                All durations are in seconds. Changes take effect on the next score posting.</p>
+              <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" id="autoAudienceDisplayEnabled"
+                  name="autoAudienceDisplayEnabled" {{if .AutoAudienceDisplayEnabled}}checked{{end}}>
+                <label class="form-check-label" for="autoAudienceDisplayEnabled">Enable automated display transitions</label>
+              </div>
+              <div class="row mb-3 align-items-center">
+                <label class="col-lg-8 col-form-label" for="autoAudienceScoreSec">Final Score duration</label>
+                <div class="col-lg-4">
+                  <input id="autoAudienceScoreSec" type="number" class="form-control" min="1" max="600" step="1"
+                    name="autoAudienceScoreSec" value="{{.AudienceScoreSeconds}}" required>
                 </div>
               </div>
+              <div class="row mb-3 align-items-center">
+                <label class="col-lg-8 col-form-label" for="autoAudiencePlayoffDelaySec">
+                  Additional playoff score delay (before bracket or next preview)
+                </label>
+                <div class="col-lg-4">
+                  <input id="autoAudiencePlayoffDelaySec" type="number" class="form-control" min="1" max="600" step="1"
+                    name="autoAudiencePlayoffDelaySec" value="{{.AudiencePlayoffDelaySeconds}}" required>
+                </div>
+              </div>
+              <div class="row mb-3 align-items-center">
+                <label class="col-lg-8 col-form-label" for="autoAudienceBracketSec">Playoff Bracket duration</label>
+                <div class="col-lg-4">
+                  <input id="autoAudienceBracketSec" type="number" class="form-control" min="1" max="600" step="1"
+                    name="autoAudienceBracketSec" value="{{.AudienceBracketSeconds}}" required>
+                </div>
+              </div>
+              <div class="row mb-3 align-items-center">
+                <label class="col-lg-8 col-form-label" for="autoAudienceLastMatchSec">
+                  Additional hold after the last scheduled match
+                </label>
+                <div class="col-lg-4">
+                  <input id="autoAudienceLastMatchSec" type="number" class="form-control" min="1" max="600" step="1"
+                    name="autoAudienceLastMatchSec" value="{{.AudienceLastMatchSeconds}}" required>
+                </div>
+              </div>
+              <p class="small text-body-secondary">
+                Qualification: Final Score → Match Intro. Playoffs: Final Score → Bracket → Match Intro
+                (Finals/Overtime skip the bracket). After the last match, the display holds for the additional
+                duration before switching to the logo. Manual display changes cancel the remaining automation.
+              </p>
+            </fieldset>
+            <fieldset class="mb-4">
+              <legend>Audience Rankings Display</legend>
+              <p class="text-body-secondary">Choose up to four statistics displayed alongside team rank and number.
+                These choices apply to both Fullscreen and Minimal rankings on the Audience and Wall displays.</p>
+              <input type="hidden" name="audienceRankingsOptionsPresent" value="1">
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" name="audienceRankingsOption" value="rp"
+                      id="audienceStatRP" {{if .HasAudienceRankingField "rp"}}checked{{end}}>
+                    <label class="form-check-label" for="audienceStatRP">Ranking Points (RP)</label>
+                  </div>
+                  <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" name="audienceRankingsOption" value="nextMatch"
+                      id="audienceStatNext" {{if .HasAudienceRankingField "nextMatch"}}checked{{end}}>
+                    <label class="form-check-label" for="audienceStatNext">Next Match</label>
+                  </div>
+                  <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" name="audienceRankingsOption" value="record"
+                      id="audienceStatRecord" {{if .HasAudienceRankingField "record"}}checked{{end}}>
+                    <label class="form-check-label" for="audienceStatRecord">Win-Loss-Tie Record</label>
+                  </div>
+                  <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" name="audienceRankingsOption" value="played"
+                      id="audienceStatPlayed" {{if .HasAudienceRankingField "played"}}checked{{end}}>
+                    <label class="form-check-label" for="audienceStatPlayed">Matches Played</label>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" name="audienceRankingsOption" value="matchPoints"
+                      id="audienceStatMatchPoints" {{if .HasAudienceRankingField "matchPoints"}}checked{{end}}>
+                    <label class="form-check-label" for="audienceStatMatchPoints">Match Points</label>
+                  </div>
+                  <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" name="audienceRankingsOption" value="autoFuel"
+                      id="audienceStatAutoFuel" {{if .HasAudienceRankingField "autoFuel"}}checked{{end}}>
+                    <label class="form-check-label" for="audienceStatAutoFuel">Auto Fuel Points</label>
+                  </div>
+                  <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" name="audienceRankingsOption" value="tower"
+                      id="audienceStatTower" {{if .HasAudienceRankingField "tower"}}checked{{end}}>
+                    <label class="form-check-label" for="audienceStatTower">Tower Points</label>
+                  </div>
+                </div>
+              </div>
+              <p class="small text-body-secondary">Rank and team number are always visible.</p>
             </fieldset>
             <fieldset class="mb-4">
               <legend>Nexus</legend>

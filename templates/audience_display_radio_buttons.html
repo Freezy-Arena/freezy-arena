@@ -1,64 +1,76 @@
 {{define "audience_display_radio_buttons"}}
-<div class="row">
-  <div>
-    <label>
-      <input type="radio" name="audienceDisplay" value="blank" onclick="setAudienceDisplay();">
-      Blank
-    </label>
+<div class="audience-modes" role="group" aria-label="Audience display mode">
+  <div class="audience-mode-section">
+    <div class="audience-mode-heading">Match</div>
+    <div class="audience-mode-grid">
+      <label class="audience-mode-option">
+        <input type="radio" name="audienceDisplay" value="blank" onclick="setAudienceDisplay();">
+        <span>Blank</span>
+      </label>
+      <label class="audience-mode-option">
+        <input type="radio" name="audienceDisplay" value="intro" onclick="setAudienceDisplay();" id="introRadio">
+        <span>Intro</span>
+      </label>
+      <label class="audience-mode-option">
+        <input type="radio" name="audienceDisplay" value="match" onclick="setAudienceDisplay();">
+        <span>Match Play</span>
+      </label>
+      <label class="audience-mode-option">
+        <input type="radio" name="audienceDisplay" value="score" onclick="setAudienceDisplay();" id="scoreRadio">
+        <span>Final Score</span>
+      </label>
+    </div>
   </div>
-  <div>
-    <label>
-      <input type="radio" name="audienceDisplay" value="intro" onclick="setAudienceDisplay();" id="introRadio">
-      Match Intro
-    </label>
+  <div class="audience-mode-section">
+    <div class="audience-mode-heading">Rankings</div>
+    <div class="audience-mode-grid">
+      <label class="audience-mode-option">
+        <input type="radio" name="audienceDisplay" value="rankingsFull" onclick="setAudienceDisplay();">
+        <span>Fullscreen</span>
+      </label>
+      <label class="audience-mode-option">
+        <input type="radio" name="audienceDisplay" value="rankingsBar" onclick="setAudienceDisplay();">
+        <span>Minimal</span>
+      </label>
+    </div>
   </div>
-  <div>
-    <label>
-      <input type="radio" name="audienceDisplay" value="match" onclick="setAudienceDisplay();">
-      Match Play
-    </label>
+  <div class="audience-mode-section">
+    <div class="audience-mode-heading">Playoff Bracket</div>
+    <div class="audience-mode-grid">
+      <label class="audience-mode-option">
+        <input type="radio" name="audienceDisplay" value="bracket" onclick="setAudienceDisplay();">
+        <span>Fullscreen</span>
+      </label>
+      <label class="audience-mode-option">
+        <input type="radio" name="audienceDisplay" value="bracketBar" onclick="setAudienceDisplay();">
+        <span>Minimal</span>
+      </label>
+    </div>
   </div>
-  <div>
-    <label>
-      <input type="radio" name="audienceDisplay" value="score" onclick="setAudienceDisplay();" id="scoreRadio">
-      Final Score
-    </label>
-  </div>
-  <div>
-    <label>
-      <input type="radio" name="audienceDisplay" value="bracket" onclick="setAudienceDisplay();">
-      Bracket
-    </label>
-  </div>
-  <div>
-    <label>
-      <input type="radio" name="audienceDisplay" value="logo" onclick="setAudienceDisplay();">
-      Logo With BG
-    </label>
-  </div>
-  <div>
-    <label>
-      <input type="radio" name="audienceDisplay" value="logoLuma" onclick="setAudienceDisplay();">
-      Logo Without BG
-    </label>
-  </div>
-  <div>
-    <label>
-      <input type="radio" name="audienceDisplay" value="sponsor" onclick="setAudienceDisplay();">
-      Sponsor Reel
-    </label>
-  </div>
-  <div>
-    <label>
-      <input type="radio" name="audienceDisplay" value="allianceSelection" onclick="setAudienceDisplay();">
-      Alliance Selection
-    </label>
-  </div>
-  <div>
-    <label>
-      <input type="radio" name="audienceDisplay" value="timeout" onclick="setAudienceDisplay();">
-      Timeout
-    </label>
+  <div class="audience-mode-section">
+    <div class="audience-mode-heading">Other Displays</div>
+    <div class="audience-mode-grid">
+      <label class="audience-mode-option">
+        <input type="radio" name="audienceDisplay" value="logo" onclick="setAudienceDisplay();">
+        <span>Logo + BG</span>
+      </label>
+      <label class="audience-mode-option">
+        <input type="radio" name="audienceDisplay" value="logoLuma" onclick="setAudienceDisplay();">
+        <span>Logo Only</span>
+      </label>
+      <label class="audience-mode-option">
+        <input type="radio" name="audienceDisplay" value="sponsor" onclick="setAudienceDisplay();">
+        <span>Sponsor Reel</span>
+      </label>
+      <label class="audience-mode-option">
+        <input type="radio" name="audienceDisplay" value="allianceSelection" onclick="setAudienceDisplay();">
+        <span>Alliance Select</span>
+      </label>
+      <label class="audience-mode-option">
+        <input type="radio" name="audienceDisplay" value="timeout" onclick="setAudienceDisplay();">
+        <span>Timeout</span>
+      </label>
+    </div>
   </div>
 </div>
 {{end}}

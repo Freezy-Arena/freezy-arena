@@ -1583,22 +1583,41 @@ func (arena *Arena) runPeriodicTasks() {
 
 // Handles audience display automation from after score post to next match intro.
 func (arena *Arena) AutomateAudienceDisplay(postedMatch *model.Match) {
-	// Show the score for 20 seconds before moving on.
-	time.Sleep(20 * time.Second)
-	if arena.AudienceDisplayMode != "score" {
+	arena.automateAudienceDisplay(postedMatch, time.Sleep)
+}
+
+// Inject the delay function so all transitions can be tested without waiting.
+// Read timing preferences once per sequence: editing Settings affects the next
+// posted score, not an already running automation.
+func (arena *Arena) automateAudienceDisplay(postedMatch *model.Match, sleep func(time.Duration)) {
+	if postedMatch == nil || arena.EventSettings == nil {
 		return
 	}
+	scoreDwell := time.Duration(arena.EventSettings.AudienceScoreSeconds()) * time.Second
+	playoffDelay := time.Duration(arena.EventSettings.AudiencePlayoffDelaySeconds()) * time.Second
+	bracketDwell := time.Duration(arena.EventSettings.AudienceBracketSeconds()) * time.Second
+	lastMatchDwell := time.Duration(arena.EventSettings.AudienceLastMatchSeconds()) * time.Second
+	expectedMode := "score"
 
-	if arena.CurrentMatch.Type == model.Playoff {
-		time.Sleep(10 * time.Second)
-		isFinals := strings.Contains(postedMatch.LongName, "Final") || strings.Contains(
-			postedMatch.LongName,
-			"Overtime",
-		)
+	sleep(scoreDwell)
+	if arena.AudienceDisplayMode != expectedMode {
+		return // Operator took over the display.
+	}
+
+	// Use the completed match, not the newly loaded next match, to decide
+	// whether to show a playoff bracket.
+	if postedMatch.Type == model.Playoff {
+		sleep(playoffDelay)
+		if arena.AudienceDisplayMode != expectedMode {
+			return
+		}
+		isFinals := strings.Contains(postedMatch.LongName, "Final") ||
+			strings.Contains(postedMatch.LongName, "Overtime")
 		if !isFinals {
 			arena.SetAudienceDisplayMode("bracket")
-			time.Sleep(20 * time.Second)
-			if arena.AudienceDisplayMode != "bracket" {
+			expectedMode = "bracket"
+			sleep(bracketDwell)
+			if arena.AudienceDisplayMode != expectedMode {
 				return
 			}
 		}
@@ -1610,13 +1629,12 @@ func (arena *Arena) AutomateAudienceDisplay(postedMatch *model.Match) {
 		return
 	}
 
-	if arena.CurrentMatch.Type == model.Test {
-		// No next match loaded, show the score for longer and then go into awards mode.
-		time.Sleep(40 * time.Second)
-		if arena.AudienceDisplayMode != "score" {
+	// Loading the test match means there is no next scheduled match.
+	if arena.CurrentMatch != nil && arena.CurrentMatch.Type == model.Test {
+		sleep(lastMatchDwell)
+		if arena.AudienceDisplayMode != expectedMode {
 			return
 		}
-
 		arena.SetAudienceDisplayMode("logoLuma")
 		arena.SetAllianceStationDisplayMode("logo")
 		return

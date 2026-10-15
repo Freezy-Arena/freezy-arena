@@ -311,6 +311,35 @@
 
     .bracket_2 #match_F  {transform: translate(857px, 435px);}
 
+    {{if .DarkTheme}}
+    /* Audience-only charcoal presentation. Default SVG stays print-friendly. */
+    #background rect {fill:#212529;stroke:#6c757d;}
+    .separator {stroke:#adb5bd;}
+    .bracket_name {fill:#dee2e6;}
+    #connectors line,
+    #connectors polyline,
+    #connectors_doubleelim line,
+    #connectors_doubleelim polyline {stroke:#868e96;}
+    #connectors line.loser,
+    #connectors polyline.loser {stroke:#6c757d;}
+    #connectors text,
+    #labels text {fill:#dee2e6;}
+    #connectors text.loser {fill:#adb5bd;}
+    .matchblock .structure {stroke:#adb5bd;}
+    .matchblock.complete #background {fill:#343a40;}
+    .matchblock.active #background {fill:#454b52;}
+    .matchblock #match_title {fill:#f8f9fa;}
+    .matchblock .teamnum {fill:#f8f9fa;}
+    .matchblock .placeholder {fill:#adb5bd;}
+    .matchblock #series_status {fill:#ced4da;}
+    .matchblock.complete.red-win .teamnum.b,
+    .matchblock.complete.blue-win .teamnum.r {fill:#adb5bd;}
+    .matchblock.complete.red-win.active .teamnum.b,
+    .matchblock.complete.blue-win.active .teamnum.r {fill:#ced4da;}
+    .red {fill:#c9676e;}
+    .blue {fill:#6d9dcb;}
+    {{end}}
+
   </style>
   <g id="bracket" class="bracket_{{.BracketType}}">
     <g id="background">

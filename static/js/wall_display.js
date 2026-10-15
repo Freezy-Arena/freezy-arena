@@ -43,7 +43,11 @@ const handleAudienceDisplayMode = function (targetScreen) {
     targetScreen !== "intro" &&
     targetScreen !== "match" &&
     targetScreen !== "timeout" &&
-    targetScreen !== "logo"
+    targetScreen !== "logo" &&
+    targetScreen !== "rankingsFull" &&
+    targetScreen !== "rankingsBar" &&
+    targetScreen !== "bracket" &&
+    targetScreen !== "bracketBar"
   ) {
     targetScreen = "blank";
   }
@@ -258,6 +262,33 @@ const transitionTimeoutToIntro = function (callback) {
   });
 };
 
+// Refresh the same audience-themed bracket graphic used by the primary display.
+const refreshWallBracket = function (activeMatch) {
+  $("#wallBracketSvg").attr(
+    "src", "/api/bracket/svg?activeMatch=" + activeMatch + "&theme=dark&v=" + Date.now()
+  );
+};
+
+const transitionBlankToBracket = function (callback) {
+  hideMessage(function () {
+    refreshWallBracket("current");
+    $("#wallBracket").css({display: "flex", opacity: 0})
+      .animate({opacity: 1}, 400, callback);
+  });
+};
+
+const transitionBracketToBlank = function (callback) {
+  $("#wallBracket").stop(true, false).fadeOut(400, function () {
+    showMessage(callback);
+  });
+};
+
+const handleWallScorePosted = function () {
+  if (currentScreen === "bracket") {
+    refreshWallBracket("saved");
+  }
+};
+
 const showMessage = function (callback) {
   if (!hasMessage) {
     if (callback) {
@@ -288,6 +319,9 @@ $(function () {
   // Read the configuration for this display from the URL query string.
   const urlParams = new URLSearchParams(window.location.search);
   document.body.style.backgroundColor = urlParams.get("background");
+  // The wall uses the same top/bottom choice as audience Minimal overlays.
+  const overlayLocation = urlParams.get("overlayLocation") === "top" ? "top" : "bottom";
+  $("#audienceInformation").attr("data-overlay-location", overlayLocation);
   const sides = DisplayShared.applyDisplaySides(urlParams);
   redSide = sides.redSide;
   blueSide = sides.blueSide;
@@ -326,6 +360,9 @@ $(function () {
     realtimeScore: function (event) {
       handleRealtimeScore(event.data);
     },
+    scorePosted: function () {
+      handleWallScorePosted();
+    },
   });
 
   // Map how to transition from one screen to another. Missing links between screens indicate that first we
@@ -336,6 +373,10 @@ $(function () {
       logo: transitionBlankToLogo,
       match: transitionBlankToMatch,
       timeout: transitionBlankToTimeout,
+      bracket: transitionBlankToBracket,
+    },
+    bracket: {
+      blank: transitionBracketToBlank,
     },
     intro: {
       blank: transitionIntroToBlank,
@@ -353,5 +394,14 @@ $(function () {
       blank: transitionTimeoutToBlank,
       intro: transitionTimeoutToIntro,
     },
-  }
+  };
+
+  // The renderer is shared with the audience display, so configured ranking
+  // stats, live refreshes, and horizontal/vertical scrolling stay in sync.
+  ["rankingsFull", "rankingsBar", "bracketBar"].forEach(function (mode) {
+    transitionMap.blank[mode] = function (callback) {
+      showAudienceInformation(mode, callback);
+    };
+    transitionMap[mode] = {blank: hideAudienceInformation};
+  });
 });

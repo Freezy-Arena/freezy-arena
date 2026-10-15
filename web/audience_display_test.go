@@ -28,6 +28,8 @@ func TestAudienceDisplay(t *testing.T) {
 	assert.Equal(t, 200, recorder.Code)
 	assert.Contains(t, recorder.Body.String(), "Audience Display - Untitled Event - Cheesy Arena")
 	assert.Contains(t, recorder.Body.String(), "finalTiebreakReason")
+	assert.Contains(t, recorder.Body.String(), "audienceInformation")
+	assert.Contains(t, recorder.Body.String(), "audience_information.js")
 }
 
 func TestAudienceDisplayWebsocket(t *testing.T) {

@@ -115,6 +115,80 @@ func TestRankingsApi(t *testing.T) {
 	assert.Equal(t, "Q29", rankingsData.HighestPlayedMatch)
 }
 
+// Audience rankings options are shared, persisted, validated, and include
+// the next scheduled (not already completed) match for every ranked team.
+func TestAudienceRankingsDisplayOptions(t *testing.T) {
+	web := setupTestWeb(t)
+	assert.Nil(t, web.arena.Database.CreateRanking(game.TestRanking1()))
+	assert.Nil(t, web.arena.Database.CreateRanking(game.TestRanking2()))
+
+	// Completed matches do not appear as upcoming matches.
+	assert.Nil(t, web.arena.Database.CreateMatch(&model.Match{
+		Type: model.Qualification, TypeOrder: 1, ShortName: "Q1",
+		Red1: 254, Blue1: 1114, Status: game.RedWonMatch,
+	}))
+	assert.Nil(t, web.arena.Database.CreateMatch(&model.Match{
+		Type: model.Qualification, TypeOrder: 2, ShortName: "Q2",
+		Red1: 254, Red2: 0, Blue1: 0,
+	}))
+	assert.Nil(t, web.arena.Database.CreateMatch(&model.Match{
+		Type: model.Qualification, TypeOrder: 3, ShortName: "Q3",
+		Red1: 254, Blue1: 1114,
+	}))
+	assert.Nil(t, web.arena.Database.CreateMatch(&model.Match{
+		Type: model.Playoff, TypeOrder: 1, ShortName: "SF1-1",
+		Red1: 1114,
+	}))
+
+	decode := func() map[string]any {
+		recorder := web.getHttpResponse("/api/rankings")
+		assert.Equal(t, 200, recorder.Code)
+		var payload map[string]any
+		assert.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &payload))
+		return payload
+	}
+	initial := decode()
+	assert.Equal(t, []any{"rp"}, initial["DisplayFields"])
+	next := initial["NextMatches"].(map[string]any)
+	assert.Equal(t, "Q2", next["254"])
+	assert.Equal(t, "Q3", next["1114"])
+
+	recorder := web.postHttpResponse("/setup/settings",
+		"activeSettingsTab=automation&audienceRankingsOptionsPresent=1&"+
+			"audienceRankingsOption=rp&audienceRankingsOption=nextMatch&audienceRankingsOption=record"+
+			"&autoDurationSec=20&pauseDurationSec=3&transitionShiftDurationSec=10&shiftDurationSec=25&endgameDurationSec=30&energizedBonusThreshold=100&superchargedBonusThreshold=360&traversalBonusThreshold=50")
+	assert.Equal(t, 303, recorder.Code)
+	assert.Equal(t, "rp,nextMatch,record", web.arena.EventSettings.AudienceRankingsFields)
+	stored, err := web.arena.Database.GetEventSettings()
+	assert.NoError(t, err)
+	assert.Equal(t, "rp,nextMatch,record", stored.AudienceRankingsFields)
+	assert.Equal(t, []any{"rp", "nextMatch", "record"}, decode()["DisplayFields"])
+
+	for _, invalid := range []string{
+		"audienceRankingsOption=unknown",
+		"audienceRankingsOption=rp&audienceRankingsOption=rp",
+		"audienceRankingsOption=rp&audienceRankingsOption=nextMatch&"+
+			"audienceRankingsOption=record&audienceRankingsOption=played&audienceRankingsOption=autoFuel",
+	} {
+		bad := web.postHttpResponse(
+			"/setup/settings", "activeSettingsTab=automation&audienceRankingsOptionsPresent=1&"+invalid,
+		)
+		assert.Equal(t, 200, bad.Code)
+		assert.Contains(t, bad.Body.String(), "statistic")
+		assert.Equal(t, "rp,nextMatch,record", web.arena.EventSettings.AudienceRankingsFields)
+	}
+
+	// No selection still shows the team and rank; a presence flag differentiates
+	// zero checked boxes from an older POST that omitted the field.
+	recorder = web.postHttpResponse("/setup/settings",
+		"activeSettingsTab=automation&audienceRankingsOptionsPresent=1"+ "&autoDurationSec=20&pauseDurationSec=3&transitionShiftDurationSec=10&shiftDurationSec=25&endgameDurationSec=30&energizedBonusThreshold=100&superchargedBonusThreshold=360&traversalBonusThreshold=50")
+	assert.Equal(t, 303, recorder.Code)
+	assert.Equal(t, []any{}, decode()["DisplayFields"])
+	stored, err = web.arena.Database.GetEventSettings()
+	assert.NoError(t, err)
+	assert.Equal(t, "-", stored.AudienceRankingsFields)
+}
+
 func TestSponsorSlidesApi(t *testing.T) {
 	web := setupTestWeb(t)
 
@@ -188,6 +262,25 @@ func TestBracketSvgApiDoubleElimination(t *testing.T) {
 	assert.Equal(t, 200, recorder.Code)
 	assert.Equal(t, "image/svg+xml", recorder.Header()["Content-Type"][0])
 	assert.Contains(t, recorder.Body.String(), "Best-of-3")
+}
+
+// Audience-only dark bracket styling must not alter standalone or printable SVG output.
+func TestBracketSvgApiDarkTheme(t *testing.T) {
+	web := setupTestWeb(t)
+	web.arena.EventSettings.PlayoffType = model.DoubleEliminationPlayoff
+	tournament.CreateTestAlliances(web.arena.Database, 8)
+	web.arena.CreatePlayoffTournament()
+
+	dark := web.getHttpResponse("/api/bracket/svg?theme=dark")
+	assert.Equal(t, 200, dark.Code)
+	assert.Contains(t, dark.Body.String(), "Audience-only charcoal presentation")
+	assert.Contains(t, dark.Body.String(), "#background rect {fill:#212529;stroke:#6c757d;}")
+	assert.Contains(t, dark.Body.String(), ".red {fill:#c9676e;}")
+	assert.Contains(t, dark.Body.String(), ".blue {fill:#6d9dcb;}")
+
+	light := web.getHttpResponse("/api/bracket/svg")
+	assert.Equal(t, 200, light.Code)
+	assert.NotContains(t, light.Body.String(), "Audience-only charcoal presentation")
 }
 
 func TestBracketSvgApiFourAllianceDoubleElimination(t *testing.T) {

@@ -30,6 +30,12 @@ func TestSetupSettings(t *testing.T) {
 	assert.Contains(t, recorder.Body.String(), "endgameDurationSec")
 	assert.Contains(t, recorder.Body.String(), "placeholder=\"10.0.100.60\"")
 	assert.NotContains(t, recorder.Body.String(), "tbaPublishingEnabled\"  checked")
+	assert.Contains(t, recorder.Body.String(), "autoAudienceScoreSec")
+	assert.Contains(t, recorder.Body.String(), "autoAudiencePlayoffDelaySec")
+	assert.Contains(t, recorder.Body.String(), "autoAudienceBracketSec")
+	assert.Contains(t, recorder.Body.String(), "autoAudienceLastMatchSec")
+	assert.Contains(t, recorder.Body.String(), "audienceRankingsOption")
+	assert.Contains(t, recorder.Body.String(), "Audience Rankings Display")
 
 	// Change the settings and check the response.
 	recorder = web.postHttpResponse(
@@ -331,4 +337,50 @@ func (web *Web) postFileHttpResponse(path string, paramName string, file *bytes.
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 	web.newHandler().ServeHTTP(recorder, req)
 	return recorder
+}
+
+func TestSetupSettingsAudienceOptions(t *testing.T) {
+	web := setupTestWeb(t)
+
+	recorder := web.postHttpResponse("/setup/settings",
+		"activeSettingsTab=automation&autoAudienceDisplayEnabled=on&"+
+			"autoAudienceScoreSec=25&autoAudiencePlayoffDelaySec=8&"+
+			"autoAudienceBracketSec=35&autoAudienceLastMatchSec=60&"+
+			"audienceRankingsOptionsPresent=1&"+
+			"audienceRankingsOption=rp&audienceRankingsOption=nextMatch"+
+			"&autoDurationSec=20&pauseDurationSec=3&transitionShiftDurationSec=10&shiftDurationSec=25&endgameDurationSec=30&energizedBonusThreshold=100&superchargedBonusThreshold=360&traversalBonusThreshold=50")
+	assert.Equal(t, 303, recorder.Code)
+	assert.Equal(t, "/setup/settings#automation", recorder.Header().Get("Location"))
+	settings := web.arena.EventSettings
+	assert.True(t, settings.AutoAudienceDisplayEnabled)
+	assert.Equal(t, 25, settings.AudienceScoreSeconds())
+	assert.Equal(t, 8, settings.AudiencePlayoffDelaySeconds())
+	assert.Equal(t, 35, settings.AudienceBracketSeconds())
+	assert.Equal(t, 60, settings.AudienceLastMatchSeconds())
+	assert.Equal(t, "rp,nextMatch", settings.AudienceRankingsFields)
+
+	stored, err := web.arena.Database.GetEventSettings()
+	assert.NoError(t, err)
+	assert.Equal(t, 25, stored.AutoAudienceScoreSec)
+	assert.Equal(t, 35, stored.AutoAudienceBracketSec)
+	assert.Equal(t, "rp,nextMatch", stored.AudienceRankingsFields)
+
+	page := web.getHttpResponse("/setup/settings")
+	assert.Equal(t, 200, page.Code)
+	assert.Contains(t, page.Body.String(), "value=\"25\"")
+	assert.Contains(t, page.Body.String(), "value=\"35\"")
+	assert.Contains(t, page.Body.String(), "audienceStatNext")
+}
+
+func TestSetupSettingsAudienceTimerValidation(t *testing.T) {
+	for _, bad := range []string{"0", "-1", "601", "bad", "1.5"} {
+		web := setupTestWeb(t)
+		recorder := web.postHttpResponse("/setup/settings",
+			"activeSettingsTab=automation&autoAudienceScoreSec="+bad+
+				"&audienceRankingsOptionsPresent=1&audienceRankingsOption=nextMatch")
+		assert.Equal(t, 200, recorder.Code)
+		assert.Contains(t, recorder.Body.String(), "between 1 and 600 seconds")
+		assert.Equal(t, 20, web.arena.EventSettings.AudienceScoreSeconds())
+		assert.Equal(t, "", web.arena.EventSettings.AudienceRankingsFields)
+	}
 }

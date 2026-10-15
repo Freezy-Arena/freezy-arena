@@ -53,6 +53,11 @@ type EventSettings struct {
 	TbaSecretId                      string
 	TbaSecret                        string
 	AutoAudienceDisplayEnabled       bool
+	AutoAudienceScoreSec            int
+	AutoAudiencePlayoffDelaySec     int
+	AutoAudienceBracketSec          int
+	AutoAudienceLastMatchSec        int
+	AudienceRankingsFields           string
 	NexusEnabled                     bool
 	NexusAutoQueueEnabled            bool
 	NexusAutoQueueKey                string
@@ -144,6 +149,10 @@ func (database *Database) GetEventSettings() (*EventSettings, error) {
 		PlayoffType:                DoubleEliminationPlayoff,
 		NumPlayoffAlliances:        8,
 		SelectionRound2Order:       "L",
+		AutoAudienceScoreSec:       20,
+		AutoAudiencePlayoffDelaySec: 10,
+		AutoAudienceBracketSec:     20,
+		AutoAudienceLastMatchSec:   40,
 		SelectionRound3Order:       "",
 		SelectionShowUnpickedTeams: true,
 		TbaDownloadEnabled:         true,
@@ -171,4 +180,49 @@ func (database *Database) GetEventSettings() (*EventSettings, error) {
 
 func (database *Database) UpdateEventSettings(eventSettings *EventSettings) error {
 	return database.eventSettingsTable.update(eventSettings)
+}
+
+// RankingsDisplayFields is the event-wide selection for both audience rankings modes.
+// An empty string indicates an event created before this feature (RP by default).
+// A dash represents an explicit choice to show only rank and team information.
+func (settings *EventSettings) RankingsDisplayFields() []string {
+	if settings.AudienceRankingsFields == "" {
+		return []string{"rp"}
+	}
+	if settings.AudienceRankingsFields == "-" {
+		return []string{}
+	}
+	return strings.Split(settings.AudienceRankingsFields, ",")
+}
+
+// AutomationDurationSec keeps pre-existing event databases compatible: prior
+// records do not have the new timing fields, so their zero values use the
+// historical timeouts instead of advancing instantly.
+func automationDurationSec(configured, fallback int) int {
+	if configured <= 0 {
+		return fallback
+	}
+	return configured
+}
+
+func (settings *EventSettings) AudienceScoreSeconds() int {
+	return automationDurationSec(settings.AutoAudienceScoreSec, 20)
+}
+func (settings *EventSettings) AudiencePlayoffDelaySeconds() int {
+	return automationDurationSec(settings.AutoAudiencePlayoffDelaySec, 10)
+}
+func (settings *EventSettings) AudienceBracketSeconds() int {
+	return automationDurationSec(settings.AutoAudienceBracketSec, 20)
+}
+func (settings *EventSettings) AudienceLastMatchSeconds() int {
+	return automationDurationSec(settings.AutoAudienceLastMatchSec, 40)
+}
+
+func (settings *EventSettings) HasAudienceRankingField(field string) bool {
+	for _, selected := range settings.RankingsDisplayFields() {
+		if selected == field {
+			return true
+		}
+	}
+	return false
 }

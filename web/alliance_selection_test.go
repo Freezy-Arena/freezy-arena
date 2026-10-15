@@ -39,6 +39,25 @@ func TestAllianceSelection(t *testing.T) {
 	recorder = web.getHttpResponse("/alliance_selection")
 	assert.Contains(t, recorder.Body.String(), "Captain")
 	assert.Contains(t, recorder.Body.String(), ">110<")
+	// The Audience Display and timer controls share the compact Match Play tile style.
+	page := recorder.Body.String()
+	assert.Contains(t, page, "/static/css/display_mode_controls.css")
+	assert.Contains(t, page, "alliance-selection-action-grid")
+	assert.Contains(t, page, "audience-mode-grid")
+	assert.Contains(t, page, "alliance-timer-presets")
+	assert.Contains(t, page, "alliance-timer-actions")
+	for _, mode := range []string{"blank", "intro", "match", "score", "rankingsFull", "rankingsBar",
+		"bracket", "bracketBar", "logo", "logoLuma", "sponsor", "allianceSelection", "timeout"} {
+		assert.Contains(t, page, "name=\"audienceDisplay\" value=\""+mode+"\"")
+	}
+	for _, seconds := range []string{"45", "90", "120"} {
+		assert.Contains(t, page, "name=\"timeLimitSec\" value=\""+seconds+"\"")
+	}
+	assert.Contains(t, page, "id=\"timeLimitSecInput\"")
+	assert.Contains(t, page, "onclick=\"startTimer();\"")
+	assert.Contains(t, page, "onclick=\"stopTimer();\"")
+	assert.Contains(t, page, "onclick=\"restartTimer();\"")
+	assert.Contains(t, page, "onclick=\"hideTimer();\"")
 
 	// Reset the alliance selection.
 	recorder = web.postHttpResponse("/alliance_selection/reset", "")

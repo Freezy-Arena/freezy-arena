@@ -40,7 +40,11 @@ const scoreMid = "185px";
 const scoreOut = "400px";
 const scoreFieldsOut = "180px";
 const scoreLogoTop = "-530px";
-const bracketLogoTop = "-780px";
+// Center the bracket logo near the top regardless of viewport height.
+// At 1080px high this retains the previous -780px position.
+const bracketLogoTop = function () {
+  return (300 - window.innerHeight) + "px";
+};
 const bracketLogoScale = 0.75;
 const timeoutDetailsIn = $("#timeoutDetails").css("width");
 const timeoutDetailsOut = "570px";
@@ -224,7 +228,7 @@ const handleScorePosted = function (data) {
   $("#finalMatchName").html(matchName);
 
   // Reload the bracket to reflect any changes.
-  $("#bracketSvg").attr("src", "/api/bracket/svg?activeMatch=saved&v=" + new Date().getTime());
+  $("#bracketSvg").attr("src", "/api/bracket/svg?activeMatch=saved&theme=dark&v=" + new Date().getTime());
 
   if (data.Match.Type === matchTypePlayoff) {
     // Hide bonus ranking points and show playoff-only fields.
@@ -325,6 +329,7 @@ const transitionBlankToAllianceSelection = function (callback) {
 };
 
 const transitionBlankToBracket = function (callback) {
+  $("#bracketSvg").attr("src", "/api/bracket/svg?activeMatch=current&theme=dark&v=" + Date.now());
   transitionBlankToLogo(function () {
     setTimeout(function () {
       transitionLogoToBracket(callback);
@@ -508,7 +513,7 @@ const transitionLogoToBlank = function (callback) {
 };
 
 const transitionLogoToBracket = function (callback) {
-  $(".blindsCenter.full").transition({queue: false, top: bracketLogoTop, scale: bracketLogoScale}, 625, "ease");
+  $(".blindsCenter.full").transition({queue: false, top: bracketLogoTop(), scale: bracketLogoScale}, 625, "ease");
   $("#bracket").show();
   $("#bracket").transition({queue: false, opacity: 1}, 1000, "ease", callback);
 };
@@ -610,7 +615,7 @@ const transitionScoreToBlank = function (callback) {
 };
 
 const transitionScoreToBracket = function (callback) {
-  $(".blindsCenter.full").transition({queue: false, top: bracketLogoTop, scale: bracketLogoScale}, 1000, "ease");
+  $(".blindsCenter.full").transition({queue: false, top: bracketLogoTop(), scale: bracketLogoScale}, 1000, "ease");
   $("#finalScore").transition({queue: false, opacity: 0}, 1000, "ease", function () {
     $("#finalScore").hide();
     $("#bracket").show();
@@ -715,45 +720,128 @@ const initializeSponsorDisplay = function () {
   });
 };
 
+// Play the winner animation without leaving the display stuck behind a black
+// video overlay when autoplay is blocked or media loading fails.
 const playVictoryVideo = function (callback) {
   const videoOverlay = $("#videoOverlay");
   const video = $("#transitionVideo")[0];
+  const videoFiles = {
+    red: "RedWins.mp4",
+    blue: "BlueWins.mp4",
+    tie: "Tie.mp4",
+  };
+  const videoFile = videoFiles[winner];
 
-  // Dynamic selection based on winner (for production):
-  let videoFile = "";
-  if (winner === "red") {
-    videoFile = "RedWins.mp4";
-  } else if (winner === "blue") {
-    videoFile = "BlueWins.mp4";
-  } else if (winner === "tie") {
-    videoFile = "Tie.mp4"; // Assume a tie video exists; otherwise, skip with immediate callback().
-    // if (!videoFile) { callback(); return; }
-  }
-  if (!videoFile) {
-    if (callback) callback(); // Skip video if no file.
+  if (!video || !videoFile) {
+    if (callback) callback();
     return;
   }
-  video.src = "/static/video/" + videoFile;
-  
 
-  videoOverlay.show();
-  video.play();
+  let finished = false;
+  let watchdog = null;
+  let lastProgress = 0;
 
-  video.onended = function () {
-    setTimeout(function () {
+  const clearWatchdog = function () {
+    if (watchdog !== null) clearTimeout(watchdog);
+    watchdog = null;
+  };
+
+  const finish = function (error, waitForLastFrame) {
+    if (finished) return;
+    finished = true;
+    clearWatchdog();
+    video.removeEventListener("ended", onEnded);
+    video.removeEventListener("error", onError);
+    video.removeEventListener("playing", onPlaying);
+    video.removeEventListener("timeupdate", onTimeUpdate);
+
+    if (error) console.error("Winner video could not complete:", error);
+
+    const cleanup = function () {
+      video.pause();
       videoOverlay.hide();
-      video.src = ""; // Reset source to avoid memory issues
-      video.onended = null; // Clean up event listener
+      video.removeAttribute("src");
+      video.load();
+      video.muted = false;
       if (callback) callback();
-    }, 500); // 2-second delay to show the last frame
+    };
+
+    // Let the last frame remain briefly on successful playback.
+    if (waitForLastFrame) {
+      setTimeout(cleanup, 500);
+    } else {
+      cleanup();
+    }
   };
 
-  // Handle errors (e.g., video not found)
-  video.onerror = function () {
-    console.error("Error loading video:", video.src);
-    videoOverlay.hide();
-    if (callback) callback(); // Proceed anyway
+  const armWatchdog = function (seconds, message) {
+    clearWatchdog();
+    watchdog = setTimeout(function () {
+      finish(new Error(message), false);
+    }, seconds * 1000);
   };
+
+  function onEnded() {
+    finish(null, true);
+  }
+
+  function onError() {
+    finish(video.error || new Error("Media loading error"), false);
+  }
+
+  function onPlaying() {
+    // Playback has begun. A fresh watchdog is armed whenever time advances.
+    lastProgress = video.currentTime;
+    armWatchdog(15, "Winner video stopped making progress");
+  }
+
+  function onTimeUpdate() {
+    if (video.currentTime > lastProgress + 0.05) {
+      lastProgress = video.currentTime;
+      armWatchdog(15, "Winner video stopped making progress");
+    }
+  }
+
+  const attemptPlay = function () {
+    if (finished) return;
+    let request;
+    try {
+      request = video.play();
+    } catch (error) {
+      handlePlayFailure(error);
+      return;
+    }
+    if (request && typeof request.catch === "function") {
+      request.catch(handlePlayFailure);
+    }
+  };
+
+  const handlePlayFailure = function (error) {
+    if (finished) return;
+    if (error && error.name === "NotAllowedError" && !video.muted) {
+      // Browser autoplay policies may reject sound without user interaction.
+      // Continue the animation muted rather than trapping the score behind black.
+      console.warn("Winner video autoplay with sound blocked; retrying muted.", error);
+      video.muted = true;
+      attemptPlay();
+      return;
+    }
+    finish(error || new Error("Video playback was rejected"), false);
+  };
+
+  video.pause();
+  video.muted = false;
+  video.addEventListener("ended", onEnded);
+  video.addEventListener("error", onError);
+  video.addEventListener("playing", onPlaying);
+  video.addEventListener("timeupdate", onTimeUpdate);
+  video.src = "/static/video/" + videoFile;
+  videoOverlay.show();
+
+  // A pending play() promise or a stalled download might never report an error.
+  armWatchdog(12, "Winner video did not start");
+  video.load();
+  attemptPlay();
 };
 
 const getAvatarUrl = function (teamId) {
@@ -796,10 +884,14 @@ $(function () {
   // Read the configuration for this display from the URL query string.
   const urlParams = new URLSearchParams(window.location.search);
   document.body.style.backgroundColor = urlParams.get("background");
+  // Use the same audience-display placement preference for both information bars.
+  // Unset/invalid values retain the existing bottom-positioned default.
+  const overlayLocation = urlParams.get("overlayLocation") === "top" ? "top" : "bottom";
+  $("#audienceInformation").attr("data-overlay-location", overlayLocation);
   const sides = DisplayShared.applyDisplaySides(urlParams);
   redSide = sides.redSide;
   blueSide = sides.blueSide;
-  if (urlParams.get("overlayLocation") === "top") {
+  if (overlayLocation === "top") {
     overlayCenteringHideParams = overlayCenteringTopHideParams;
     overlayCenteringShowParams = overlayCenteringTopShowParams;
     $("#overlayCentering").css("top", overlayCenteringTopUp);
@@ -807,6 +899,13 @@ $(function () {
     overlayCenteringHideParams = overlayCenteringBottomHideParams;
     overlayCenteringShowParams = overlayCenteringBottomShowParams;
   }
+
+  // Reposition the logo if an operator changes the output resolution.
+  $(window).on("resize.audienceBracket", function () {
+    if (currentScreen === "bracket") {
+      $(".blindsCenter.full").css("top", bracketLogoTop());
+    }
+  });
 
   // Set up the websocket back to the server.
   websocket = new CheesyWebsocket("/displays/audience/websocket", {
@@ -902,5 +1001,13 @@ $(function () {
       blank: transitionTimeoutToBlank,
       intro: transitionTimeoutToIntro,
     },
-  }
+  };
+
+  // Return to blank before switching between match displays and informational overlays.
+  ["rankingsFull", "rankingsBar", "bracketBar"].forEach(function (mode) {
+    transitionMap.blank[mode] = function (callback) {
+      showAudienceInformation(mode, callback);
+    };
+    transitionMap[mode] = {blank: hideAudienceInformation};
+  });
 });

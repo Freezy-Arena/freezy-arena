@@ -1,0 +1,51 @@
+/* Compact operator mode buttons; checked radio inputs remain keyboard-accessible. */
+  .audience-modes { max-width: 100%; }
+  .audience-mode-section { margin-bottom: 10px; }
+  .audience-mode-heading {
+    color: var(--bs-secondary-color);
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .055em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .audience-mode-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
+  .audience-mode-option { display: block; min-width: 0; position: relative; cursor: pointer; margin: 0; }
+  .audience-mode-option input {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+  }
+  .audience-mode-option span {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 31px;
+    padding: 4px 5px;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 6px;
+    background: var(--bs-secondary-bg);
+    color: var(--bs-body-color);
+    font-size: .76rem;
+    line-height: 1.1;
+    text-align: center;
+    transition: background-color .12s, border-color .12s;
+  }
+  .audience-mode-option:hover span { border-color: var(--bs-primary); }
+  .audience-mode-option input:checked + span {
+    color: #fff;
+    border-color: var(--bs-primary);
+    background: var(--bs-primary);
+    font-weight: 700;
+  }
+  .audience-mode-option input:focus-visible + span { outline: 2px solid var(--bs-info); outline-offset: 2px; }
+  .audience-mode-option input:disabled + span { opacity: .45; cursor: not-allowed; }
+
+/* Alliance Selection actions and timer presets use the same compact tile system. */
+.alliance-selection-action-grid { display: grid; gap: 6px; }
+.alliance-selection-action-grid .btn,
+.alliance-timer-actions .btn { min-height: 31px; font-size: .76rem; line-height: 1.25; }
+.alliance-timer-presets { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.alliance-timer-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.alliance-timer-actions .btn { min-width: 0; }

@@ -1,0 +1,378 @@
+/* Match-play graphics remain untouched; these modes use the same video output. */
+#audienceInformation {
+  position: fixed;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  box-sizing: border-box;
+  color: white;
+  font-family: "FuturaLT", Arial, sans-serif;
+  overflow: hidden;
+}
+#audienceInformation.full {
+  top: 0;
+  bottom: 0;
+  background: #212529;
+  color: #f8f9fa;
+  padding: 35px 4vw;
+  flex-direction: column;
+}
+#audienceInformation.bar {
+  bottom: 0;
+  height: 205px;
+  display: grid;
+  grid-template-columns: minmax(190px, 230px) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  column-gap: 20px;
+  align-items: center;
+  /* Admin UI palette; the information bars share Bootstrap's dark surfaces. */
+  background: rgba(33, 37, 41, .98);
+  border-top: 5px solid #6c757d;
+  padding: 12px 22px 10px;
+}
+#audienceInformationHeading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: "FuturaLTBold", Arial, sans-serif;
+}
+#audienceInformation.full #audienceInformationHeading {
+  font-size: 48px;
+  margin-bottom: 27px;
+  padding-bottom: 20px;
+  border-bottom: 3px solid #6c757d;
+}
+#audienceInformation.bar #audienceInformationHeading {
+  grid-column: 1;
+  grid-row: 1 / 3;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  align-self: stretch;
+  min-width: 0;
+  padding-right: 18px;
+  border-right: 1px solid #495057;
+  font-size: 23px;
+  line-height: 1.12;
+  margin-bottom: 0;
+}
+#audienceInformation.bar #audienceInformationTitle {
+  display: block;
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+#audienceInformation.bar #audienceInformationEvent {
+  display: block;
+  max-width: 100%;
+  margin-top: 9px;
+  font: 14px/1.3 "FuturaLT", Arial, sans-serif;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+#audienceInformation.bar #audienceInformationContent {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+#audienceInformation.bar #audienceInformationFooter {
+  grid-column: 2;
+  grid-row: 2;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 17px;
+  margin-top: 4px;
+  text-align: right;
+}
+#audienceInformationEvent { font-size: .65em; text-align: right; }
+#audienceInformationFooter { color: #b7c9e5; text-align: right; font-size: 15px; margin-top: 7px; }
+#audienceInformation.full #audienceInformationFooter { font-size: 22px; margin-top: 22px; color: #adb5bd; }
+.audience-info-empty { text-align: center; font-size: 28px; padding: 40px; }
+.audience-info-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: clamp(16px, 1.65vw, 30px); }
+.audience-info-table th { background: #454b52; color: #f8f9fa; padding: 12px 8px; text-align: left; border-bottom: 2px solid #6c757d; }
+.audience-info-table td { padding: 11px 8px; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; border-bottom: 1px solid #495057; }
+/* Shared colgroups keep frozen headings aligned with every configured data column. */
+.audience-info-table tbody tr:nth-child(odd) { background: #343a40; }
+.audience-info-table tbody tr:nth-child(even) { background: #2b3035; }
+.audience-info-cards { display: flex; height: 136px; width: 100%; gap: 12px; }
+.audience-info-card {
+  background: #253b58;
+  border: 1px solid #56718b;
+  flex: 1 1 0;
+  min-width: 0;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  overflow: hidden;
+}
+.audience-info-rank { color: #ffc928; font: 38px "FuturaLTBold", Arial, sans-serif; white-space: nowrap; }
+.audience-info-team { display: flex; flex: 1; flex-direction: column; min-width: 0; }
+.audience-info-team-id { font: 31px "FuturaLTBold", Arial, sans-serif; }
+.audience-info-nickname { color: #c2d5ec; font-size: 15px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.audience-info-points { color: #ffc928; font-size: 18px; white-space: nowrap; }
+.audience-info-playoff { flex-direction: column; gap: 7px; }
+.audience-info-match-name { font: 18px "FuturaLTBold", Arial, sans-serif; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 100%; }
+.audience-info-sides { display: flex; align-items: center; gap: 7px; width: 100%; flex: 1; }
+.audience-info-side { min-width: 0; flex: 1; display: flex; justify-content: space-between; align-items: center; border-radius: 3px; padding: 11px 10px; gap: 8px; font: 17px "FuturaLTBold", Arial, sans-serif; }
+.audience-info-side span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.audience-info-side.red { background: #a52034; }
+.audience-info-side.blue { background: #1762ac; }
+.audience-info-score { font-size: 28px; flex: 0 0 auto; }
+.audience-info-vs { color: #d0daea; font-size: 12px; }
+@media(max-width: 950px) {
+  .audience-info-cards { gap: 5px; }
+  .audience-info-card { gap: 4px; padding: 5px; }
+  .audience-info-rank { font-size: 24px; }
+  .audience-info-team-id { font-size: 21px; }
+  .audience-info-points, .audience-info-side { font-size: 12px; }
+}
+
+/* The rankings ticker is intentionally much smaller than the playoff bar. */
+#audienceInformation.bar[data-mode="rankingsBar"] {
+  height: 158px;
+  padding: 9px 20px 7px;
+  border-top-width: 3px;
+}
+#audienceInformation.bar[data-mode="rankingsBar"] #audienceInformationHeading {
+  font-size: 20px;
+  margin-bottom: 0;
+}
+#audienceInformation.bar[data-mode="rankingsBar"] #audienceInformationFooter {
+  font-size: 13px;
+  margin-top: 5px;
+}
+.audience-info-ticker-viewport {
+  width: 100%;
+  height: 90px;
+  overflow: hidden;
+}
+.audience-info-ticker-track {
+  display: flex;
+  width: max-content;
+  height: 100%;
+}
+.audience-info-ticker-track.is-scrolling {
+  animation: audience-info-slide var(--audience-info-scroll-duration, 60s) linear infinite;
+  will-change: transform;
+}
+.audience-info-ticker-group {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: stretch;
+  gap: 10px;
+  padding-right: 10px; /* Same spacing across the loop seam. */
+  height: 100%;
+}
+.audience-info-ticker-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 294px;
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 8px 12px;
+  border: 1px solid #4c617c;
+  border-radius: 5px;
+  background: #253b58;
+  overflow: hidden;
+}
+.audience-info-ticker-rank {
+  font: 27px "FuturaLTBold", Arial, sans-serif;
+  color: #ffc928;
+  white-space: nowrap;
+  border-right: 1px solid #59626b;
+  padding-right: 11px;
+}
+.audience-info-ticker-team {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+.audience-info-ticker-team-id { font: 25px "FuturaLTBold", Arial, sans-serif; white-space: nowrap; }
+.audience-info-ticker-nickname {
+  font-size: 11px;
+  color: #c2d5ec;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.audience-info-ticker-points {
+  color: #ffc928;
+  font-size: 15px;
+  white-space: nowrap;
+}
+@keyframes audience-info-slide {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-50%, 0, 0); }
+}
+@media (max-width: 950px) {
+  .audience-info-ticker-card { flex-basis: 265px; gap: 7px; padding: 6px 8px; }
+  .audience-info-ticker-rank { font-size: 23px; }
+  .audience-info-ticker-team-id { font-size: 21px; }
+  .audience-info-ticker-points { font-size: 13px; }
+}
+
+/* Match the charcoal/gray admin interface, without changing full-screen layouts. */
+#audienceInformation.bar {
+  color: #f8f9fa;
+  box-shadow: 0 -5px 24px rgba(0, 0, 0, .35);
+}
+#audienceInformation.bar #audienceInformationHeading,
+#audienceInformation.bar .audience-info-match-name,
+#audienceInformation.bar .audience-info-team-id,
+#audienceInformation.bar .audience-info-ticker-team-id {
+  color: #f8f9fa;
+}
+#audienceInformation.bar #audienceInformationEvent,
+#audienceInformation.bar #audienceInformationFooter,
+#audienceInformation.bar .audience-info-vs {
+  color: #adb5bd;
+}
+#audienceInformation.bar .audience-info-card,
+#audienceInformation.bar .audience-info-ticker-card {
+  background: #343a40;
+  border-color: #565e64;
+}
+#audienceInformation.bar .audience-info-rank,
+#audienceInformation.bar .audience-info-ticker-rank {
+  color: #f1f3f5;
+}
+#audienceInformation.bar .audience-info-nickname,
+#audienceInformation.bar .audience-info-ticker-nickname {
+  color: #ced4da;
+}
+#audienceInformation.bar .audience-info-points,
+#audienceInformation.bar .audience-info-ticker-points {
+  color: #dee2e6;
+  background: #495057;
+  border-radius: 3px;
+  padding: 3px 5px;
+}
+#audienceInformation.bar .audience-info-side {
+  background: #454b52;
+  color: #f8f9fa;
+  border-left: 4px solid #6c757d;
+}
+#audienceInformation.bar .audience-info-side.red { border-left-color: #cf676d; }
+#audienceInformation.bar .audience-info-side.blue { border-left-color: #78a6d4; }
+#audienceInformation.bar .audience-info-score { color: #f8f9fa; }
+
+/* Match the normal audience scoring bar's overlayLocation=top|bottom setting.
+   Both Rankings Bar and Playoff Bracket Bar share this element and selector. */
+#audienceInformation.bar[data-overlay-location="top"] {
+  top: 0;
+  bottom: auto;
+  border-top: 0;
+  border-bottom: 5px solid #6c757d;
+}
+#audienceInformation.bar[data-overlay-location="bottom"] {
+  top: auto;
+  bottom: 0;
+}
+#audienceInformation.bar[data-mode="rankingsBar"][data-overlay-location="top"] {
+  border-bottom-width: 3px;
+}
+
+/* Up to four operator-selected statistics fit below the team identity on the
+   compact ticker without increasing its original height or interrupting scroll. */
+.audience-info-ticker-metrics {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  flex-shrink: 0;
+  gap: 2px;
+}
+#audienceInformation.bar .audience-info-ticker-metrics .audience-info-ticker-points {
+  display: block;
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  font-size: 11px;
+  line-height: 14px;
+  color: #dee2e6;
+}
+#audienceInformation.bar .audience-info-ticker-metrics .audience-info-ticker-points:first-child {
+  color: #f8f9fa;
+}
+@media (max-width: 950px) {
+  #audienceInformation.bar .audience-info-ticker-metrics .audience-info-ticker-points {
+    font-size: 10px;
+  }
+}
+
+/* Fullscreen rankings: static column headings with continuously scrolling teams. */
+#audienceInformation.full #audienceInformationHeading,
+#audienceInformation.full #audienceInformationFooter {
+  flex: 0 0 auto;
+}
+#audienceInformation.full #audienceInformationContent {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+.audience-info-full-header { flex: 0 0 auto; }
+.audience-info-full-viewport {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  overflow: hidden;
+}
+.audience-info-full-track {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+.audience-info-full-group { flex: 0 0 auto; width: 100%; }
+.audience-info-full-data { width: 100%; }
+.audience-info-full-track.is-scrolling {
+  animation: audience-info-full-slide var(--audience-info-full-duration, 60s) linear infinite;
+  will-change: transform;
+}
+@keyframes audience-info-full-slide {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(0, -50%, 0); }
+}
+
+/* On a laptop, rotate fewer bracket matches rather than truncate alliance names. */
+@media (max-width: 1399px) {
+  #audienceInformation.bar { grid-template-columns: minmax(145px, 190px) minmax(0, 1fr); column-gap: 14px; }
+  #audienceInformation.bar #audienceInformationHeading { font-size: 19px; padding-right: 12px; }
+  #audienceInformation.bar #audienceInformationEvent { font-size: 12px; }
+  #audienceInformation.bar .audience-info-side { font-size: 15px; }
+}
+@media (max-width: 800px) {
+  #audienceInformation.bar {
+    height: 245px;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    row-gap: 8px;
+    padding: 10px 14px;
+  }
+  #audienceInformation.bar #audienceInformationHeading {
+    grid-column: 1;
+    grid-row: 1;
+    flex-direction: row;
+    align-self: auto;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 16px;
+    padding: 0 0 8px;
+    border-right: 0;
+    border-bottom: 1px solid #495057;
+  }
+  #audienceInformation.bar #audienceInformationEvent {
+    margin-top: 0;
+    text-align: right;
+  }
+  #audienceInformation.bar #audienceInformationContent { grid-column: 1; grid-row: 2; }
+  #audienceInformation.bar #audienceInformationFooter { grid-column: 1; grid-row: 3; }
+  #audienceInformation.bar[data-mode="rankingsBar"] { height: 190px; }
+  #audienceInformation.bar .audience-info-cards { height: 125px; }
+}

@@ -45,6 +45,69 @@ func (web *Web) settingsPostHandler(w http.ResponseWriter, r *http.Request) {
 
 	eventSettings := web.arena.EventSettings
 
+	// Validate display preferences before mutating event-wide settings. Posts
+	// from older clients without these fields retain the existing preferences.
+	settingsDurations := []struct {
+		key      string
+		previous int
+		value    *int
+	}{
+		{"autoAudienceScoreSec", eventSettings.AudienceScoreSeconds(), new(int)},
+		{"autoAudiencePlayoffDelaySec", eventSettings.AudiencePlayoffDelaySeconds(), new(int)},
+		{"autoAudienceBracketSec", eventSettings.AudienceBracketSeconds(), new(int)},
+		{"autoAudienceLastMatchSec", eventSettings.AudienceLastMatchSeconds(), new(int)},
+	}
+	for index := range settingsDurations {
+		entry := &settingsDurations[index]
+		*entry.value = entry.previous
+		if raw := r.PostFormValue(entry.key); raw != "" {
+			value, err := strconv.Atoi(raw)
+			if err != nil || value < 1 || value > 600 {
+				web.renderSettingsWithStatus(
+					w, r, "Audience display timers must be whole numbers between 1 and 600 seconds.",
+					"automation", http.StatusOK,
+				)
+				return
+			}
+			*entry.value = value
+		} else if _, submitted := r.PostForm[entry.key]; submitted {
+			web.renderSettingsWithStatus(
+				w, r, "Audience display timers must be whole numbers between 1 and 600 seconds.",
+				"automation", http.StatusOK,
+			)
+			return
+		}
+	}
+
+	rankingsFields := eventSettings.AudienceRankingsFields
+	if r.PostFormValue("audienceRankingsOptionsPresent") == "1" {
+		allowed := map[string]bool{
+			"rp": true, "nextMatch": true, "record": true, "played": true,
+			"matchPoints": true, "autoFuel": true, "tower": true,
+		}
+		selected := r.PostForm["audienceRankingsOption"]
+		seen := make(map[string]bool)
+		if len(selected) > 4 {
+			web.renderSettingsWithStatus(
+				w, r, "Choose no more than four rankings statistics.", "automation", http.StatusOK,
+			)
+			return
+		}
+		for _, option := range selected {
+			if !allowed[option] || seen[option] {
+				web.renderSettingsWithStatus(
+					w, r, "Invalid or duplicate rankings statistic.", "automation", http.StatusOK,
+				)
+				return
+			}
+			seen[option] = true
+		}
+		rankingsFields = strings.Join(selected, ",")
+		if rankingsFields == "" {
+			rankingsFields = "-"
+		}
+	}
+
 	previousEventName := eventSettings.Name
 	eventSettings.Name = r.PostFormValue("name")
 	if len(eventSettings.Name) < 1 && eventSettings.Name != previousEventName {
@@ -118,6 +181,11 @@ func (web *Web) settingsPostHandler(w http.ResponseWriter, r *http.Request) {
 	eventSettings.TbaSecretId = r.PostFormValue("tbaSecretId")
 	eventSettings.TbaSecret = r.PostFormValue("tbaSecret")
 	eventSettings.AutoAudienceDisplayEnabled = r.PostFormValue("autoAudienceDisplayEnabled") == "on"
+	eventSettings.AutoAudienceScoreSec = *settingsDurations[0].value
+	eventSettings.AutoAudiencePlayoffDelaySec = *settingsDurations[1].value
+	eventSettings.AutoAudienceBracketSec = *settingsDurations[2].value
+	eventSettings.AutoAudienceLastMatchSec = *settingsDurations[3].value
+	eventSettings.AudienceRankingsFields = rankingsFields
 	eventSettings.NexusEnabled = r.PostFormValue("nexusEnabled") == "on"
 	eventSettings.NexusAutoQueueEnabled = r.PostFormValue("nexusAutoQueueEnabled") == "on"
 	eventSettings.NexusAutoQueueKey = r.PostFormValue("nexusAutoQueueKey")
