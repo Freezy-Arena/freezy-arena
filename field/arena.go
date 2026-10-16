@@ -691,9 +691,14 @@ func (arena *Arena) SetAllianceStationDisplayMode(mode string) {
 		arena.AllianceStationDisplayMode = mode
 		arena.AllianceStationDisplayModeNotifier.Notify()
 
-		if mode == "logo" {
-			arena.Leds.SetMode(led.RedMode, led.BlueMode)
-		}
+		switch mode {
+			case "blank", "match", "timeout":
+				arena.Leds.SetMode(led.OffMode, led.OffMode)
+				arena.LedChangeNotifier.Notify()
+			case "logo":
+				arena.Leds.SetMode(led.RedMode, led.BlueMode)
+				arena.LedChangeNotifier.Notify()
+			}
 	}
 }
 
