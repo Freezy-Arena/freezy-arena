@@ -1,117 +1,28 @@
-{{define "title"}}Filler Queue{{end}}
-
+{{define "title"}}Filler Queue & Practice Scheduling{{end}}
 {{define "body"}}
-<div class="d-flex flex-row align-start gap-4">
-  <!-- Match List -->
-  <div class="card rounded-3 shadow-sm me-5" style="min-width: 500px;">
-    <div class="card-header bg-secondary text-white rounded-top">
-      <h4 class="mb-0">Practice Match Schedule</h4>
-    </div>
-    <div class="card-body p-3">
-      <table class="table table-sm table-striped table-hover rounded-2 overflow-hidden">
-        <thead class="table-dark">
-          <tr>
-            <th>Match</th>
-            <th>Time</th>
-            <th>Red Alliance</th>
-            <th>Blue Alliance</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {{range .Matches}}
-          <tr>
-            <td>{{.ShortName}}</td>
-            <td>{{.Time.Format "15:04"}}</td>
-            <td class="text-danger fw-bold">{{.Red1}}, {{.Red2}}, {{.Red3}}</td>
-            <td class="text-primary fw-bold">{{.Blue1}}, {{.Blue2}}, {{.Blue3}}</td>
-            <td>
-              <button class="btn btn-sm btn-outline-secondary"
-                onclick='populateEditModal("{{.Id}}", "{{.Red1}}", "{{.Red2}}", "{{.Red3}}", "{{.Blue1}}", "{{.Blue2}}", "{{.Blue3}}", "{{.ShortName}}")'
-                data-bs-toggle="modal" data-bs-target="#editModal">
-                Edit
-              </button>
-            </td>
-          </tr>
-          {{end}}
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- Add Match -->
-  <div class="card rounded-3 shadow-sm" style="max-width: 500px;">
-    <div class="card-header bg-primary text-white rounded-top">
-      <h4 class="mb-0">Add Practice Match</h4>
-    </div>
-    <div class="card-body">
-      <form method="POST" action="/panel/freezy/add_practice_match">
-        <fieldset class="mb-3">
-          <legend class="h6">Red Alliance</legend>
-          {{range $i, $label := (seq 3)}}
-          <div class="mb-2">
-            <label for="red{{$label}}">Red {{$label}}:</label>
-            <input type="number" id="red{{$label}}" name="red{{$label}}" class="form-control rounded-2" required>
-          </div>
-          {{end}}
-        </fieldset>
-
-        <fieldset class="mb-3">
-          <legend class="h6">Blue Alliance</legend>
-          {{range $i, $label := (seq 3)}}
-          <div class="mb-2">
-            <label for="blue{{$label}}">Blue {{$label}}:</label>
-            <input type="number" id="blue{{$label}}" name="blue{{$label}}" class="form-control rounded-2" required>
-          </div>
-          {{end}}
-        </fieldset>
-
-        <button type="submit" class="btn btn-success w-100 rounded-pill">Add Match</button>
-      </form>
-    </div>
-  </div>
+<div class="container-fluid py-3">
+<h2>Practice Scheduling & Filler Queue</h2>
+<p class="small text-success" id="fillerLiveStatus" role="status"><i class="bi bi-arrow-repeat"></i> Live updates enabled — checking every 3 seconds</p>
+<p class="text-body-secondary">Create practice matches in advance or let the kiosk generate new matches when existing ones fill. Automatically generated matches stay hidden from Match Play until both alliances have a team. {{if .KioskURL}}<a href="{{.KioskURL}}" target="_blank" rel="noopener noreferrer">Open isolated kiosk (separate port)</a>{{else}}The kiosk listener is disabled.{{end}}</p>
+{{if .Error}}<div class="alert alert-danger">{{.Error}}</div>{{end}}
+<div class="row g-4">
+<div class="col-xl-8">
+<div class="card mb-4"><div class="card-header"><strong>Scheduled Practice Matches</strong></div><div class="card-body table-responsive">
+<table class="table table-striped align-middle"><thead><tr><th>Match</th><th>Scheduled</th><th>Red 1 / 2 / 3</th><th>Blue 1 / 2 / 3</th><th>Action</th></tr></thead><tbody>
+{{range .Matches}}<tr><td>{{.ShortName}}{{if .IsFillerQueueDraft}} <span class="badge bg-warning text-dark">Forming</span>{{end}}</td><td>{{.Time.Format "Jan 02 15:04"}}</td><td class="text-danger">{{if .Red1}}{{.Red1}}{{else}}—{{end}} / {{if .Red2}}{{.Red2}}{{else}}—{{end}} / {{if .Red3}}{{.Red3}}{{else}}—{{end}}</td><td class="text-info">{{if .Blue1}}{{.Blue1}}{{else}}—{{end}} / {{if .Blue2}}{{.Blue2}}{{else}}—{{end}} / {{if .Blue3}}{{.Blue3}}{{else}}—{{end}}</td><td>{{if or (eq .Status matchScheduled) .IsFillerQueueDraft}}<button type="button" class="btn btn-sm btn-outline-light" onclick="editPracticeMatch(this)" data-id="{{.Id}}" data-red1="{{.Red1}}" data-red2="{{.Red2}}" data-red3="{{.Red3}}" data-blue1="{{.Blue1}}" data-blue2="{{.Blue2}}" data-blue3="{{.Blue3}}" data-time="{{.Time.Format "2006-01-02T15:04"}}" data-revision="{{.LineupRevision}}" data-label="{{.ShortName}}" data-bs-toggle="modal" data-bs-target="#editModal">Edit</button>{{else}}Closed{{end}}</td></tr>{{else}}<tr><td colspan="5">No practice matches have been scheduled.</td></tr>{{end}}
+</tbody></table></div></div>
+<div class="card"><div class="card-header"><strong>Waiting Requests</strong></div><div class="card-body table-responsive">
+<table class="table table-striped align-middle"><thead><tr><th>Received</th><th>Team</th><th>Requested match</th><th>Preferred station</th><th>Approve assignment</th><th></th></tr></thead><tbody>
+{{range .Entries}}{{if eq .Status "waiting"}}<tr><td>{{.CreatedAt.Format "15:04:05"}}</td><td><strong>{{.TeamId}}</strong></td><td>{{if .MatchId}}{{.MatchId}}{{else}}Any{{end}}</td><td>{{if .Station}}{{.Station}}{{else}}Any{{end}}</td><td><form class="d-flex gap-2 flex-wrap" method="POST" action="/panel/freezy/filler/assign"><input type="hidden" name="entryId" value="{{.Id}}"><select name="matchId" class="form-select form-select-sm" style="width:auto" required><option value="">Match</option>{{range $.Matches}}{{if or (eq .Status matchScheduled) .IsFillerQueueDraft}}<option value="{{.Id}}">{{.ShortName}}{{if .IsFillerQueueDraft}} — Forming{{end}} (ID {{.Id}})</option>{{end}}{{end}}</select><select name="station" class="form-select form-select-sm" style="width:auto" required><option value="">Station</option><option>R1</option><option>R2</option><option>R3</option><option>B1</option><option>B2</option><option>B3</option></select><button class="btn btn-sm btn-success">Assign</button></form></td><td><form method="POST" action="/panel/freezy/filler/cancel"><input type="hidden" name="entryId" value="{{.Id}}"><button class="btn btn-sm btn-outline-danger">Cancel</button></form></td></tr>{{end}}{{end}}
+</tbody></table><p class="text-body-secondary small mb-0">Compatible kiosk signups are automatically assigned to an available station. Requests requiring manual attention remain above. Newly created matches stay hidden until at least one red and one blue team are assigned.</p></div></div>
+<div class="card mt-4"><div class="card-header"><strong>Recent Assignments</strong> <span class="text-body-secondary small">— automatically assigned kiosk signups appear here</span></div><div class="card-body table-responsive"><table class="table table-sm table-striped align-middle"><thead><tr><th>Time</th><th>Team</th><th>Match</th><th>Station</th><th>Assignment</th></tr></thead><tbody>{{range .RecentAssignments}}<tr><td>{{.UpdatedAt.Format "15:04:05"}}</td><td><strong>{{.TeamId}}</strong></td><td>{{index $.MatchNames .AssignedMatchId}}</td><td>{{.AssignedStation}}</td><td><span class="badge bg-success">Assigned</span></td></tr>{{else}}<tr><td colspan="5" class="text-body-secondary">No recent assignments yet.</td></tr>{{end}}</tbody></table></div></div>
 </div>
-
-<!-- Edit Modal -->
-<div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <form method="POST" action="/panel/freezy/edit_practice_match" class="modal-content">
-      <div class="modal-header bg-dark text-white">
-        <h5 class="modal-title">Edit Practice Match: <span id="editMatchLabel"></span></h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <input type="hidden" name="matchId" id="editMatchId">
-
-        <fieldset class="mb-3">
-          <legend class="h6">Red Alliance</legend>
-          {{range $i, $label := (seq 3)}}
-          <div class="mb-2">
-            <label for="editRed{{$label}}">Red {{$label}}:</label>
-            <input type="number" id="editRed{{$label}}" name="red{{$label}}" class="form-control rounded-2" required>
-          </div>
-          {{end}}
-        </fieldset>
-
-        <fieldset class="mb-3">
-          <legend class="h6">Blue Alliance</legend>
-          {{range $i, $label := (seq 3)}}
-          <div class="mb-2">
-            <label for="editBlue{{$label}}">Blue {{$label}}:</label>
-            <input type="number" id="editBlue{{$label}}" name="blue{{$label}}" class="form-control rounded-2" required>
-          </div>
-          {{end}}
-        </fieldset>
-      </div>
-      <div class="modal-footer">
-        <button type="submit" class="btn btn-primary rounded-pill">Save Changes</button>
-        <button type="button" class="btn btn-secondary rounded-pill" data-bs-dismiss="modal">Cancel</button>
-      </div>
-    </form>
-  </div>
-</div>
+<div class="col-xl-4"><div class="card"><div class="card-header"><strong>Create Practice Match</strong></div><div class="card-body">
+<p class="small text-body-secondary">Leave unused stations empty. Assign at least one team on each alliance.</p>
+<form method="POST" action="/panel/freezy/add_practice_match">
+<label class="form-label" for="matchTime">Scheduled date / time (optional)</label><input class="form-control mb-3" type="datetime-local" id="matchTime" name="matchTime">
+<div class="row"><div class="col-6"><strong class="text-danger">Red</strong>{{range seq 3}}<label class="form-label mt-2">Red {{.}}<input class="form-control" name="red{{.}}" type="number" min="0" placeholder="Empty"></label>{{end}}</div><div class="col-6"><strong class="text-info">Blue</strong>{{range seq 3}}<label class="form-label mt-2">Blue {{.}}<input class="form-control" name="blue{{.}}" type="number" min="0" placeholder="Empty"></label>{{end}}</div></div><button class="btn btn-primary w-100 mt-3">Schedule Match</button>
+</form></div></div></div></div></div>
+<div class="modal fade" id="editModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><form class="modal-content" method="POST" action="/panel/freezy/edit_practice_match"><div class="modal-header"><h5 class="modal-title">Edit <span id="editMatchLabel"></span></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="hidden" name="matchId" id="editMatchId"><input type="hidden" name="matchRevision" id="editMatchRevision"><label class="form-label">Scheduled date / time<input type="datetime-local" name="matchTime" id="editMatchTime" class="form-control"></label><div class="row"><div class="col-6"><strong class="text-danger">Red</strong>{{range seq 3}}<label class="form-label">Red {{.}}<input id="editRed{{.}}" name="red{{.}}" type="number" class="form-control" min="0"></label>{{end}}</div><div class="col-6"><strong class="text-info">Blue</strong>{{range seq 3}}<label class="form-label">Blue {{.}}<input id="editBlue{{.}}" name="blue{{.}}" type="number" class="form-control" min="0"></label>{{end}}</div></div></div><div class="modal-footer"><button class="btn btn-primary">Save</button></div></form></div></div>
 {{end}}
-
-{{define "script"}}
-<script src="/static/js/add_practice_match.js"></script>
-{{end}}
+{{define "script"}}<script>window.fillerQueueRevision = "{{.Revision}}";</script><script src="/static/js/add_practice_match.js"></script><script src="/static/js/filler_queue_admin.js"></script>{{end}}

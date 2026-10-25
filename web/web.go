@@ -26,10 +26,11 @@ const (
 type Web struct {
 	arena           *field.Arena
 	templateHelpers template.FuncMap
+	KioskPort       int
 }
 
 func NewWeb(arena *field.Arena) *Web {
-	web := &Web{arena: arena}
+	web := &Web{arena: arena, KioskPort: 8081}
 
 	// Helper functions that can be used inside templates.
 	web.templateHelpers = template.FuncMap{
@@ -87,12 +88,13 @@ func NewWeb(arena *field.Arena) *Web {
 
 // Starts the webserver and blocks, waiting on requests. Does not return until the application exits.
 func (web *Web) ServeWebInterface(port int) {
-	http.Handle("/static/", http.StripPrefix("/static/", addNoCacheHeader(http.FileServer(http.Dir("static/")))))
-	http.Handle("/", web.newHandler())
+	mux := http.NewServeMux()
+	mux.Handle("/static/", http.StripPrefix("/static/", addNoCacheHeader(http.FileServer(http.Dir("static/")))))
+	mux.Handle("/", web.newHandler())
 	log.Printf("Serving HTTP requests on port %d", port)
 
 	// Start Server
-	if err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil); err != nil {
+	if err := http.ListenAndServe(fmt.Sprintf(":%d", port), mux); err != nil {
 		log.Printf("HTTP server error: %v", err)
 	}
 }
@@ -127,7 +129,7 @@ func addNoCacheHeader(handler http.Handler) http.Handler {
 // Sets up the mapping between URLs and handlers.
 func (web *Web) newHandler() http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /", web.indexHandler)
+	mux.HandleFunc("GET /{$}", web.indexHandler)
 	mux.HandleFunc("GET /alliance_selection", web.allianceSelectionGetHandler)
 	mux.HandleFunc("POST /alliance_selection", web.allianceSelectionPostHandler)
 	mux.HandleFunc("GET /alliance_selection/websocket", web.allianceSelectionWebsocketHandler)
@@ -256,6 +258,9 @@ func (web *Web) newHandler() http.Handler {
 	mux.HandleFunc("POST /panel/freezy/add_practice_match", web.addPracticeMatchPostHandler)
 	mux.HandleFunc("GET /panel/freezy/add_practice_match", web.addPracticeMatchGetHandler)
 	mux.HandleFunc("POST /panel/freezy/edit_practice_match", web.editPracticeMatchHandler)
+	mux.HandleFunc("GET /panel/freezy/filler/revision", web.fillerQueueRevisionGetHandler)
+	mux.HandleFunc("POST /panel/freezy/filler/assign", web.fillerAssignPostHandler)
+	mux.HandleFunc("POST /panel/freezy/filler/cancel", web.fillerCancelPostHandler)
 	mux.HandleFunc("GET /api/freezy/field_stack_light", web.fieldStackLightGetHandler)
 	mux.HandleFunc("GET /api/freezy/team_stack_light", web.teamStackLightGetHandler)
 	mux.HandleFunc("POST /freezy/upload/image", web.uploadImagePostHandler)

@@ -46,6 +46,12 @@ For the game-agnostic version, see [Cheesy Arena Lite](https://github.com/Team25
 Teams may use Cheesy Arena freely for practice, scrimmages, and off-season events. See [LICENSE](LICENSE) for more
 details.
 
+## Isolated filler queue kiosk
+
+The optional filler queue kiosk runs on a dedicated, limited HTTP listener (default TCP 8081), separate from arena management on TCP 8080. **Network firewall restrictions and a locked-down kiosk browser are still required** to prevent access to management from the kiosk PC.
+
+See [Filler Kiosk Security and Deployment](docs/filler-kiosk-security.md) before deploying at an event.
+
 ## Installing
 
 **From a pre-built release**
