@@ -100,16 +100,16 @@ func TestSetupBreaksReschedulesExistingMatches(t *testing.T) {
 	for index, want := range []time.Duration{0, 5 * time.Minute, 30 * time.Minute, 40 * time.Minute} {
 		got, err := web.arena.Database.GetMatchById(matches[index].Id)
 		assert.NoError(t, err)
-		assert.Equal(t, start.Add(want), got.Time)
+		assert.True(t, start.Add(want).Equal(got.Time), "match %d time differs", index+1)
 	}
 	breaks, err := web.arena.Database.GetScheduledBreaksByMatchType(model.Playoff)
 	assert.NoError(t, err)
 	if assert.Len(t, breaks, 2) {
 		assert.Equal(t, 3, breaks[0].TypeOrderBefore)
-		assert.Equal(t, start.Add(10*time.Minute), breaks[0].Time)
+		assert.True(t, start.Add(10*time.Minute).Equal(breaks[0].Time))
 		assert.Equal(t, "After M2", breaks[0].Description)
 		assert.Equal(t, 4, breaks[1].TypeOrderBefore)
-		assert.Equal(t, start.Add(35*time.Minute), breaks[1].Time)
+		assert.True(t, start.Add(35*time.Minute).Equal(breaks[1].Time))
 		assert.Equal(t, "Awards", breaks[1].Description)
 	}
 }
