@@ -1,42 +1,64 @@
 {{/*
 Copyright 2024 Team 254. All Rights Reserved.
-Author: pat@patfairbank.com (Patrick Fairbank)
+Author: Justin Fischer <justin@justfishin99.xyz>
 
-UI for configuring scheduled breaks.
+UI for configuring scheduled playoff breaks.
 */}}
-{{define "title"}}Breaks Configuration{{end}}
+{{define "title"}}Break Scheduling{{end}}
 {{define "body"}}
 <div class="row justify-content-center">
-  <div class="col-lg-6">
+  <div class="col-xl-10 col-lg-11">
     <div class="card card-body bg-body-tertiary">
-      <legend>Scheduled Break Configuration</legend>
-      {{if not .ScheduledBreaks}}
-      <p>
-        Playoff breaks won't appear here until alliance selection is complete and the playoff tournament is created.
+      <legend>Break Scheduling</legend>
+      <p class="text-body-secondary">
+        Configure the planned start time, length, and description of playoff breaks. Saving a timing change
+        shifts the scheduled times of subsequent, unplayed playoff matches and breaks to match the new end time.
       </p>
+      <p class="text-body-secondary">
+        The on-field break countdown starts after the preceding match is completed and committed, not
+        automatically when the scheduled start time arrives.
+      </p>
+      {{if .ErrorMessage}}
+      <div class="alert alert-danger" role="alert">{{.ErrorMessage}}</div>
+      {{end}}
+      {{if not .ScheduledBreaks}}
+      <div class="alert alert-info mb-0">
+        Playoff breaks will appear here after alliance selection is complete and the playoff tournament is created.
+      </div>
       {{end}}
       {{range $i, $scheduledBreak := .ScheduledBreaks}}
-      <form method="POST">
-        <h5>Break #{{add $i 1}}</h5>
-        <input type="hidden" name="id" value="{{$scheduledBreak.Id}}"/>
-        <div class="row mb-3">
-          <div class="col-lg-3">
-            <label class="control-label">Description</label>
+      <form method="POST" action="/setup/breaks" class="border rounded p-3 mb-3">
+        <input type="hidden" name="id" value="{{$scheduledBreak.Id}}">
+        <div class="d-flex flex-wrap align-items-baseline justify-content-between gap-2 mb-3">
+          <h5 class="mb-0">Break #{{add $i 1}}</h5>
+          <span class="text-body-secondary">Before {{$scheduledBreak.NextMatchName}}</span>
+        </div>
+        <div class="row g-3 align-items-end">
+          <div class="col-lg-4">
+            <label class="form-label" for="breakDescription{{$scheduledBreak.Id}}">Description</label>
+            <input type="text" class="form-control" id="breakDescription{{$scheduledBreak.Id}}"
+              name="description" value="{{$scheduledBreak.Description}}" maxlength="128" required>
           </div>
-          <div class="col-lg-6">
-            <input type="text" class="form-control" name="description" value="{{$scheduledBreak.Description}}">
+          <div class="col-lg-4">
+            <label class="form-label" for="breakStart{{$scheduledBreak.Id}}">Scheduled Start</label>
+            <input type="datetime-local" class="form-control" id="breakStart{{$scheduledBreak.Id}}"
+              name="startTime" value="{{$scheduledBreak.StartTimeInput}}" step="60" required>
           </div>
-          <div class="col-lg-3">
-            <button type="submit" class="btn btn-primary btn-lower-third mb-1" name="action" value="save">
-              Save
-            </button>
+          <div class="col-lg-2">
+            <label class="form-label" for="breakDuration{{$scheduledBreak.Id}}">Duration (minutes)</label>
+            <input type="number" class="form-control" id="breakDuration{{$scheduledBreak.Id}}"
+              name="durationMinutes" value="{{$scheduledBreak.DurationMinutes}}"
+              min="1" max="1440" step="1" required>
+          </div>
+          <div class="col-lg-2">
+            <button type="submit" class="btn btn-primary w-100">Save Break</button>
           </div>
         </div>
+        <div class="form-text mt-2">Currently scheduled to end: {{$scheduledBreak.EndTimeDisplay}}</div>
       </form>
       {{end}}
     </div>
   </div>
 </div>
 {{end}}
-{{define "script"}}
-{{end}}
+{{define "script"}}{{end}}
