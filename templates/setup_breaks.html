@@ -1,64 +1,140 @@
 {{/*
-Copyright 2024 Team 254. All Rights Reserved.
+Copyright 2026 Freezy Arena contributors.
 Author: Justin Fischer <justin@justfishin99.xyz>
 
-UI for configuring scheduled playoff breaks.
+Set playoff breaks by match position, duration and name.
 */}}
 {{define "title"}}Break Scheduling{{end}}
 {{define "body"}}
 <div class="row justify-content-center">
   <div class="col-xl-10 col-lg-11">
     <div class="card card-body bg-body-tertiary">
-      <legend>Break Scheduling</legend>
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+        <legend class="mb-0">Playoff Break Scheduling</legend>
+      </div>
       <p class="text-body-secondary">
-        Configure the planned start time, length, and description of playoff breaks. Saving a timing change
-        shifts the scheduled times of subsequent, unplayed playoff matches and breaks to match the new end time.
+        Choose the match after which each break will occur, its length, and the name displayed during the countdown.
+        The initial entries come from the default breaks for this event's playoff bracket.
       </p>
-      <p class="text-body-secondary">
-        The on-field break countdown starts after the preceding match is completed and committed, not
-        automatically when the scheduled start time arrives.
-      </p>
+      {{if .MatchesCreated}}
+      <div class="alert alert-info">
+        The playoff schedule has been generated. Changing breaks will recalculate the scheduled times
+        of later, unplayed matches. Breaks that have already passed cannot be edited.
+      </div>
+      {{else}}
+      <div class="alert alert-info">
+        You can configure breaks now. Your choices will be applied when alliance selection is finalized
+        and the playoff matches are generated.
+      </div>
+      {{end}}
       {{if .ErrorMessage}}
       <div class="alert alert-danger" role="alert">{{.ErrorMessage}}</div>
       {{end}}
-      {{if not .ScheduledBreaks}}
-      <div class="alert alert-info mb-0">
-        Playoff breaks will appear here after alliance selection is complete and the playoff tournament is created.
-      </div>
-      {{end}}
-      {{range $i, $scheduledBreak := .ScheduledBreaks}}
-      <form method="POST" action="/setup/breaks" class="border rounded p-3 mb-3">
-        <input type="hidden" name="id" value="{{$scheduledBreak.Id}}">
-        <div class="d-flex flex-wrap align-items-baseline justify-content-between gap-2 mb-3">
-          <h5 class="mb-0">Break #{{add $i 1}}</h5>
-          <span class="text-body-secondary">Before {{$scheduledBreak.NextMatchName}}</span>
+      <form method="POST" action="/setup/breaks" id="breakSchedulingForm">
+        <div id="breakRows">
+          {{range $i, $scheduledBreak := .ScheduledBreaks}}
+          <div class="break-row border rounded p-3 mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h5 class="mb-0">Scheduled Break</h5>
+              <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeBreak(this)">
+                <i class="bi-trash"></i> Remove
+              </button>
+            </div>
+            <div class="row g-3">
+              <div class="col-lg-5">
+                <label class="form-label">Break After Match</label>
+                <select class="form-select" name="afterMatchOrder" required>
+                  {{range $slot := $.MatchSlots}}
+                  <option value="{{$slot.AfterMatchOrder}}" {{if eq $slot.AfterMatchOrder $scheduledBreak.AfterMatchOrder}}selected{{end}}>
+                    {{$slot.AfterMatchName}} (before {{$slot.BeforeMatchName}})
+                  </option>
+                  {{end}}
+                </select>
+              </div>
+              <div class="col-lg-3">
+                <label class="form-label">Length (minutes)</label>
+                <input class="form-control" type="number" name="durationMinutes"
+                  value="{{$scheduledBreak.DurationMinutes}}" min="1" max="1440" step="1" required>
+              </div>
+              <div class="col-lg-4">
+                <label class="form-label">Break Name</label>
+                <input class="form-control" type="text" name="description"
+                  value="{{$scheduledBreak.Description}}" maxlength="128" required>
+              </div>
+            </div>
+          </div>
+          {{end}}
         </div>
-        <div class="row g-3 align-items-end">
-          <div class="col-lg-4">
-            <label class="form-label" for="breakDescription{{$scheduledBreak.Id}}">Description</label>
-            <input type="text" class="form-control" id="breakDescription{{$scheduledBreak.Id}}"
-              name="description" value="{{$scheduledBreak.Description}}" maxlength="128" required>
-          </div>
-          <div class="col-lg-4">
-            <label class="form-label" for="breakStart{{$scheduledBreak.Id}}">Scheduled Start</label>
-            <input type="datetime-local" class="form-control" id="breakStart{{$scheduledBreak.Id}}"
-              name="startTime" value="{{$scheduledBreak.StartTimeInput}}" step="60" required>
-          </div>
-          <div class="col-lg-2">
-            <label class="form-label" for="breakDuration{{$scheduledBreak.Id}}">Duration (minutes)</label>
-            <input type="number" class="form-control" id="breakDuration{{$scheduledBreak.Id}}"
-              name="durationMinutes" value="{{$scheduledBreak.DurationMinutes}}"
-              min="1" max="1440" step="1" required>
-          </div>
-          <div class="col-lg-2">
-            <button type="submit" class="btn btn-primary w-100">Save Break</button>
-          </div>
+        <div class="d-flex flex-wrap align-items-center gap-2">
+          <button type="button" class="btn btn-secondary" onclick="addBreak()">
+            <i class="bi-plus-circle"></i> Add Break
+          </button>
+          <button type="submit" class="btn btn-primary" name="action" value="save">
+            Save Break Schedule
+          </button>
+          <button type="submit" class="btn btn-outline-secondary" name="action" value="defaults"
+            formnovalidate onclick="return confirm('Restore the default break positions, lengths, and names for this bracket?')">
+            Restore Defaults
+          </button>
         </div>
-        <div class="form-text mt-2">Currently scheduled to end: {{$scheduledBreak.EndTimeDisplay}}</div>
+        <p class="form-text mt-3 mb-0">
+          Breaks occur between matches, not at a fixed time of day. Field countdowns start
+          when the preceding match has been completed and the next match is loaded.
+        </p>
       </form>
-      {{end}}
     </div>
   </div>
 </div>
+
+<template id="breakRowTemplate">
+  <div class="break-row border rounded p-3 mb-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h5 class="mb-0">Scheduled Break</h5>
+      <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeBreak(this)">
+        <i class="bi-trash"></i> Remove
+      </button>
+    </div>
+    <div class="row g-3">
+      <div class="col-lg-5">
+        <label class="form-label">Break After Match</label>
+        <select class="form-select" name="afterMatchOrder" required>
+          {{range $slot := .MatchSlots}}
+          <option value="{{$slot.AfterMatchOrder}}">{{$slot.AfterMatchName}} (before {{$slot.BeforeMatchName}})</option>
+          {{end}}
+        </select>
+      </div>
+      <div class="col-lg-3">
+        <label class="form-label">Length (minutes)</label>
+        <input class="form-control" type="number" name="durationMinutes"
+          value="10" min="1" max="1440" step="1" required>
+      </div>
+      <div class="col-lg-4">
+        <label class="form-label">Break Name</label>
+        <input class="form-control" type="text" name="description"
+          value="Field Break" maxlength="128" required>
+      </div>
+    </div>
+  </div>
+</template>
 {{end}}
-{{define "script"}}{{end}}
+{{define "script"}}
+<script>
+  function addBreak() {
+    const rows = document.getElementById("breakRows");
+    const template = document.getElementById("breakRowTemplate");
+    const node = template.content.cloneNode(true);
+    const used = new Set(Array.from(rows.querySelectorAll('select[name="afterMatchOrder"]')).map(s => s.value));
+    const select = node.querySelector('select[name="afterMatchOrder"]');
+    const available = Array.from(select.options).find(option => !used.has(option.value));
+    if (!available) {
+      window.alert("Every available match position already has a break.");
+      return;
+    }
+    select.value = available.value;
+    rows.appendChild(node);
+  }
+  function removeBreak(button) {
+    button.closest(".break-row").remove();
+  }
+</script>
+{{end}}

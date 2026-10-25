@@ -1,5 +1,5 @@
 // Copyright 2014 Team 254. All Rights Reserved.
-// Author: pat@patfairbank.com (Patrick Fairbank)
+// Author: Justin Fischer <justin@justfishin99.xyz>
 //
 // Model and datastore read/write methods for event-level configuration.
 
@@ -44,6 +44,7 @@ type EventSettings struct {
 	LogoSuffix                       string
 	PlayoffType                      PlayoffType
 	NumPlayoffAlliances              int
+	PlayoffBreaksJSON                string
 	SelectionRound2Order             string
 	SelectionRound3Order             string
 	SelectionShowUnpickedTeams       bool

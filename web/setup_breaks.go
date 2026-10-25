@@ -1,31 +1,29 @@
-// Copyright 2024 Team 254. All Rights Reserved.
+// Copyright 2026 Freezy Arena contributors.
 // Author: Justin Fischer <justin@justfishin99.xyz>
 //
-// Web routes for configuring playoff break descriptions, start times, and durations.
+// Configure the playoff breaks that occur after selected matches.
 
 package web
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/Team254/cheesy-arena/field"
 	"github.com/Team254/cheesy-arena/model"
+	"github.com/Team254/cheesy-arena/playoff"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
 )
 
-const scheduledBreakTimeFormat = "2006-01-02T15:04"
-
-type scheduledBreakEditorRow struct {
-	model.ScheduledBreak
-	StartTimeInput  string
-	EndTimeDisplay  string
+type breakEditorRow struct {
+	AfterMatchOrder int
 	DurationMinutes int
-	NextMatchName   string
+	Description     string
 }
 
-// Shows the breaks configuration page.
 func (web *Web) breaksGetHandler(w http.ResponseWriter, r *http.Request) {
 	if !web.userIsAdmin(w, r) {
 		return
@@ -33,35 +31,44 @@ func (web *Web) breaksGetHandler(w http.ResponseWriter, r *http.Request) {
 	web.renderBreaks(w, "", http.StatusOK)
 }
 
+// Breaks can be configured before or after playoff matches are generated.
+// Before creation, the bracket's built-in breaks are shown as defaults.
 func (web *Web) renderBreaks(w http.ResponseWriter, errorMessage string, statusCode int) {
-	breaks, err := web.arena.Database.GetScheduledBreaksByMatchType(model.Playoff)
-	if err != nil {
-		handleWebErr(w, err)
-		return
-	}
 	matches, err := web.arena.Database.GetMatchesByType(model.Playoff, true)
 	if err != nil {
 		handleWebErr(w, err)
 		return
 	}
-	matchNames := make(map[int]string, len(matches))
-	for _, match := range matches {
-		matchNames[match.TypeOrder] = match.LongName
-	}
-	rows := make([]scheduledBreakEditorRow, 0, len(breaks))
-	for _, scheduledBreak := range breaks {
-		nextMatchName := matchNames[scheduledBreak.TypeOrderBefore]
-		if nextMatchName == "" {
-			nextMatchName = fmt.Sprintf("Match %d", scheduledBreak.TypeOrderBefore)
+	rows := make([]breakEditorRow, 0)
+	if len(matches) == 0 {
+		for _, item := range web.arena.PlayoffTournament.ConfiguredBreaks() {
+			rows = append(rows, breakEditorRow{
+				AfterMatchOrder: item.AfterMatchOrder,
+				DurationMinutes: item.DurationSec / 60,
+				Description: item.Description,
+			})
 		}
-		rows = append(rows, scheduledBreakEditorRow{
-			ScheduledBreak:  scheduledBreak,
-			StartTimeInput:  scheduledBreak.Time.Local().Format(scheduledBreakTimeFormat),
-			EndTimeDisplay:  scheduledBreak.Time.Add(time.Duration(scheduledBreak.DurationSec) * time.Second).Local().Format("Mon Jan 2, 3:04 PM"),
-			DurationMinutes: scheduledBreak.DurationSec / 60,
-			NextMatchName:   nextMatchName,
-		})
+	} else {
+		slotsByBefore := make(map[int]playoff.BreakSlot)
+		for _, slot := range web.arena.PlayoffTournament.BreakSlots() {
+			slotsByBefore[slot.BeforeMatchOrder] = slot
+		}
+		breaks, err := web.arena.Database.GetScheduledBreaksByMatchType(model.Playoff)
+		if err != nil {
+			handleWebErr(w, err)
+			return
+		}
+		for _, item := range breaks {
+			if slot, ok := slotsByBefore[item.TypeOrderBefore]; ok {
+				rows = append(rows, breakEditorRow{
+					AfterMatchOrder: slot.AfterMatchOrder,
+					DurationMinutes: item.DurationSec / 60,
+					Description: item.Description,
+				})
+			}
+		}
 	}
+	sort.Slice(rows, func(i, j int) bool { return rows[i].AfterMatchOrder < rows[j].AfterMatchOrder })
 
 	tmpl, err := web.parseFiles("templates/setup_breaks.html", "templates/base.html")
 	if err != nil {
@@ -70,18 +77,23 @@ func (web *Web) renderBreaks(w http.ResponseWriter, errorMessage string, statusC
 	}
 	data := struct {
 		*model.EventSettings
-		ScheduledBreaks []scheduledBreakEditorRow
+		ScheduledBreaks []breakEditorRow
+		MatchSlots      []playoff.BreakSlot
+		MatchesCreated  bool
 		ErrorMessage    string
-	}{web.arena.EventSettings, rows, errorMessage}
+	}{
+		web.arena.EventSettings,
+		rows,
+		web.arena.PlayoffTournament.BreakSlots(),
+		len(matches) > 0,
+		errorMessage,
+	}
 	w.WriteHeader(statusCode)
 	if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
 		handleWebErr(w, err)
 	}
 }
 
-// Saves a break and moves later unplayed playoff matches and breaks whenever its
-// scheduled end time changes. The on-field countdown is started by match flow,
-// not by the configured wall-clock start time.
 func (web *Web) breaksPostHandler(w http.ResponseWriter, r *http.Request) {
 	if !web.userIsAdmin(w, r) {
 		return
@@ -89,144 +101,204 @@ func (web *Web) breaksPostHandler(w http.ResponseWriter, r *http.Request) {
 	reject := func(message string) {
 		web.renderBreaks(w, message, http.StatusBadRequest)
 	}
-
-	id, err := strconv.Atoi(r.PostFormValue("id"))
-	if err != nil || id <= 0 {
-		reject("Invalid break ID.")
+	if err := r.ParseForm(); err != nil {
+		reject("Invalid break schedule form.")
 		return
 	}
-	scheduledBreak, err := web.arena.Database.GetScheduledBreakById(id)
+
+	// Validate against a fresh copy of the configured bracket. It retains the
+	// hard-coded defaults, even if the in-memory tournament is customized.
+	defaultTournament, err := playoff.NewPlayoffTournament(
+		web.arena.EventSettings.PlayoffType, web.arena.EventSettings.NumPlayoffAlliances,
+	)
 	if err != nil {
 		handleWebErr(w, err)
 		return
 	}
-	if scheduledBreak == nil || scheduledBreak.MatchType != model.Playoff {
-		reject("The selected playoff break does not exist.")
-		return
-	}
 
-	description := strings.TrimSpace(r.PostFormValue("description"))
-	if description == "" {
-		reject("A break description is required.")
-		return
-	}
-
-	newStartTime := scheduledBreak.Time
-	if _, provided := r.PostForm["startTime"]; provided {
-		input := r.PostFormValue("startTime")
-		newStartTime, err = time.ParseInLocation(scheduledBreakTimeFormat, input, time.Local)
-		if err != nil {
-			reject("Invalid break start time.")
+	var desired []model.PlayoffBreakSetting
+	resetDefaults := r.PostFormValue("action") == "defaults"
+	if resetDefaults {
+		desired = defaultTournament.ConfiguredBreaks()
+	} else {
+		afterValues := r.PostForm["afterMatchOrder"]
+		durationValues := r.PostForm["durationMinutes"]
+		descriptionValues := r.PostForm["description"]
+		if len(afterValues) != len(durationValues) || len(afterValues) != len(descriptionValues) ||
+			len(afterValues) > len(defaultTournament.BreakSlots()) {
+			reject("Incomplete or invalid break schedule.")
 			return
 		}
-		// Keep existing seconds if the browser supplied the unmodified minute.
-		if input == scheduledBreak.Time.Local().Format(scheduledBreakTimeFormat) {
-			newStartTime = scheduledBreak.Time
-		}
-	}
-
-	newDurationSec := scheduledBreak.DurationSec
-	if _, provided := r.PostForm["durationMinutes"]; provided {
-		minutes, parseErr := strconv.Atoi(r.PostFormValue("durationMinutes"))
-		if parseErr != nil || minutes < 1 || minutes > 1440 {
-			reject("Break duration must be between 1 and 1440 whole minutes.")
-			return
-		}
-		newDurationSec = minutes * 60
-	}
-
-	changedTiming := !newStartTime.Equal(scheduledBreak.Time) || newDurationSec != scheduledBreak.DurationSec
-	endTimeDelta := newStartTime.Add(time.Duration(newDurationSec) * time.Second).Sub(
-		scheduledBreak.Time.Add(time.Duration(scheduledBreak.DurationSec) * time.Second),
-	)
-
-	var matchesToUpdate []*model.Match
-	var breaksToUpdate []*model.ScheduledBreak
-	if changedTiming {
-		if web.arena.CurrentMatch != nil &&
-			web.arena.CurrentMatch.Type == model.Playoff &&
-			web.arena.CurrentMatch.TypeOrder == scheduledBreak.TypeOrderBefore &&
-			(web.arena.MatchState == field.TimeoutActive || web.arena.MatchState == field.PostTimeout) {
-			reject("Cannot change a break while its countdown is active.")
-			return
-		}
-
-		matches, getErr := web.arena.Database.GetMatchesByType(model.Playoff, true)
-		if getErr != nil {
-			handleWebErr(w, getErr)
-			return
-		}
-		for i := range matches {
-			match := &matches[i]
-			if match.TypeOrder < scheduledBreak.TypeOrderBefore {
-				if !newStartTime.After(match.Time) {
-					reject(fmt.Sprintf("The break must start after %s is scheduled to begin.", match.LongName))
-					return
-				}
-				continue
-			}
-			if !match.StartedAt.IsZero() || match.IsComplete() {
-				reject("Cannot change a break once a following playoff match has started or finished.")
+		desired = make([]model.PlayoffBreakSetting, 0, len(afterValues))
+		for i := range afterValues {
+			after, afterErr := strconv.Atoi(afterValues[i])
+			minutes, durationErr := strconv.Atoi(durationValues[i])
+			if afterErr != nil || durationErr != nil || minutes < 1 || minutes > 1440 {
+				reject("Choose a valid match and a break duration between 1 and 1440 minutes.")
 				return
 			}
-			if endTimeDelta != 0 {
-				match.Time = match.Time.Add(endTimeDelta)
-				matchesToUpdate = append(matchesToUpdate, match)
-			}
+			desired = append(desired, model.PlayoffBreakSetting{
+				AfterMatchOrder: after,
+				DurationSec: minutes * 60,
+				Description: strings.TrimSpace(descriptionValues[i]),
+			})
 		}
+	}
+	if err := defaultTournament.ConfigureBreaks(desired); err != nil {
+		reject(err.Error())
+		return
+	}
+	sort.Slice(desired, func(i, j int) bool { return desired[i].AfterMatchOrder < desired[j].AfterMatchOrder })
 
-		breaks, getErr := web.arena.Database.GetScheduledBreaksByMatchType(model.Playoff)
-		if getErr != nil {
-			handleWebErr(w, getErr)
-			return
-		}
-		for i := range breaks {
-			other := &breaks[i]
-			if other.Id == scheduledBreak.Id {
-				continue
-			}
-			if other.TypeOrderBefore < scheduledBreak.TypeOrderBefore {
-				otherEnd := other.Time.Add(time.Duration(other.DurationSec) * time.Second)
-				if newStartTime.Before(otherEnd) {
-					reject("The break cannot start before an earlier scheduled break ends.")
-					return
-				}
-			} else if endTimeDelta != 0 {
-				other.Time = other.Time.Add(endTimeDelta)
-				breaksToUpdate = append(breaksToUpdate, other)
-			}
-		}
-	}
-
-	// Validate every downstream event before persisting any of the changes.
-	for _, match := range matchesToUpdate {
-		if err := web.arena.Database.UpdateMatch(match); err != nil {
-			handleWebErr(w, err)
-			return
-		}
-	}
-	for _, other := range breaksToUpdate {
-		if err := web.arena.Database.UpdateScheduledBreak(other); err != nil {
-			handleWebErr(w, err)
-			return
-		}
-	}
-	scheduledBreak.Description = description
-	scheduledBreak.Time = newStartTime
-	scheduledBreak.DurationSec = newDurationSec
-	if err := web.arena.Database.UpdateScheduledBreak(scheduledBreak); err != nil {
+	matches, err := web.arena.Database.GetMatchesByType(model.Playoff, true)
+	if err != nil {
 		handleWebErr(w, err)
 		return
 	}
-	if changedTiming {
-		for _, match := range matchesToUpdate {
+	if len(matches) > 0 {
+		if err := web.applyPlayoffBreakSchedule(matches, desired); err != nil {
+			reject(err.Error())
+			return
+		}
+	}
+
+	// Store explicit [] for a user-selected empty schedule; an empty string
+	// means follow the original hard-coded defaults.
+	newJSON := ""
+	if !resetDefaults {
+		bytes, err := json.Marshal(desired)
+		if err != nil {
+			handleWebErr(w, err)
+			return
+		}
+		newJSON = string(bytes)
+	}
+	previousJSON := web.arena.EventSettings.PlayoffBreaksJSON
+	web.arena.EventSettings.PlayoffBreaksJSON = newJSON
+	if err := web.arena.Database.UpdateEventSettings(web.arena.EventSettings); err != nil {
+		web.arena.EventSettings.PlayoffBreaksJSON = previousJSON
+		handleWebErr(w, err)
+		return
+	}
+	if err := web.arena.PlayoffTournament.ConfigureBreaks(desired); err != nil {
+		handleWebErr(w, err)
+		return
+	}
+	http.Redirect(w, r, "/setup/breaks", http.StatusSeeOther)
+}
+
+// Update match times using the difference between the old and new breaks at
+// each boundary. This preserves custom match-to-match spacing outside breaks.
+func (web *Web) applyPlayoffBreakSchedule(
+	matches []model.Match, desired []model.PlayoffBreakSetting,
+) error {
+	existing, err := web.arena.Database.GetScheduledBreaksByMatchType(model.Playoff)
+	if err != nil {
+		return err
+	}
+	beforeByAfter := make(map[int]int)
+	afterByBefore := make(map[int]int)
+	for _, slot := range web.arena.PlayoffTournament.BreakSlots() {
+		beforeByAfter[slot.AfterMatchOrder] = slot.BeforeMatchOrder
+		afterByBefore[slot.BeforeMatchOrder] = slot.AfterMatchOrder
+	}
+	oldByBefore := make(map[int]model.ScheduledBreak)
+	for _, item := range existing {
+		oldByBefore[item.TypeOrderBefore] = item
+	}
+	newByBefore := make(map[int]model.PlayoffBreakSetting)
+	for _, item := range desired {
+		newByBefore[beforeByAfter[item.AfterMatchOrder]] = item
+	}
+
+	lastStartedOrder := 0
+	for _, match := range matches {
+		if !match.StartedAt.IsZero() || match.IsComplete() {
+			if match.TypeOrder > lastStartedOrder {
+				lastStartedOrder = match.TypeOrder
+			}
+		}
+	}
+	for before, old := range oldByBefore {
+		newItem, ok := newByBefore[before]
+		if !ok || old.DurationSec != newItem.DurationSec || old.Description != newItem.Description {
+			if afterByBefore[before] <= lastStartedOrder {
+				return fmt.Errorf("cannot change a break after a match that has already started")
+			}
+		}
+	}
+	for before, item := range newByBefore {
+		old, ok := oldByBefore[before]
+		if !ok || old.DurationSec != item.DurationSec || old.Description != item.Description {
+			if afterByBefore[before] <= lastStartedOrder {
+				return fmt.Errorf("cannot add or change a break after a match that has already started")
+			}
+		}
+	}
+
+	if web.arena.CurrentMatch != nil && web.arena.CurrentMatch.Type == model.Playoff &&
+		(web.arena.MatchState == field.TimeoutActive || web.arena.MatchState == field.PostTimeout) {
+		before := web.arena.CurrentMatch.TypeOrder
+		old, oldPresent := oldByBefore[before]
+		newItem, newPresent := newByBefore[before]
+		if oldPresent != newPresent ||
+			(oldPresent && (old.DurationSec != newItem.DurationSec || old.Description != newItem.Description)) {
+			return fmt.Errorf("cannot edit a break whose field countdown is active")
+		}
+	}
+
+	// Every downstream match moves by the cumulative difference in break
+	// durations at all earlier positions; existing match intervals remain intact.
+	shift := time.Duration(0)
+	newMatchTimes := make(map[int]time.Time, len(matches))
+	for _, match := range matches {
+		newDuration := 0
+		if item, ok := newByBefore[match.TypeOrder]; ok {
+			newDuration = item.DurationSec
+		}
+		oldDuration := 0
+		if item, ok := oldByBefore[match.TypeOrder]; ok {
+			oldDuration = item.DurationSec
+		}
+		shift += time.Duration(newDuration-oldDuration) * time.Second
+		newTime := match.Time.Add(shift)
+		if !newTime.Equal(match.Time) && (!match.StartedAt.IsZero() || match.IsComplete()) {
+			return fmt.Errorf("cannot reschedule a match that has already started or finished")
+		}
+		newMatchTimes[match.TypeOrder] = newTime
+	}
+
+	// All validation is complete. Apply the new schedule, then recreate the
+	// scheduled break rows that the match progression mechanism reads.
+	for i := range matches {
+		match := &matches[i]
+		newTime := newMatchTimes[match.TypeOrder]
+		if !match.Time.Equal(newTime) {
+			match.Time = newTime
+			if err := web.arena.Database.UpdateMatch(match); err != nil {
+				return err
+			}
 			if web.arena.CurrentMatch != nil && web.arena.CurrentMatch.Id == match.Id {
 				web.arena.CurrentMatch.Time = match.Time
 			}
 		}
-		web.arena.MatchListNotifier.Notify()
-		web.arena.MatchLoadNotifier.Notify()
-		web.arena.EventStatusNotifier.Notify()
 	}
-	http.Redirect(w, r, "/setup/breaks", http.StatusSeeOther)
+	if err := web.arena.Database.DeleteScheduledBreaksByMatchType(model.Playoff); err != nil {
+		return err
+	}
+	for _, item := range desired {
+		before := beforeByAfter[item.AfterMatchOrder]
+		pause := model.ScheduledBreak{
+			MatchType: model.Playoff, TypeOrderBefore: before,
+			Time: newMatchTimes[before].Add(-time.Duration(item.DurationSec) * time.Second),
+			DurationSec: item.DurationSec, Description: item.Description,
+		}
+		if err := web.arena.Database.CreateScheduledBreak(&pause); err != nil {
+			return err
+		}
+	}
+	web.arena.MatchListNotifier.Notify()
+	web.arena.MatchLoadNotifier.Notify()
+	web.arena.EventStatusNotifier.Notify()
+	return nil
 }

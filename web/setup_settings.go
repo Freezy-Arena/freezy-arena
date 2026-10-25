@@ -1,5 +1,5 @@
 // Copyright 2014 Team 254. All Rights Reserved.
-// Author: pat@patfairbank.com (Patrick Fairbank)
+// Author: Justin Fischer <justin@justfishin99.xyz>
 //
 // Web routes for configuring the event settings.
 
@@ -168,6 +168,10 @@ func (web *Web) settingsPostHandler(w http.ResponseWriter, r *http.Request) {
 			)
 			return
 		}
+	}
+	if eventSettings.PlayoffType != playoffType || eventSettings.NumPlayoffAlliances != numAlliances {
+		// A changed bracket requires its matching hard-coded default breaks.
+		eventSettings.PlayoffBreaksJSON = ""
 	}
 	eventSettings.PlayoffType = playoffType
 

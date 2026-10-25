@@ -1,11 +1,12 @@
 // Copyright 2014 Team 254. All Rights Reserved.
-// Author: pat@patfairbank.com (Patrick Fairbank)
+// Author: Justin Fischer <justin@justfishin99.xyz>
 //
 // Functions for controlling the arena and match play.
 
 package field
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/Team254/cheesy-arena/game"
 	"github.com/Team254/cheesy-arena/led"
@@ -318,7 +319,17 @@ func (arena *Arena) CreatePlayoffTournament() error {
 	arena.PlayoffTournament, err = playoff.NewPlayoffTournament(
 		arena.EventSettings.PlayoffType, arena.EventSettings.NumPlayoffAlliances,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+	if arena.EventSettings.PlayoffBreaksJSON != "" {
+		var settings []model.PlayoffBreakSetting
+		if err = json.Unmarshal([]byte(arena.EventSettings.PlayoffBreaksJSON), &settings); err != nil {
+			return fmt.Errorf("invalid saved playoff break schedule: %w", err)
+		}
+		return arena.PlayoffTournament.ConfigureBreaks(settings)
+	}
+	return nil
 }
 
 // Performs the one-time creation of all matches for the playoff tournament.
