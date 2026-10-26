@@ -1,5 +1,5 @@
 // Copyright 2018 Team 254. All Rights Reserved.
-// Author: pat@patfairbank.com (Patrick Fairbank)
+// Author: Justin Fischer <justin@justfishin99.xyz>
 //
 // Contains configuration of the publish-subscribe notifiers that allow the arena to push updates to websocket clients.
 
@@ -237,6 +237,7 @@ func (arena *Arena) GenerateMatchLoadMessage() any {
 		BlueOffFieldTeams  []*model.Team
 		BreakDescription   string
 		BreakNextMatchName string
+		PendingScheduledBreak *model.ScheduledBreak
 	}{
 		arena.CurrentMatch,
 		allowManualSubstitution,
@@ -248,6 +249,7 @@ func (arena *Arena) GenerateMatchLoadMessage() any {
 		blueOffFieldTeams,
 		arena.breakDescription,
 		arena.breakNextMatchName,
+		arena.PendingScheduledBreak(),
 	}
 }
 

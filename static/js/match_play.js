@@ -1,5 +1,5 @@
 // Copyright 2014 Team 254. All Rights Reserved.
-// Author: pat@patfairbank.com (Patrick Fairbank)
+// Author: Justin Fischer <justin@justfishin99.xyz>
 //
 // Client-side logic for the match play page.
 
@@ -61,6 +61,17 @@ const signalReset = function () {
 // Sends a websocket message to commit and post the match score, and load the next match.
 const commitAndPost = function () {
   websocket.send("commitAndPost");
+};
+
+// The break timer starts only when the operator confirms that every robot
+// has physically cleared the field. The backend supplies the duration.
+let pendingBreakMatchId = null;
+const confirmScheduledBreak = function () {
+  if (pendingBreakMatchId === null) {
+    return;
+  }
+  websocket.send("confirmScheduledBreak", {matchId: pendingBreakMatchId});
+  bootstrap.Modal.getOrCreateInstance(document.getElementById("scheduledBreakConfirmModal")).hide();
 };
 
 // Sends a websocket message to discard the match score and load the next match.
@@ -294,6 +305,9 @@ const handleArenaStatus = function (data) {
       $("#startTimeout").prop("disabled", true);
       break;
   }
+  // No match may start while a scheduled break awaits field clearance.
+  $("#startTimeout").prop("disabled", $("#scheduledBreakPrompt").is(":visible") ||
+    matchStates[data.MatchState] !== "PRE_MATCH");
   updateStartMatchTooltip(data.StartMatchConditions);
 
   $("#accessPointStatus").attr("data-status", data.AccessPointStatus);
@@ -356,6 +370,17 @@ const handleArenaStatus = function (data) {
 // Handles a websocket message to update the teams for the current match.
 const handleMatchLoad = function (data) {
   isReplay = data.IsReplay;
+  const pending = data.PendingScheduledBreak;
+  pendingBreakMatchId = pending ? data.Match.Id : null;
+  $("#scheduledBreakPrompt").toggleClass("d-none", !pending);
+  if (pending) {
+    $("#scheduledBreakName").text(pending.Description);
+    const seconds = pending.DurationSec;
+    $("#scheduledBreakLength").text(seconds % 60 === 0 ?
+      (seconds / 60) + " minutes" : Math.floor(seconds / 60) + "m " + (seconds % 60) + "s");
+    $("#scheduledBreakNextMatch").text(data.Match.LongName);
+    $("#startTimeout").prop("disabled", true);
+  }
 
   fetch("/match_play/match_load")
     .then(response => response.text())

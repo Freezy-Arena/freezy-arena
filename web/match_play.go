@@ -1,5 +1,5 @@
 // Copyright 2014 Team 254. All Rights Reserved.
-// Author: pat@patfairbank.com (Patrick Fairbank)
+// Author: Justin Fischer <justin@justfishin99.xyz>
 //
 // Web routes for controlling match play.
 
@@ -291,6 +291,18 @@ func (web *Web) matchPlayWebsocketHandler(w http.ResponseWriter, r *http.Request
 		case "commitAndPost":
 			err = web.commitPostAndLoadNextMatch()
 			if err != nil {
+				writeWebsocketError(ws, err.Error())
+				continue
+			}
+		case "confirmScheduledBreak":
+			args := struct {
+				MatchId int
+			}{}
+			if err = mapstructure.Decode(data, &args); err != nil || args.MatchId <= 0 {
+				writeWebsocketError(ws, "Invalid scheduled break confirmation.")
+				continue
+			}
+			if err = web.arena.ConfirmScheduledBreakStart(args.MatchId); err != nil {
 				writeWebsocketError(ws, err.Error())
 				continue
 			}

@@ -36,7 +36,6 @@ const (
 	matchEndScoreDwellSec    = 3
 	postTimeoutSec           = 4
 	preLoadNextMatchDelaySec = 5
-	scheduledBreakDelaySec   = 5
 	earlyLateThresholdMin    = 2.5
 	MaxMatchGapMin           = 20
 )
@@ -105,6 +104,7 @@ type Arena struct {
 	soundsPlayed                      map[*game.MatchSound]struct{}
 	breakDescription                  string
 	breakNextMatchName                string
+	pendingScheduledBreak             *model.ScheduledBreak
 	preloadedTeams                    *[6]*model.Team
 	NextFoulId                        int
 	DriverStationUdpSocket            *net.UDPConn
@@ -351,6 +351,10 @@ func (arena *Arena) UpdatePlayoffTournament() error {
 
 // Sets up the arena for the given match.
 func (arena *Arena) LoadMatch(match *model.Match) error {
+	if arena.pendingScheduledBreak != nil && arena.CurrentMatch != nil &&
+		arena.CurrentMatch.Id != match.Id {
+		return fmt.Errorf("cannot switch matches until the scheduled break has been started")
+	}
 	if arena.MatchState != PreMatch && arena.MatchState != TimeoutActive {
 		return fmt.Errorf("cannot load match while there is a match still in progress or with results pending")
 	}
@@ -459,22 +463,59 @@ func (arena *Arena) LoadNextMatch(startScheduledBreak bool) error {
 		return err
 	}
 
-	// Start the timeout timer if there is a scheduled break before this match.
+	// Only arm a break as part of normal score commitment. No timer runs
+	// until the operator confirms that all robots have cleared the field.
 	if startScheduledBreak {
 		scheduledBreak, err := arena.Database.GetScheduledBreakByMatchTypeOrder(nextMatch.Type, nextMatch.TypeOrder)
 		if err != nil {
 			return err
 		}
+		arena.pendingScheduledBreak = scheduledBreak
 		if scheduledBreak != nil {
-			go func() {
-				time.Sleep(time.Second * scheduledBreakDelaySec)
-				if err := arena.StartTimeout(scheduledBreak.Description, scheduledBreak.DurationSec); err != nil {
-					log.Printf("Failed to start scheduled break timeout before match %d: %v", nextMatch.Id, err)
-				}
-			}()
+			arena.MatchLoadNotifier.Notify()
+			arena.ArenaStatusNotifier.Notify()
 		}
 	}
 
+	return nil
+}
+
+// PendingScheduledBreak reports a scheduled break awaiting field clearance.
+func (arena *Arena) PendingScheduledBreak() *model.ScheduledBreak {
+	if arena.pendingScheduledBreak == nil || arena.CurrentMatch == nil ||
+		arena.CurrentMatch.Type != arena.pendingScheduledBreak.MatchType ||
+		arena.CurrentMatch.TypeOrder != arena.pendingScheduledBreak.TypeOrderBefore {
+		return nil
+	}
+	return arena.pendingScheduledBreak
+}
+
+// ConfirmScheduledBreakStart starts the countdown at the operator's confirmation.
+func (arena *Arena) ConfirmScheduledBreakStart(matchId int) error {
+	pending := arena.PendingScheduledBreak()
+	if pending == nil || arena.CurrentMatch.Id != matchId {
+		return fmt.Errorf("no scheduled break is awaiting confirmation for this match")
+	}
+	if arena.MatchState != PreMatch {
+		return fmt.Errorf("cannot start the scheduled break unless the field is between matches")
+	}
+	// Never trust client-supplied duration or name.
+	breakFromDatabase, err := arena.Database.GetScheduledBreakById(pending.Id)
+	if err != nil {
+		return err
+	}
+	if breakFromDatabase == nil || breakFromDatabase.MatchType != arena.CurrentMatch.Type ||
+		breakFromDatabase.TypeOrderBefore != arena.CurrentMatch.TypeOrder {
+		return fmt.Errorf("scheduled break is no longer valid for this match")
+	}
+	arena.pendingScheduledBreak = nil
+	if err := arena.startTimeout(breakFromDatabase.Description, arena.currentMatchDisplayName(),
+		breakFromDatabase.DurationSec); err != nil {
+		arena.pendingScheduledBreak = pending
+		return err
+	}
+	arena.MatchLoadNotifier.Notify()
+	arena.ArenaStatusNotifier.Notify()
 	return nil
 }
 
@@ -621,6 +662,9 @@ func (arena *Arena) StartTimeout(description string, durationSec int) error {
 
 // Starts an ad-hoc timeout of the given duration.
 func (arena *Arena) StartAdHocTimeout(description string, nextMatchName string, durationSec int) error {
+	if arena.PendingScheduledBreak() != nil {
+		return fmt.Errorf("confirm field clearance and start the scheduled break first")
+	}
 	return arena.startTimeout(description, nextMatchName, durationSec)
 }
 
@@ -1171,6 +1215,9 @@ func (arena *Arena) getStartMatchConditions() []string {
 			conditions,
 			"a match is still in progress or has results pending",
 		)
+	}
+	if arena.PendingScheduledBreak() != nil {
+		conditions = append(conditions, "a scheduled break is awaiting field-clear confirmation")
 	}
 
 	conditions = append(

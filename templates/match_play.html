@@ -1,6 +1,6 @@
 {{/*
 Copyright 2014 Team 254. All Rights Reserved.
-Author: pat@patfairbank.com (Patrick Fairbank)
+Author: Justin Fischer <justin@justfishin99.xyz>
 
 UI for controlling match play and viewing team connection and field status.
 */}}
@@ -19,6 +19,23 @@ UI for controlling match play and viewing team connection and field status.
       <div id="redScore" class="col-lg-2 card card-body bg-red">&nbsp;</div>
       <div id="blueScore" class="col-lg-2 card card-body bg-blue">&nbsp;</div>
     </div>
+    <section id="scheduledBreakPrompt" class="alert alert-warning d-none mt-2 mb-3" role="alert" aria-live="polite">
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div>
+          <h5 class="alert-heading mb-1">Scheduled Break — Awaiting Field Clearance</h5>
+          <p class="mb-1">
+            <strong id="scheduledBreakName"></strong> · <span id="scheduledBreakLength"></span>
+            · Before <strong id="scheduledBreakNextMatch"></strong>
+          </p>
+          <p class="mb-0">Do not start the break timer until <strong>all robots have left and cleared the field.</strong>
+            The countdown has not started.</p>
+        </div>
+        <button type="button" id="confirmScheduledBreakButton" class="btn btn-success"
+          data-bs-toggle="modal" data-bs-target="#scheduledBreakConfirmModal">
+          Confirm Field Clear &amp; Start Break
+        </button>
+      </div>
+    </section>
     <div class="row text-center">
       <div class="col-lg-6 card card-body bg-blue mb-2">
         <div class="row mb-3">
@@ -262,6 +279,25 @@ UI for controlling match play and viewing team connection and field status.
             Discard Results
           </button>
         </form>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="scheduledBreakConfirmModal" class="modal fade" tabindex="-1" aria-labelledby="scheduledBreakConfirmTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 id="scheduledBreakConfirmTitle" class="modal-title">Start Scheduled Break?</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        Confirm that <strong>every robot has completely cleared the field</strong>.
+        The official break countdown will start immediately when you confirm.
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Not Yet</button>
+        <button type="button" id="startScheduledBreakConfirmed" class="btn btn-success"
+          onclick="confirmScheduledBreak();">Field Clear — Start Timer</button>
       </div>
     </div>
   </div>
