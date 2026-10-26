@@ -58,5 +58,10 @@ func TestMatchPlayScheduledBreakConfirmation(t *testing.T) {
 	assert.Nil(t, web.arena.PendingScheduledBreak())
 
 	ws.Write("confirmScheduledBreak", map[string]any{"matchId": float64(next.Id)})
-	assert.Contains(t, readWebsocketError(t, ws), "no scheduled break")
+	// The timeout can also queue matchLoad/arenaStatus updates. They may
+	// arrive ahead of the command's error response on the same socket.
+	errorMessage := readWebsocketTypeEventually(t, ws, "error", 10)
+	if assert.NotNil(t, errorMessage) {
+		assert.Contains(t, errorMessage.(string), "no scheduled break")
+	}
 }
