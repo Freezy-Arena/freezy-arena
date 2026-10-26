@@ -1,11 +1,14 @@
 // Copyright 2022 Team 254. All Rights Reserved.
-// Author: pat@patfairbank.com (Patrick Fairbank)
+// Author: Justin Fischer <justin@justfishin99.xyz>
 //
 // Model and datastore CRUD methods for a playoff alliance.
 
 package model
 
-import "sort"
+import (
+	"fmt"
+	"sort"
+)
 
 type Alliance struct {
 	Id      int `db:"id,manual"`
@@ -55,9 +58,17 @@ func (database *Database) GetAllAlliances() ([]Alliance, error) {
 
 // Updates the alliance, if necessary, to include whoever played in the match, in case there was a substitute.
 func (database *Database) UpdateAllianceFromMatch(allianceId int, matchTeamIds [3]int) error {
+	// Some playoff match slots are not yet assigned an alliance. ID 0 means
+	// that no alliance exists, so there is no lineup to update.
+	if allianceId == 0 {
+		return nil
+	}
 	alliance, err := database.GetAllianceById(allianceId)
 	if err != nil {
 		return err
+	}
+	if alliance == nil {
+		return fmt.Errorf("cannot update playoff alliance %d: alliance does not exist", allianceId)
 	}
 
 	changed := false
@@ -67,6 +78,10 @@ func (database *Database) UpdateAllianceFromMatch(allianceId int, matchTeamIds [
 	}
 
 	for _, teamId := range matchTeamIds {
+		// Empty alliance station slots are not members of the alliance.
+		if teamId == 0 {
+			continue
+		}
 		found := false
 		for _, allianceTeamId := range alliance.TeamIds {
 			if teamId == allianceTeamId {
